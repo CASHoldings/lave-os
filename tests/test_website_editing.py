@@ -188,3 +188,11 @@ def test_section_and_submenu_names_are_fixed(api, staff_headers):
     lw["subnav"][1]["columns"][0]["title"] = "Read"  # column titles stay editable
     assert api.put("/api/staff/content/menus", headers=staff_headers, json={"value": menus}).status_code == 200
     assert "Read" in api.get("/laveworld/knowledge/").text
+
+
+def test_recognises_avif_variants():
+    plain = b"\x00\x00\x00\x1cftypavif\x00\x00\x00\x00avifmif1miaf"
+    generic = b"\x00\x00\x00\x1cftypmif1\x00\x00\x00\x00mif1avifmiaf"  # how some of lavelondon.com's AVIFs start
+    heic = b"\x00\x00\x00\x1cftypheic\x00\x00\x00\x00mif1heic"
+    assert media_svc.sniff(plain) == ".avif" and media_svc.sniff(generic) == ".avif"
+    assert media_svc.sniff(heic) is None

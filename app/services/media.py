@@ -31,8 +31,12 @@ def sniff(data: bytes) -> str | None:
         return ".png"
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return ".webp"
-    if data[4:12] in (b"ftypavif", b"ftypavis"):
-        return ".avif"
+    if data[4:8] == b"ftyp":
+        # AVIF: the main label is avif/avis, or a generic mif1/msf1 with avif listed among the compatible ones.
+        size = int.from_bytes(data[:4], "big")
+        brands = data[8:12] + data[16:max(16, min(size, 64))]
+        if any(brands[i:i + 4] in (b"avif", b"avis") for i in range(0, len(brands) - 3, 4)):
+            return ".avif"
     if data[:6] in (b"GIF87a", b"GIF89a"):
         return ".gif"
     return None
