@@ -1,0 +1,18 @@
+{% extends "site/base.html" %}
+{% block title %}Order {{ order.ref }} | LAVE{% endblock %}
+{% block main %}
+<section class="auth"><div class="auth-card">
+  {% if paid %}
+  <p class="eyebrow">Thank you</p>
+  <h1>Order {{ order.ref }} is confirmed</h1>
+  <ul class="done-lines">{% for l in order.lines %}<li><span>{{ l.quantity }} × {{ l.name }}<br><span class="muted small">{{ l.variant_label }}</span></span><span>£{{ "%.2f"|format(l.unit_price_pence * l.quantity / 100) }}</span></li>{% endfor %}
+    <li><span>Delivery</span><span>{{ "Free" if not order.shipping_pence else "£%.2f"|format(order.shipping_pence / 100) }}</span></li>
+    <li class="total"><span>Total</span><span>£{{ "%.2f"|format(order.total_pence / 100) }}</span></li></ul>
+  <p>{{ "We'll email you when it's on its way." if order.fulfilment == "delivery" else "We'll let you know when it's ready to collect from the atelier." }}{% if order.email %} A receipt is on its way to {{ order.email }}.{% endif %}</p>
+  <a class="btn" href="/apothecary/">Back to the Apothecary</a>
+  {% else %}
+  <h1>Confirming your payment…</h1>
+  <p>This usually takes a few seconds. Refresh this page in a moment. If you were charged and this doesn't update, contact us with order {{ order.ref }}.</p>
+  {% endif %}
+</div></section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "site/base.html" %}
+{% block title %}{{ subnav.title }} | {{ section.title }} | LAVE{% endblock %}
+{% block main %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ section.path }}">{{ section.title }}</a> / <span>{{ subnav.title }}</span>{% if item %} / <span>{{ item }}</span>{% endif %}</nav>
+<section class="welcome tight">
+  <p class="eyebrow">{{ section.title }}</p>
+  <h1>{{ item or subnav.title }}</h1>
+  {% if item and section.key == "atelier" %}<p class="lead">This page is being written. Book a collection and we'll take care of your {{ item|lower }} in the meantime.</p>
+  <div class="ctas"><a class="btn" href="/book/">Book a collection</a><a class="btn ghost" href="{{ section.path }}{{ subnav.slug }}/">All of {{ subnav.title }}</a></div>
+  {% elif item %}<p class="lead">This page is being written. Please come back soon.</p>
+  <div class="ctas"><a class="btn" href="{{ section.path }}">Back to {{ section.title }}</a></div>{% endif %}
+</section>
+{% if not item %}
+{% for col in subnav.columns %}
+<section class="feature" id="{{ col.slug }}">
+  <img src="{{ col.image }}" alt="" loading="lazy" decoding="async">
+  <div>
+    <p class="eyebrow">{{ subnav.title }}</p>
+    <h2>{{ col.title }}</h2>
+    <ul class="link-list">{% for label, href in col.items(section.path, subnav.slug) %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>
+  </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

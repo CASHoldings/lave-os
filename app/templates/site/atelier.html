@@ -1,0 +1,70 @@
+{% extends "site/base.html" %}
+{% block title %}Atelier: Fabric Care Services | LAVE{% endblock %}
+{% block description %}Laundry, dry cleaning, pressing, restoration and storage for your wardrobe, home and business textiles in London.{% endblock %}
+{% block main %}
+{% macro cards(group, product=False) %}
+  <div class="cards{{ ' product-cards' if product }}" data-count="{{ group.cards|length }}">
+    {% for c in group.cards %}
+    <a class="card" href="{{ c.href }}"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><span class="card-label">{{ c.label }}</span>
+      {% if product and counts.get(c.label|lower) %}<span class="card-count">{{ counts[c.label|lower] }} services</span>{% endif %}</a>
+    {% endfor %}
+  </div>
+{% endmacro %}
+{% macro feature(f, href, reverse=False) %}
+<section class="split-feature{{ ' reverse' if reverse }}">
+  <div class="split-media" style="--img:url('{{ f.image }}')"></div>
+  <div class="split-copy"><p class="eyebrow">{{ f.eyebrow }}</p><h2>{{ f.heading }}</h2><p>{{ f.text }}</p><a class="btn" href="{{ href }}">{{ f.button }}</a></div>
+</section>
+{% endmacro %}
+<section class="hero" style="--img:url('{{ section.hero }}')" aria-label="Atelier"></section>
+
+<section class="welcome">
+  <h1>{{ page.heading }}</h1>
+  <p class="lead">{{ page.lead }}</p>
+  <p>{{ page.text }}</p>
+  <div class="ctas"><a class="btn" href="#clean">Explore Atelier</a><a class="btn" href="/book/">Reserve collection</a></div>
+</section>
+
+<section class="group" id="clean">
+  <header class="group-head"><p class="eyebrow">{{ page.clean.eyebrow }}</p><h2>{{ page.clean.heading }}</h2><p>{{ page.clean.text }}</p></header>
+  {{ cards(page.clean, product=True) }}
+</section>
+
+{{ feature(page.booking, "/book/") }}
+
+<section class="group" id="refresh">
+  <header class="group-head"><p class="eyebrow">{{ page.refresh.eyebrow }}</p><h2>{{ page.refresh.heading }}</h2><p>{{ page.refresh.text }}</p></header>
+  {{ cards(page.refresh) }}
+</section>
+
+{{ feature(page.press, "/book/") }}
+
+<section class="group" id="monthly">
+  <header class="group-head"><p class="eyebrow">{{ page.monthly.eyebrow }}</p><h2>{{ page.monthly.heading }}</h2><p>{{ page.monthly.text }}</p></header>
+  <div class="plans">
+    {% for p in plans %}
+    <article class="plan">
+      <img src="{{ p.image }}" alt="" loading="lazy">
+      <p class="eyebrow">Tier {{ p.tier }}</p>
+      <h3>{{ p.name }}</h3>
+      <p class="tagline">{{ p.tagline }}</p>
+      <p class="price">{{ p.price_pence|gbp }} <span>a month</span></p>
+      <ul class="includes">{% for h in p.headline %}<li><span>{{ h }}</span></li>{% endfor %}</ul>
+      <a class="btn" href="/memberships/#{{ p.code }}">See {{ p.name }}</a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{{ feature(page.move, "/atelier/rehome/", reverse=True) }}
+
+<section class="group" id="business">
+  <header class="group-head"><p class="eyebrow">{{ page.business.eyebrow }}</p><h2>{{ page.business.heading }}</h2><p>{{ page.business.text }}</p></header>
+  {{ cards(page.business) }}
+</section>
+
+<section class="book-band">
+  <div class="book-card"><h2>LAVE collects</h2><p>We collect and return your laundry, expertly cleaned.</p><a class="btn" href="/book/">Schedule collection</a></div>
+  <div class="book-card"><h2>You drop off</h2><p>Drop off at LAVE's hub and collect cleaned laundry.</p><a class="btn" href="/book/?mode=drop_off">Schedule drop-off</a></div>
+</section>
+{% endblock %}

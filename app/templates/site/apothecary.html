@@ -1,0 +1,19 @@
+{% extends "site/base.html" %}
+{% block title %}Apothecary: Fabric Care Products | LAVE{% endblock %}
+{% block description %}{{ page.lead }}{% endblock %}
+{% block main %}
+<section class="hero" style="--img:url('{{ section.hero }}')" aria-label="Apothecary"></section>
+<section class="welcome">
+  <h1>{{ page.heading }}</h1>
+  <p class="lead">{{ page.lead }}</p>
+  <p>{{ page.text }}</p>
+  <div class="ctas">{% if selling %}<a class="btn" href="#wash">Shop the Apothecary</a>{% else %}<a class="btn" href="#waitlist">Join the waitlist</a>{% endif %}</div>
+</section>
+{% if not selling %}{% include "site/_waitlist.html" %}{% endif %}
+{% for sub, products in groups %}{% if products %}
+<section class="catalogue" id="{{ sub.slug }}">
+  <header class="group-head"><p class="eyebrow">{{ sub.title }}</p>{% if page.groups.get(sub.slug) %}<p>{{ page.groups[sub.slug] }}</p>{% endif %}</header>
+  <div class="products">{% for p in products %}{% include "site/_product_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}{% endfor %}
+{% endblock %}

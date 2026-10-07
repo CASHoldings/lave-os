@@ -1,0 +1,7 @@
+<a class="post-card" href="/journal/{{ p.slug }}/">
+  <span class="post-img">{% if p.cover_image %}<img src="{{ cover(p.cover_image) }}" alt="" loading="lazy" decoding="async">{% endif %}</span>
+  <span class="eyebrow">{% if p.kind == "event" and p.event_starts_at %}{{ p.event_starts_at.strftime("%-d %B %Y") }}{% if p.event_location %} · {{ p.event_location }}{% endif %}{% elif p.kind == "press" and p.outlet %}{{ p.outlet }}{% else %}{{ kinds[p.kind] }}{% endif %}</span>
+  <span class="post-title">{{ p.title }}</span>
+  {% if p.excerpt %}<span class="post-excerpt">{{ p.excerpt }}</span>{% endif %}
+  <span class="post-more">{{ "View event" if p.kind == "event" else "Read more" }}</span>
+</a>

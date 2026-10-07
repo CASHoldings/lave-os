@@ -1,0 +1,34 @@
+{% extends "site/base.html" %}
+{% block title %}Search | LAVE{% endblock %}
+{% block main %}
+<section class="welcome tight">
+  <h1>Search</h1>
+  <form class="search-form" method="get" action="/search/" role="search">
+    <input name="q" value="{{ q }}" placeholder="Try silk, coat, bedding, shirts" aria-label="Search LAVE" autofocus>
+    <button class="btn dark" type="submit">Search</button>
+  </form>
+</section>
+{% if q %}
+  {% if not services and not pages %}
+  <p class="collection-intro">Nothing matches “{{ q }}”. Try a garment or fabric, like coat or cashmere.</p>
+  {% endif %}
+  {% if pages %}
+  <section class="catalogue"><h2 class="catalogue-title">Pages</h2>
+    <ul class="link-list">{% for where, label, href in pages %}<li><a href="{{ href }}"><span>{{ label }} <span class="muted small">{{ where }}</span></span></a></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  {% if services %}
+  <section class="catalogue"><h2 class="catalogue-title">Services</h2>
+    <div class="products">
+      {% for s in services %}
+      <a class="product" href="/atelier/services/{{ s.slug }}/">
+        <span class="product-img">{% if image_url(s) %}<img src="{{ image_url(s) }}" alt="" loading="lazy">{% endif %}</span>
+        <span class="product-name">{{ s.title }}</span>
+        <span class="product-price">£{{ "%.2f"|format(s.price_pence / 100) }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

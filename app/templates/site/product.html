@@ -1,0 +1,60 @@
+{% extends "site/base.html" %}
+{% block title %}{{ product.name }} | Apothecary | LAVE{% endblock %}
+{% block description %}{{ product.summary }}{% endblock %}
+{% block main %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/apothecary/">Apothecary</a> / <a href="/apothecary/{{ subnav.slug }}/">{{ subnav.title }}</a></nav>
+<article class="service">
+  <div class="service-img">{% if product.image %}<img src="{{ img(product) }}" alt="{{ product.name }}">{% endif %}</div>
+  <div class="service-copy">
+    <p class="eyebrow">{{ subnav.title }}</p>
+    <h1>{{ product.name }}</h1>
+    {% if selling %}<p class="service-price" data-price>£{{ "%.2f"|format(o.from_pence / 100) }}</p>{% endif %}
+    <p>{{ product.summary }}</p>
+    {% if request.query_params.get("error") == "stock" %}<p class="err" role="alert">That option has just sold out. Choose another.</p>{% endif %}
+    <form method="post" action="/basket/add/" class="options" data-variants='{{ o.variants|tojson }}'>
+      <input type="hidden" name="product_id" value="{{ product.id }}">
+      <fieldset><legend>Size</legend>
+        <div class="option-row">{% for s in o.sizes %}<label class="option"><input type="radio" name="size" value="{{ s }}" {{ "checked" if loop.first }}><span>{{ s }}</span></label>{% endfor %}</div>
+      </fieldset>
+      {% if o.scents %}<fieldset><legend>Scent</legend>
+        <div class="option-row">{% for s in o.scents %}<label class="option"><input type="radio" name="scent" value="{{ s }}" {{ "checked" if loop.first }}><span>{{ s }}</span></label>{% endfor %}</div>
+      </fieldset>{% endif %}
+      {% if selling %}
+      <div class="buy-row">
+        <label class="qty">Quantity<input type="number" name="qty" value="1" min="1" max="10"></label>
+        <button class="btn dark" type="submit" data-add>Add to basket</button>
+      </div>
+      <p class="small muted" data-stock hidden>This option is sold out.</p>
+      {% else %}
+      <a class="btn dark" href="/apothecary/#waitlist">Join the waitlist</a>
+      <p class="small muted">The Apothecary opens soon. We'll email you when it does.</p>
+      {% endif %}
+    </form>
+  </div>
+</article>
+{% if related %}
+<section class="catalogue"><h2 class="catalogue-title">Also in {{ subnav.title }}</h2>
+  <div class="products">{% for p in related %}{% include "site/_product_card.html" %}{% endfor %}</div></section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  // Show the price and stock of the chosen size and scent.
+  (() => {
+    const form = document.querySelector("[data-variants]");
+    if (!form) return;
+    const variants = JSON.parse(form.dataset.variants);
+    const price = document.querySelector("[data-price]"), add = form.querySelector("[data-add]"), stock = form.querySelector("[data-stock]");
+    const update = () => {
+      const size = form.querySelector("input[name=size]:checked")?.value || "";
+      const scent = form.querySelector("input[name=scent]:checked")?.value || "";
+      const v = variants.find((x) => x.size === size && (x.scent || "") === scent);
+      if (price && v) price.textContent = "£" + (v.price_pence / 100).toFixed(2);
+      if (add) add.disabled = !v || !v.in_stock;
+      if (stock) stock.hidden = !v || v.in_stock;
+    };
+    form.addEventListener("change", update);
+    update();
+  })();
+</script>
+{% endblock %}

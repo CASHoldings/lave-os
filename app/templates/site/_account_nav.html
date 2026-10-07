@@ -1,0 +1,8 @@
+<div class="account-head">
+  <div><p class="eyebrow">My LAVE</p><h1>{{ "Welcome back, " ~ client.first_name if client.first_name else "Your account" }}</h1></div>
+  <form method="post" action="/account/logout/"><button class="link-btn" type="submit">Sign out</button></form>
+</div>
+<nav class="account-nav" aria-label="Account">
+  <a href="/account/" {% if not active_tab %}aria-current="page"{% endif %}>Overview</a>
+  {% for key, label in tabs %}<a href="/account/{{ key }}/" {% if key == active_tab %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+</nav>

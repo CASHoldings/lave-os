@@ -1,0 +1,15 @@
+{% extends "site/base.html" %}
+{% block main %}
+<section class="auth">
+  <div class="auth-card">
+    {% block card %}{% endblock %}
+  </div>
+  {% if dev_email %}
+  <aside class="dev-mail" aria-label="Development email preview">
+    <p class="eyebrow">Development only: email that would be sent</p>
+    <p><strong>To:</strong> {{ dev_email.to }}<br><strong>Subject:</strong> {{ dev_email.subject }}</p>
+    <pre>{{ dev_email.text|urlize }}</pre>
+  </aside>
+  {% endif %}
+</section>
+{% endblock %}

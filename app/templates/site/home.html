@@ -1,0 +1,20 @@
+{% extends "site/base.html" %}
+{% block body_class %}home{% endblock %}
+{% block header %}
+<header class="home-bar" data-header>
+  <button class="home-menu" aria-expanded="false" aria-controls="drawer" data-menu-toggle>
+    <span class="home-menu-icon" aria-hidden="true"><span></span><span></span></span><span class="home-menu-label">Menu</span>
+  </button>
+</header>
+{% include "site/_drawer.html" %}
+{% endblock %}
+{% block main %}
+<section class="split" aria-label="LAVE">
+  {% for half in [home.apothecary, home.atelier] %}
+  <a class="half" href="{{ half.href }}" style="--img:url('{{ half.image }}'){% if loop.last %};--pos:78% center{% endif %}">
+    <span class="half-label"><span class="half-title">{{ half.title }}</span><span class="half-cta">{{ half.link_text }}</span></span>
+  </a>
+  {% endfor %}
+  <h1 class="split-logo"><img src="{{ logo_white }}" alt="LAVE" width="420" height="116"></h1>
+</section>
+{% endblock %}

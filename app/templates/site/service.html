@@ -1,0 +1,36 @@
+{% extends "site/base.html" %}
+{% block title %}{{ service.title }} | LAVE Atelier{% endblock %}
+{% block description %}{{ service.summary[:155] }}{% endblock %}
+{% block main %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/atelier/">Atelier</a> / <a href="/atelier/clean/">Clean</a>{% if collection %} / <a href="/atelier/clean/{{ collection }}/">{{ collection|capitalize }}</a>{% endif %}</nav>
+<article class="service">
+  <div class="service-img">{% if image %}<img src="{{ image }}" alt="{{ service.title }}">{% endif %}</div>
+  <div class="service-copy">
+    <p class="eyebrow">{{ group }}</p>
+    <h1>{{ service.title }}</h1>
+    <p class="service-price">£{{ "%.2f"|format(service.price_pence / 100) }}</p>
+    <p>{{ service.summary }}</p>
+    <ul class="service-steps">
+      <li><strong>Collected</strong> from your door in a one-hour or Saver window, or dropped at the atelier.</li>
+      <li><strong>Inspected and tagged</strong>, with stains and details noted before cleaning.</li>
+      <li><strong>Cleaned and hand-finished</strong>, then returned hung or folded.</li>
+    </ul>
+    <div class="ctas left"><a class="btn dark" href="/book/?service={{ service.slug }}">Book a collection</a>{% if collection %}<a class="btn ghost" href="/atelier/clean/{{ collection }}/">More for {{ collection }}</a>{% endif %}</div>
+    <p class="small muted">You're charged after we've inspected and itemised your order.</p>
+  </div>
+</article>
+{% if related %}
+<section class="catalogue">
+  <h2 class="catalogue-title">You may also need</h2>
+  <div class="products">
+    {% for s in related %}
+    <a class="product" href="/atelier/services/{{ s.slug }}/">
+      <span class="product-img">{% if image_url(s) %}<img src="{{ image_url(s) }}" alt="" loading="lazy">{% endif %}</span>
+      <span class="product-name">{{ s.title }}</span>
+      <span class="product-price">£{{ "%.2f"|format(s.price_pence / 100) }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

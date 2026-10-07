@@ -1,0 +1,20 @@
+{% extends "site/_auth_layout.html" %}
+{% block title %}Contact | LAVE{% endblock %}
+{% block card %}
+<h1>Contact LAVE</h1>
+{% if sent %}
+<p class="ok" role="status">Thank you. Your message has reached the atelier and we'll reply by email.</p>
+<a class="btn" href="/">Back to LAVE</a>
+{% else %}
+<p class="muted">Questions about a booking, membership, LAVE Privé or the Apothecary. We reply by email.</p>
+{% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/contact/" class="auth-form">
+  <label>Name<input name="name" value="{{ form.name or '' }}" required autocomplete="name"></label>
+  <label>Email<input name="email" type="email" value="{{ form.email or '' }}" required autocomplete="email"></label>
+  <label>Topic<select name="topic" class="select">{% for t in topics %}<option {{ "selected" if t == (form.topic or preset) }}>{{ t }}</option>{% endfor %}</select></label>
+  <label>Message<textarea name="message" rows="6" required>{{ form.message or '' }}</textarea></label>
+  <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <button class="btn dark" type="submit">Send message</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "site/base.html" %}
+{% block title %}Basket | LAVE{% endblock %}
+{% block main %}
+<section class="basket">
+  <h1>Your basket</h1>
+  {% if added %}<p class="ok" role="status">Added to your basket.</p>{% endif %}
+  {% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+  {% if not t.lines %}
+    <p class="muted">Your basket is empty.</p>
+    <a class="btn" href="/apothecary/">Explore the Apothecary</a>
+  {% else %}
+  <div class="basket-grid">
+    <ul class="basket-lines">
+      {% for l in t.lines %}
+      <li>
+        <a class="basket-img" href="/apothecary/products/{{ l.variant.product.slug }}/">{% if l.variant.product.image %}<img src="{{ img(l.variant.product) }}" alt="">{% endif %}</a>
+        <div class="basket-info">
+          <a href="/apothecary/products/{{ l.variant.product.slug }}/"><strong>{{ l.variant.product.name }}</strong></a>
+          <span class="muted small">{{ l.variant.label }}</span>
+          <form method="post" action="/basket/update/" class="qty-form">
+            <input type="hidden" name="variant_id" value="{{ l.variant.id }}">
+            <label class="sr" for="q{{ l.variant.id }}">Quantity</label>
+            <select id="q{{ l.variant.id }}" name="qty" onchange="this.form.submit()">{% for n in range(1, 11) %}<option {{ "selected" if n == l.qty }}>{{ n }}</option>{% endfor %}</select>
+            <button class="link-btn small" name="qty" value="0">Remove</button>
+          </form>
+        </div>
+        <span class="basket-price">£{{ "%.2f"|format(l.total / 100) }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <form class="summary-card" method="post" action="/checkout/">
+      <fieldset class="fulfil"><legend>Delivery</legend>
+        <label class="option-line"><input type="radio" name="fulfilment" value="delivery" {{ "checked" if fulfilment == "delivery" }} onchange="location='/basket/?fulfilment=delivery'"> UK delivery</label>
+        <label class="option-line"><input type="radio" name="fulfilment" value="collect" {{ "checked" if fulfilment == "collect" }} onchange="location='/basket/?fulfilment=collect'"> Collect from the atelier</label>
+      </fieldset>
+      <dl>
+        <dt>Subtotal</dt><dd>£{{ "%.2f"|format(t.subtotal / 100) }}</dd>
+        <dt>Delivery</dt><dd>{{ "Free" if not t.shipping else "£%.2f"|format(t.shipping / 100) }}</dd>
+        <dt class="total">Total</dt><dd class="total">£{{ "%.2f"|format(t.total / 100) }}</dd>
+      </dl>
+      <p class="small muted">{{ t.shipping_note }}{% if not member and fulfilment == "delivery" %} · <a href="/memberships/">Members get free delivery</a>{% endif %}</p>
+      <button class="btn dark" type="submit" {{ "disabled" if not selling }}>Checkout</button>
+      <p class="small muted">Secure payment by card through Stripe.</p>
+    </form>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

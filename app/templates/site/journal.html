@@ -1,0 +1,25 @@
+{% extends "site/base.html" %}
+{% block title %}{{ heading }} | LAVE{% endblock %}
+{% block head %}<link rel="alternate" type="application/rss+xml" title="THREAD by LAVE" href="/journal/feed.xml">{% endblock %}
+{% block main %}
+<section class="welcome tight">
+  <p class="eyebrow">{{ "Membership" if events_mode else "LAVEWorld" }}</p>
+  <h1>{{ heading }}</h1>
+</section>
+{% if not events_mode %}
+<nav class="tabs" aria-label="Journal">
+  <a href="/laveworld/knowledge/" {% if not current %}aria-current="page"{% endif %}>All</a>
+  <a href="/laveworld/knowledge/thread-by-lave/" {% if current == "thread-by-lave" %}aria-current="page"{% endif %}>THREAD by LAVE</a>
+  <a href="/laveworld/knowledge/events/" {% if current == "events" %}aria-current="page"{% endif %}>Events</a>
+  <a href="/laveworld/knowledge/press/" {% if current == "press" %}aria-current="page"{% endif %}>Press</a>
+</nav>
+{% endif %}
+<section class="catalogue">
+  {% if posts %}
+  <div class="posts">{% for p in posts %}{% include "site/_post_card.html" %}{% endfor %}</div>
+  {% else %}
+  <p class="collection-intro">{{ "No experiences are scheduled right now. Members hear first when new ones open." if events_mode else "Nothing here yet. New stories are on their way." }}</p>
+  {% if events_mode %}<div class="ctas"><a class="btn" href="/memberships/#plans-overview">Become a member</a></div>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

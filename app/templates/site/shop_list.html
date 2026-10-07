@@ -1,0 +1,12 @@
+{% extends "site/base.html" %}
+{% block title %}{{ heading }} | Apothecary | LAVE{% endblock %}
+{% block main %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/apothecary/">Apothecary</a> / {% if item %}<a href="/apothecary/{{ subnav.slug }}/">{{ subnav.title }}</a> / <span>{{ item }}</span>{% else %}<span>{{ subnav.title }}</span>{% endif %}</nav>
+<section class="welcome tight"><p class="eyebrow">Apothecary</p><h1>{{ heading }}</h1>
+  {% if not selling %}<p class="muted">The Apothecary opens soon. <a href="/apothecary/#waitlist">Join the waitlist</a> to hear first.</p>{% endif %}</section>
+{% if products %}
+<section class="catalogue"><div class="products">{% for p in products %}{% include "site/_product_card.html" %}{% endfor %}</div></section>
+{% else %}
+<p class="collection-intro">Nothing here yet. {% if item %}<a href="/apothecary/{{ subnav.slug }}/">See all of {{ subnav.title }}</a>{% else %}<a href="/apothecary/">See the Apothecary</a>{% endif %}</p>
+{% endif %}
+{% endblock %}

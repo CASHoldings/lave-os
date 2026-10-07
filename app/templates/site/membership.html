@@ -1,0 +1,85 @@
+{% extends "site/base.html" %}
+{% block title %}Membership | LAVE{% endblock %}
+{% block description %}LAVE Membership: Essence from £29 a month, Elevate £59 and Éclat £129. Regular collection, laundry, repairs, storage and member experiences.{% endblock %}
+{% block main %}
+<section class="hero hero-short" style="--img:url('{{ section.hero }}')" aria-label="Membership"></section>
+
+<section class="welcome">
+  <p class="eyebrow">{{ page.eyebrow }}</p>
+  <h1>{{ page.heading }}</h1>
+  <p>{{ page.text }}</p>
+</section>
+
+<section class="tiers" id="plans-overview" data-billing="month">
+  <div class="billing" role="group" aria-label="Billing">
+    <button type="button" data-billing-btn="month" aria-pressed="true">Monthly</button>
+    <button type="button" data-billing-btn="year" aria-pressed="false">Annual <span class="save">2 months free</span></button>
+  </div>
+
+  <div class="tier-grid">
+    {% for p in plans %}
+    <article class="tier" id="{{ p.code }}" aria-labelledby="tier-{{ p.code }}">
+      <header class="tier-head">
+        <p class="eyebrow">Tier {{ p.tier }}</p>
+        <h2 id="tier-{{ p.code }}">{{ p.name }}</h2>
+        <p class="tagline">{{ p.tagline }}</p>
+      </header>
+      <div class="tier-price">
+        <p class="price-month"><span class="amount">{{ p.price_pence|gbp }}</span> a month</p>
+        <p class="price-year"><span class="amount">{{ p.annual_pence|gbp }}</span> a year</p>
+        <p class="price-note"><span class="price-month">or {{ p.annual_pence|gbp }} a year, two months free</span><span class="price-year">{{ (p.annual_pence / 12)|round|int|gbp_whole }} a month, billed yearly</span></p>
+      </div>
+      <a class="btn dark tier-cta" href="/account/membership/?plan={{ p.code }}">Choose {{ p.name }}</a>
+      <div class="tier-body">
+        {% if p.builds_on %}<p class="builds-on">Everything in {{ p.builds_on }}, plus:</p>{% endif %}
+        {% for sec in p.sections %}
+        <section class="tier-group">
+          <h3>{{ sec.title }}</h3>
+          <ul>{% for it in sec["items"] %}<li>{{ it.text }}{% if it.soon %} <span class="soon">Coming soon</span>{% endif %}</li>{% endfor %}</ul>
+        </section>
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <p class="extras">{{ extras }}</p>
+</section>
+
+<section class="compare" id="compare" aria-labelledby="compare-title">
+  <header class="group-head"><p class="eyebrow">Compare</p><h2 id="compare-title">At a glance</h2></header>
+  <div class="compare-scroll" tabindex="0" aria-label="Membership comparison table, scroll sideways on small screens">
+    <table>
+      <thead><tr><th scope="col"><span class="sr">Benefit</span></th>{% for p in plans %}<th scope="col">{{ p.name }}</th>{% endfor %}</tr></thead>
+      {% for g in compare %}
+      <tbody>
+        <tr class="group-row"><th scope="colgroup" colspan="{{ plans|length + 1 }}"><span>{{ g.group }}</span></th></tr>
+        {% for row in g.rows %}
+        <tr><th scope="row">{{ row.label }}</th>
+          {% for v in row["values"] %}<td>{% if v == "yes" %}<span class="tick" aria-hidden="true">✓</span><span class="sr">Included</span>{% elif v == "no" %}<span class="dash" aria-hidden="true">–</span><span class="sr">Not included</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endfor %}
+    </table>
+  </div>
+</section>
+
+<section class="access">
+  <div><p class="eyebrow">LAVE Privé</p><p>{{ page.prive_text }}</p><a class="btn ghost" href="/contact/?topic=prive">Enquire</a></div>
+  <div><p class="eyebrow">LAVE Experiences</p><p>{{ page.experiences_text }}</p><a class="btn ghost" href="/memberships/access/upcoming-events/">See experiences</a></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Monthly / Annual switch. Without JavaScript both prices stay readable in the note under each price.
+  (() => {
+    const root = document.querySelector("[data-billing]");
+    root.querySelectorAll("[data-billing-btn]").forEach((b) => b.addEventListener("click", () => {
+      const mode = b.dataset.billingBtn;
+      root.dataset.billing = mode;
+      root.querySelectorAll("[data-billing-btn]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      root.querySelectorAll(".tier-cta").forEach((a) => { const u = new URL(a.href); u.searchParams.set("billing", mode); a.href = u.pathname + u.search; });
+    }));
+  })();
+</script>
+{% endblock %}

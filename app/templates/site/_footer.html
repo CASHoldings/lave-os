@@ -1,0 +1,23 @@
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div class="footer-left">
+      <a class="footer-mark" href="/" aria-label="LAVE home"><img src="{{ footer.anagram }}" alt="LAVE" width="112" height="112"></a>
+      <div class="footer-copy">
+        <h2>{{ footer.welcome_heading }}</h2>
+        <p>{{ footer.welcome_text|bold }}</p>
+        <nav class="footer-nav" aria-label="Footer">
+          {% for l in footer.links %}<a href="{{ l.href }}">{{ l.label }}</a>{% endfor %}
+        </nav>
+      </div>
+    </div>
+    <div class="footer-right">
+      <h2>{{ footer.values_heading }}</h2>
+      <p>{{ footer.values_text|bold }}</p>
+      <ul class="social" aria-label="LAVE on social media">
+        {% for s in footer.social %}{% if s.url %}
+        <li><a href="{{ s.url }}" rel="noopener" target="_blank" aria-label="{{ s.name }}"><svg viewBox="0 0 24 24" aria-hidden="true">{{ s.icon|safe }}</svg></a></li>
+        {% endif %}{% endfor %}
+      </ul>
+    </div>
+  </div>
+</footer>

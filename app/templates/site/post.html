@@ -1,0 +1,27 @@
+{% extends "site/base.html" %}
+{% block title %}{{ post.title }} | THREAD by LAVE{% endblock %}
+{% block description %}{{ post.excerpt }}{% endblock %}
+{% block head %}
+<meta property="og:title" content="{{ post.title }}"><meta property="og:description" content="{{ post.excerpt }}">
+{% if post.cover_image %}<meta property="og:image" content="{{ cover(post.cover_image) }}">{% endif %}
+{% if is_draft %}<meta name="robots" content="noindex">{% endif %}
+{% endblock %}
+{% block main %}
+{% if is_draft %}<p class="draft-bar">Draft preview: only staff can see this until it's published.</p>{% endif %}
+<article class="article">
+  <header class="article-head">
+    <a class="eyebrow" href="/laveworld/knowledge/{{ {'thread': 'thread-by-lave', 'event': 'events', 'press': 'press'}[post.kind] }}/">{{ kinds[post.kind] }}</a>
+    <h1>{{ post.title }}</h1>
+    {% if post.excerpt %}<p class="lead">{{ post.excerpt }}</p>{% endif %}
+    <p class="muted small">{% if post.kind == "event" and post.event_starts_at %}{{ post.event_starts_at.strftime("%A %-d %B %Y, %-I:%M%p")|replace(":00", "")|lower|capitalize }}{% if post.event_location %} · {{ post.event_location }}{% endif %}{% if post.members_only %} · Members only{% endif %}{% elif post.published_at %}{{ post.published_at.strftime("%-d %B %Y") }} · {{ post.author }}{% endif %}</p>
+  </header>
+  {% if post.cover_image %}<img class="article-cover" src="{{ cover(post.cover_image) }}" alt="">{% endif %}
+  <div class="prose">{{ md(post.body)|safe }}</div>
+  {% if post.kind == "press" and post.external_url %}<p><a class="btn" href="{{ post.external_url }}" rel="noopener" target="_blank">Read on {{ post.outlet or "the original site" }}</a></p>{% endif %}
+  {% if post.kind == "event" %}<p><a class="btn dark" href="/contact/?topic=experiences">Ask about this event</a></p>{% endif %}
+</article>
+{% if more %}
+<section class="catalogue"><h2 class="catalogue-title">More from {{ kinds[post.kind] }}</h2>
+  <div class="posts">{% for p in more %}{% include "site/_post_card.html" %}{% endfor %}</div></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "site/_auth_layout.html" %}
+{% block title %}{{ "Reset your password" if purpose == "reset" else "Email me a sign-in link" }} | LAVE{% endblock %}
+{% block card %}
+<h1>{{ "Reset your password" if purpose == "reset" else "Sign in with a link" }}</h1>
+<p class="muted">{{ "We'll email you a link to choose a new password." if purpose == "reset" else "We'll email you a link that signs you straight in. No password needed." }}</p>
+<form method="post" action="/account/link/" class="auth-form">
+  <input type="hidden" name="next" value="{{ next }}"><input type="hidden" name="purpose" value="{{ purpose }}">
+  <label>Email<input name="email" type="email" value="{{ email }}" required autocomplete="email" autofocus></label>
+  <button class="btn dark" type="submit">Email me a link</button>
+</form>
+<div class="auth-links"><a href="/account/login/?next={{ next|urlencode }}">Back to sign in</a></div>
+{% endblock %}

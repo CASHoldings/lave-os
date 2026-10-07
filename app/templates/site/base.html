@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}LAVE | Textile Care Atelier, London{% endblock %}</title>
+<meta name="description" content="{% block description %}LAVE is a Textile Care Atelier in London: premium laundry, dry cleaning, restoration and climate-conscious storage for wardrobes, homes and businesses.{% endblock %}">
+<link rel="preload" href="/static/site/fonts/century-gothic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/site/site.css?v={{ asset_version }}">
+<link rel="icon" href="https://lavelondon.com/wp-content/uploads/2026/06/cropped-LAVE_2026_Anagram-32x32.webp" sizes="32x32">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="skip" href="#main">Skip to content</a>
+{% block header %}
+<header class="site-header" data-header>
+  <div class="bar">
+    <button class="menu-toggle" aria-expanded="false" aria-controls="drawer" data-menu-toggle><span></span><span></span><span class="sr">Menu</span></button>
+    <nav class="primary" aria-label="Main">
+      {% for s in sections %}<a href="{{ s.path }}" {% if section and s.key == section.key %}aria-current="page"{% endif %}>{{ s.title }}</a>{% endfor %}
+    </nav>
+    <a class="logo" href="/" aria-label="LAVE home"><img src="{{ logo_navy }}" alt="LAVE" width="160" height="44"></a>
+    <nav class="utility" aria-label="Account">
+      <a href="/search/" class="hide-sm">Search</a>
+      <a href="/account/">{{ viewer.first_name if viewer and viewer.first_name else "Account" }}</a>
+      {% if basket_count %}<a href="/basket/" class="basket-link">Basket ({{ basket_count }})</a>{% endif %}
+      <a href="/book/" class="book">Book a collection</a>
+    </nav>
+  </div>
+  {% if section %}
+  <nav class="subnav" aria-label="{{ section.title }}">
+    <ul>
+    {% for sub in section.subnav %}
+      <li class="has-mega" data-mega>
+        <a href="{{ section.path }}{{ sub.slug }}/" aria-expanded="false" {% if subnav and sub.slug == subnav.slug %}aria-current="page"{% endif %}>{{ sub.title }}</a>
+        <div class="mega" data-cols="{{ sub.columns|length }}">
+          <div class="mega-inner">
+          {% for col in sub.columns %}
+            <div class="mega-col">
+              <a class="mega-title" href="{{ section.path }}{{ sub.slug }}/#{{ col.slug }}">{{ col.title }}</a>
+              <a class="mega-img" href="{{ section.path }}{{ sub.slug }}/#{{ col.slug }}" tabindex="-1" aria-hidden="true"><img src="{{ col.image }}" alt="" loading="lazy" decoding="async"></a>
+              <ul>{% for label, href in col.items(section.path, sub.slug) %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>
+            </div>
+          {% endfor %}
+          </div>
+        </div>
+      </li>
+    {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</header>
+{% include "site/_drawer.html" %}
+{% endblock %}
+
+<main id="main">{% block main %}{% endblock %}</main>
+
+{% block footer %}{% include "site/_footer.html" %}{% endblock %}
+<script src="/static/site/site.js?v={{ asset_version }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

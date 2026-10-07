@@ -1,0 +1,45 @@
+{% extends "site/base.html" %}
+{% block title %}LAVEWorld | LAVE{% endblock %}
+{% block description %}The story, knowledge and community behind LAVE, the Textile Care Atelier.{% endblock %}
+{% block main %}
+<section class="hero" style="--img:url('{{ section.hero }}')" aria-label="LAVEWorld"></section>
+<section class="welcome">
+  <h1>{{ page.heading }}</h1>
+  <p class="lead">{{ page.lead }}</p>
+  <p>{{ page.text }}</p>
+  <div class="ctas"><a class="btn" href="/laveworld/knowledge/thread-by-lave/">Read THREAD by LAVE</a><a class="btn" href="/memberships/">Join LAVE</a></div>
+</section>
+
+<section class="catalogue" id="journal">
+  <header class="group-head"><p class="eyebrow">Journal</p><h2>{{ page.journal_heading }}</h2><p>{{ page.journal_text }}</p></header>
+  {% if posts %}
+  <div class="posts">{% for p in posts %}{% include "site/_post_card.html" %}{% endfor %}</div>
+  <div class="ctas"><a class="btn ghost" href="/laveworld/knowledge/">All stories</a></div>
+  {% else %}
+  <p class="collection-intro">The first stories are on their way.</p>
+  {% endif %}
+</section>
+
+{% if pages %}
+<section class="catalogue" id="values">
+  <header class="group-head"><p class="eyebrow">Story &amp; Impact</p><h2>{{ page.values_heading }}</h2></header>
+  <div class="values">
+    {% for pg in pages %}<a class="value" href="{{ pg.path }}"><h3>{{ pg.title }}</h3><p>{{ pg.intro }}</p><span class="post-more">Read more</span></a>{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if events %}
+<section class="catalogue" id="experiences">
+  <header class="group-head"><p class="eyebrow">LAVE Experiences</p><h2>Coming up</h2></header>
+  <div class="posts">{% for p in events %}{% include "site/_post_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}
+
+<section class="split-feature">
+  <div class="split-media" style="--img:url('{{ page.connect.image }}')"></div>
+  <div class="split-copy"><p class="eyebrow">{{ page.connect.eyebrow }}</p><h2>{{ page.connect.heading }}</h2>
+    <p>{{ page.connect.text }}</p>
+    <a class="btn" href="/memberships/#plans-overview">{{ page.connect.button }}</a></div>
+</section>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "site/base.html" %}
+{% block title %}{{ heading }} | My LAVE{% endblock %}
+{% block main %}
+<section class="account">
+  {% include "site/_account_nav.html" %}
+  <lave-account same-origin hide-tabs book-url="/book/" tab="{{ active_tab }}" api="" login-url="/account/login/?next=/account/{{ active_tab }}/" account-url="/account/"></lave-account>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/embed/lave.js?v={{ asset_version }}"></script>{% endblock %}

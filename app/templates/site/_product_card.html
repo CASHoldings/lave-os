@@ -1,0 +1,7 @@
+{% set o = opts(p) %}
+<a class="product" href="/apothecary/products/{{ p.slug }}/">
+  <span class="product-img">{% if p.image %}<img src="{{ img(p) }}" alt="" loading="lazy" decoding="async">{% endif %}</span>
+  <span class="product-name">{{ p.name }}</span>
+  <span class="product-meta">{% if o.scents %}{{ o.scents|length }} scents · {% endif %}{{ o.sizes|length }} {{ "size" if o.sizes|length == 1 else "sizes" }}</span>
+  <span class="product-price">{% if selling %}{{ "From " if o.variants|map(attribute="price_pence")|unique|list|length > 1 }}£{{ "%.2f"|format(o.from_pence / 100) }}{% else %}Coming soon{% endif %}</span>
+</a>

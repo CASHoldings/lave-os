@@ -1,0 +1,20 @@
+<section class="waitlist" id="waitlist">
+  <div class="waitlist-card">
+    <h2>{{ page.waitlist_heading }}</h2>
+    <p>{{ page.waitlist_text }}</p>
+    {% if waitlist_status == "joined" %}
+      <p class="ok" role="status">Thank you. You're on the list, and we'll email you when the Apothecary opens.</p>
+    {% else %}
+    <form method="post" action="/waitlist/" class="form-grid">
+      {% if waitlist_status == "error" %}<p class="full err" role="alert">Enter your first name and a valid email address.</p>{% endif %}
+      <label>First name<input name="first_name" required autocomplete="given-name" maxlength="120"></label>
+      <label>Surname<input name="surname" autocomplete="family-name" maxlength="120"></label>
+      <label class="full">Email<input name="email" type="email" required autocomplete="email" maxlength="255"></label>
+      <label class="full">How did you hear about us?
+        <select name="source"><option value="">Choose one</option>{% for o in ["Instagram", "Friend or family", "Search", "Press", "Event", "Other"] %}<option>{{ o }}</option>{% endfor %}</select></label>
+      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn dark full" type="submit">Join waitlist</button>
+    </form>
+    {% endif %}
+  </div>
+</section>

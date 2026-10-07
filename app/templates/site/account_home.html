@@ -1,0 +1,85 @@
+{% extends "site/base.html" %}
+{% block title %}My LAVE{% endblock %}
+{% block main %}
+<section class="account">
+  {% include "site/_account_nav.html" %}
+
+  <div class="quick">
+    <a class="btn dark" href="/book/">Book a collection</a>
+    {% if vault_count %}<a class="btn" href="/account/vault/">Return from the Vault</a>{% endif %}
+    {% if not client.membership or client.membership.status.value == "cancelled" %}<a class="btn" href="/account/membership/">Explore membership</a>{% endif %}
+  </div>
+
+  {% if awaiting_payment %}
+  <div class="notice-bar">{% for o in awaiting_payment %}<p>Order <a href="/account/orders/#{{ o.ref }}">{{ o.ref }}</a> has been itemised: {{ o.items|length }} pieces, £{{ "%.2f"|format(o.total_pence / 100) }}. We'll charge your card on file before it's returned.</p>{% endfor %}</div>
+  {% endif %}
+
+  <div class="dash">
+    <section class="tile wide">
+      <header><h2>In the atelier</h2>{% if active %}<a href="/account/orders/">All orders</a>{% endif %}</header>
+      {% for o in active %}
+      <a class="order-progress" href="/account/orders/">
+        <div class="row-between"><strong class="ref">{{ o.ref }}</strong><span class="pill">{{ stage_labels[stage(o)] if o.status.value != "out_for_delivery" else "Out for delivery" }}</span></div>
+        <ol class="mini-track" aria-label="Progress">{% for label in stage_labels %}<li class="{{ 'on' if loop.index0 <= stage(o) }}" title="{{ label }}"></li>{% endfor %}</ol>
+        <p class="muted small">{% if o.items %}{{ o.items|length }} pieces · £{{ "%.2f"|format(o.total_pence / 100) }}{% else %}We'll itemise and price your pieces when they arrive.{% endif %}</p>
+      </a>
+      {% else %}
+      <p class="empty-state">Nothing in the atelier right now. When we collect your pieces, you'll follow each one here, from inspection to delivery.</p>
+      {% endfor %}
+    </section>
+
+    <section class="tile">
+      <header><h2>Coming up</h2>{% if upcoming %}<a href="/account/bookings/">Manage</a>{% endif %}</header>
+      {% for b in upcoming %}
+      <div class="booking-line">
+        <p class="eyebrow">{{ "Collection" if b.kind.value == "collection" else "Return" }}</p>
+        <p><strong>{{ b.starts_at.strftime("%A %-d %B") }}</strong><br>{{ b.starts_at.strftime("%-I:%M%p")|lower|replace(":00", "") }} – {{ b.ends_at.strftime("%-I:%M%p")|lower|replace(":00", "") }}</p>
+        <p class="muted small">{{ b.address.one_line() if b.address else "At the atelier" }}</p>
+      </div>
+      {% else %}
+      <p class="empty-state">No collections booked.</p>
+      <a class="btn" href="/book/">Book a collection</a>
+      {% endfor %}
+    </section>
+
+    <section class="tile">
+      <header><h2>Vault</h2>{% if vault_count %}<a href="/account/vault/">View</a>{% endif %}</header>
+      <p class="big-num">{{ vault_count }}</p>
+      <p class="muted">{{ "piece" if vault_count == 1 else "pieces" }} in climate-conscious storage</p>
+      {% if not vault_count %}<a class="text-link" href="/atelier/vault/">How the Vault works</a>{% endif %}
+    </section>
+
+    <section class="tile">
+      <header><h2>Membership</h2><a href="/account/membership/">{{ "Manage" if client.membership and client.membership.status.value != "cancelled" else "Plans" }}</a></header>
+      {% if client.membership and client.membership.status.value != "cancelled" %}
+        <p class="big-word">{{ {"essence": "Essence", "elevate": "Elevate", "eclat": "Éclat"}.get(client.membership.plan.value, client.membership.plan.value) }}</p>
+        <p class="muted">{{ client.membership.status.value|replace("_", " ")|capitalize }}{% if client.membership.current_period_end %} · renews {{ client.membership.current_period_end.strftime("%-d %B") }}{% endif %}</p>
+      {% else %}
+        <p class="muted">Monthly care from £29, with collection, repairs, storage and member events.</p>
+      {% endif %}
+    </section>
+
+    <section class="tile">
+      <header><h2>Wardrobe</h2>{% if wardrobe %}<a href="/account/wardrobe/">View all</a>{% endif %}</header>
+      {% if wardrobe %}
+        <p class="big-num">{{ wardrobe|length }}</p>
+        <p class="muted">{{ "piece" if wardrobe|length == 1 else "pieces" }} we've cared for</p>
+        <a class="btn" href="/account/wardrobe/">Book the same again</a>
+      {% else %}
+        <p class="muted">Every piece we clean for you is saved here, so you can book the same care again in a few taps.</p>
+      {% endif %}
+    </section>
+
+    <section class="tile">
+      <header><h2>Details</h2><a href="/account/profile/">Edit</a></header>
+      <p>{{ client.full_name }}<br><span class="muted small">{{ client.email }}</span></p>
+      <p class="muted small">{{ client.addresses|rejectattr("archived")|list|length }} saved addresses · {{ "Card on file" if client.has_card_on_file else "No card saved" }}</p>
+      <a class="text-link" href="/account/password/">{{ "Change password" if client.password_hash else "Set a password" }}</a>
+    </section>
+  </div>
+
+  {% if last_delivered %}
+  <p class="again">Last order {{ last_delivered.ref }} was delivered on {{ last_delivered.updated_at.strftime("%-d %B") }}. <a href="/book/">Book the same again</a></p>
+  {% endif %}
+</section>
+{% endblock %}

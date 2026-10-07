@@ -1,0 +1,21 @@
+<div class="drawer" id="drawer" hidden data-drawer>
+  <nav aria-label="Mobile">
+    {% for s in sections %}
+    <details {% if section and s.key == section.key %}open{% endif %}>
+      <summary>{{ s.title }}</summary>
+      <a class="drawer-overview" href="{{ s.path }}">Overview</a>
+      {% for sub in s.subnav %}
+      <details>
+        <summary>{{ sub.title }}</summary>
+        {% for col in sub.columns %}
+          <p class="drawer-col">{{ col.title }}</p>
+          {% for label, href in col.items(s.path, sub.slug) %}<a href="{{ href }}">{{ label }}</a>{% endfor %}
+        {% endfor %}
+      </details>
+      {% endfor %}
+    </details>
+    {% endfor %}
+    <a class="drawer-plain" href="/account/">{{ "My LAVE" if viewer else "Sign in" }}</a>
+    <a class="btn dark" href="/book/">Book a collection</a>
+  </nav>
+</div>

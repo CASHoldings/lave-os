@@ -1,0 +1,11 @@
+{% extends "site/base.html" %}
+{% block title %}Test payment | LAVE{% endblock %}
+{% block main %}
+<section class="auth"><div class="auth-card">
+  <p class="eyebrow">Development only</p>
+  <h1>Stripe isn't connected</h1>
+  <p>On the live site this step is Stripe's secure payment page. To test the rest of the flow, simulate a successful payment for order {{ order.ref }} (£{{ "%.2f"|format(order.total_pence / 100) }}).</p>
+  <form method="post" action="/checkout/dev-pay/{{ order.ref }}/"><button class="btn dark" type="submit">Simulate successful payment</button></form>
+  <a href="/basket/">Back to basket</a>
+</div></section>
+{% endblock %}

@@ -1,0 +1,83 @@
+{
+  "_note": "SAMPLE launch range written for planning. Names, sizes, scents and prices are placeholders for the founder to replace. Scent names come from the live Apothecary menu.",
+  "scents": {
+    "artemis": "Artemis",
+    "serene": "Serene",
+    "respire": "Respire",
+    "unscented": "Unscented"
+  },
+  "products": [
+    {
+      "slug": "laundry-detergent",
+      "name": "Laundry Detergent",
+      "menu": ["wash", "detergents"],
+      "summary": "Concentrated everyday detergent for cottons, linens and synthetics. Gentle on fibres and colour.",
+      "image": "2024/03/Lave_Detergents-1.webp",
+      "options": {"size": ["473 ml", "1 L", "2 L refill pouch"], "scent": ["artemis", "serene", "respire", "unscented"]},
+      "prices": {"473 ml": 1800, "1 L": 3000, "2 L refill pouch": 4400}
+    },
+    {
+      "slug": "darks-detergent",
+      "name": "Darks Detergent",
+      "menu": ["wash", "detergents"],
+      "summary": "Keeps blacks, navies and deep colours rich, wash after wash.",
+      "image": "2024/03/LAVE_DARKS.webp",
+      "options": {"size": ["473 ml", "1 L"], "scent": ["artemis", "serene", "unscented"]},
+      "prices": {"473 ml": 1800, "1 L": 3000}
+    },
+    {
+      "slug": "delicate-wash",
+      "name": "Delicate Wash",
+      "menu": ["wash", "detergents"],
+      "summary": "pH-balanced wash for silk, wool and cashmere, by hand or on a delicate cycle.",
+      "image": "2024/03/Lave_Detergents-1.webp",
+      "options": {"size": ["473 ml", "1 L"], "scent": ["serene", "unscented"]},
+      "prices": {"473 ml": 2200, "1 L": 3600}
+    },
+    {
+      "slug": "fabric-conditioner",
+      "name": "Fabric Conditioner",
+      "menu": ["wash", "conditioners"],
+      "summary": "Softens and protects fibres, reduces creasing and leaves a light, lasting scent.",
+      "image": "2024/03/Lave_Detergents-1.webp",
+      "options": {"size": ["473 ml", "1 L"], "scent": ["artemis", "serene", "respire"]},
+      "prices": {"473 ml": 1600, "1 L": 2600}
+    },
+    {
+      "slug": "stain-spot-and-brighten",
+      "name": "Stain Spot & Brighten",
+      "menu": ["treat", "spot-and-brighten"],
+      "summary": "Targeted pre-treatment for wine, coffee, make-up and grass. Safe on colours.",
+      "image": "2024/07/Lave_Apothecary_Treatments_Stain.webp",
+      "options": {"size": ["120 ml", "250 ml"], "scent": ["unscented"]},
+      "prices": {"120 ml": 1400, "250 ml": 2200}
+    },
+    {
+      "slug": "fabric-spray",
+      "name": "Fabric Spray",
+      "menu": ["treat", "odor-and-refresh"],
+      "summary": "Refreshes garments, linen and upholstery between washes.",
+      "image": "2024/03/LAVE_MIST.webp",
+      "options": {"size": ["100 ml travel", "500 ml"], "scent": ["artemis", "serene", "respire"]},
+      "prices": {"100 ml travel": 1200, "500 ml": 2800}
+    },
+    {
+      "slug": "wool-dryer-balls",
+      "name": "Wool Tumble Dryer Balls",
+      "menu": ["wash", "bag-and-ball"],
+      "summary": "100% wool dryer balls that shorten drying time and soften naturally. Reusable for hundreds of loads.",
+      "image": "2024/03/Lave_Dryer-Balls-1.webp",
+      "options": {"size": ["Set of 3", "Set of 6"], "scent": ["unscented"]},
+      "prices": {"Set of 3": 1800, "Set of 6": 3000}
+    },
+    {
+      "slug": "garment-brush",
+      "name": "Garment Brush",
+      "menu": ["edit", "maintain-and-care"],
+      "summary": "Lifts dust and lint and revives the nap of wool, tweed and cashmere.",
+      "image": "2024/07/LAVE_Apothecary_Accessories_GarmentCare.webp",
+      "options": {"size": ["Horsehair (coats & tailoring)", "Soft bristle (cashmere & knits)"], "scent": []},
+      "prices": {"Horsehair (coats & tailoring)": 3200, "Soft bristle (cashmere & knits)": 3600}
+    }
+  ]
+}

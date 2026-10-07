@@ -1,0 +1,8 @@
+{% extends "site/_auth_layout.html" %}
+{% block title %}{{ heading }} | LAVE{% endblock %}
+{% block card %}
+<h1>{{ heading }}</h1>
+<p>{{ message }}</p>
+{% if email %}<p class="muted">Sent to {{ email }}</p>{% endif %}
+<div class="auth-links">{% if show_retry %}<a class="btn dark" href="/account/link/">Request a new link</a>{% else %}<a href="/account/login/">Back to sign in</a>{% endif %}</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "site/base.html" %}
+{% block title %}{{ page.title if page else "Policies" }} | LAVE{% endblock %}
+{% block main %}
+<article class="article">
+  {% if page %}
+  <header class="article-head">{% if section %}<p class="eyebrow">{{ section.title }}{% if subnav %} · {{ subnav.title }}{% endif %}</p>{% endif %}
+    <h1>{{ page.title }}</h1>{% if page.intro %}<p class="lead">{{ page.intro }}</p>{% endif %}</header>
+  {% if page.image %}<img class="article-cover" src="{{ cover(page.image) }}" alt="">{% endif %}
+  <div class="prose">{{ md(page.body)|safe }}</div>
+  {% else %}
+  <header class="article-head"><h1>Policies</h1><p class="lead">Our terms, privacy and care policies are being updated for the new site.</p></header>
+  <p>Questions in the meantime? <a href="/contact/">Contact us</a>.</p>
+  {% endif %}
+</article>
+{% endblock %}
