@@ -6,11 +6,14 @@
 3. If there are no staff accounts yet, creates the first admin from LAVE_FIRST_ADMIN_EMAIL and
    LAVE_FIRST_ADMIN_PASSWORD. Remove the password from the host's settings once you've signed in.
 """
-from sqlalchemy import func, select
+import time
+
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import OperationalError
 
 from app.auth import hash_password
 from app.config import get_settings
-from app.db import SessionLocal
+from app.db import SessionLocal, engine
 from app.migrate import upgrade
 from app.models import SlotTemplate, StaffRole, StaffUser
 from app.seed import seed_services, seed_slots
@@ -19,8 +22,24 @@ from app.services.shop import load_sample_products
 from app.site.catalogue import load_starting_catalogue
 
 
+def wait_for_database(timeout: float = 120, every: float = 5) -> None:
+    """A brand-new database can still be starting when the first deploy runs, so keep trying for a while."""
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return
+        except OperationalError:
+            if time.monotonic() >= deadline:
+                raise
+            print(f"Database not ready yet; trying again in {every:.0f}s.", flush=True)
+            time.sleep(every)
+
+
 def release() -> list[str]:
     notes = []
+    wait_for_database()
     added = upgrade()
     notes.append(f"Database up to date ({len(added)} new columns)." if added else "Database up to date.")
     settings = get_settings()

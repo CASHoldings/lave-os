@@ -77,3 +77,22 @@ def test_robots_and_sitemap(api):
 def test_www_goes_to_the_main_address(api):
     r = api.get("/atelier/?x=1", headers={"host": "www.lavelondon.com"}, follow_redirects=False)
     assert r.status_code == 301 and r.headers["location"] == "http://lavelondon.com/atelier/?x=1"
+
+
+def test_release_waits_for_a_starting_database(monkeypatch):
+    from sqlalchemy.exc import OperationalError
+    from app import release
+
+    real, attempts = release.engine, []
+
+    class StartingEngine:
+        def connect(self):
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise OperationalError("SELECT 1", {}, Exception("Connection refused"))
+            return real.connect()
+
+    monkeypatch.setattr(release, "engine", StartingEngine())
+    monkeypatch.setattr(release.time, "sleep", lambda seconds: None)
+    release.wait_for_database(timeout=60, every=0)
+    assert len(attempts) == 3
