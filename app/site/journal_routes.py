@@ -156,7 +156,7 @@ def contact_send(request: Request, name: str = Form(""), email: str = Form(""), 
                           message=message.strip()[:5000]))
     db.commit()
     mailer.send("care@lavelondon.com", f"Website message: {topic or 'General'} from {name.strip()}",
-                f"From: {name.strip()} <{email}>\nTopic: {topic}\n\n{message.strip()}")
+                f"From: {name.strip()} <{email}>\nTopic: {topic}\n\n{message.strip()}", reply_to=email)
     return RedirectResponse("/contact/?sent=1", status_code=303)
 
 

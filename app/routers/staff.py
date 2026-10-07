@@ -875,3 +875,23 @@ def add_variant(product_id: int, body: VariantIn, staff: StaffUser = Depends(adm
     db.add(v)
     db.commit()
     return {"id": v.id, "sku": v.sku}
+
+
+# Email: settings check and test message
+
+@router.get("/email")
+def email_status(staff: StaffUser = Depends(admin_only)):
+    s = get_settings()
+    return {"configured": bool(s.smtp_host), "host": s.smtp_host, "port": s.smtp_port, "user": s.smtp_user,
+            "mail_from": s.mail_from, "send_to": staff.email}
+
+
+@router.post("/email/test")
+def email_test(staff: StaffUser = Depends(admin_only)):
+    try:
+        mailer.send(staff.email, "LAVE OS test email",
+                    f"Hello {staff.name},\n\nThis is a test from LAVE OS. If you can read it, sign-in links, password resets "
+                    f"and receipts will reach your clients.\n\nLAVE", raise_errors=True)
+    except mailer.MailError as e:
+        raise HTTPException(502, str(e))
+    return {"sent_to": staff.email}

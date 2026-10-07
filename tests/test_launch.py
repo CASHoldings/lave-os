@@ -96,3 +96,48 @@ def test_release_waits_for_a_starting_database(monkeypatch):
     monkeypatch.setattr(release.time, "sleep", lambda seconds: None)
     release.wait_for_database(timeout=60, every=0)
     assert len(attempts) == 3
+
+
+def test_test_email_button(api, staff_headers, monkeypatch):
+    from app.config import get_settings
+    from app.services import mailer
+
+    status = api.get("/api/staff/email", headers=staff_headers).json()
+    assert status["configured"] is False and status["send_to"] == "admin@lavelondon.com"
+    r = api.post("/api/staff/email/test", headers=staff_headers)
+    assert r.status_code == 502 and "isn't set up" in r.json()["detail"]
+
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout): sent.append((host, port))
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def starttls(self): pass
+        def login(self, user, password): sent.append(("login", user))
+        def send_message(self, msg): sent.append(("to", msg["To"], msg["Reply-To"]))
+
+    monkeypatch.setattr(get_settings(), "smtp_host", "smtp.sendgrid.net")
+    monkeypatch.setattr(get_settings(), "smtp_user", "apikey")
+    monkeypatch.setattr(mailer.smtplib, "SMTP", FakeSMTP)
+    assert api.post("/api/staff/email/test", headers=staff_headers).json() == {"sent_to": "admin@lavelondon.com"}
+    assert ("smtp.sendgrid.net", 587) in sent and ("login", "apikey") in sent
+
+    class RejectingSMTP(FakeSMTP):
+        def login(self, user, password):
+            import smtplib
+            raise smtplib.SMTPAuthenticationError(535, b"Authentication failed")
+
+    monkeypatch.setattr(mailer.smtplib, "SMTP", RejectingSMTP)
+    r = api.post("/api/staff/email/test", headers=staff_headers)
+    assert r.status_code == 502 and "username or password" in r.json()["detail"]
+
+
+def test_contact_messages_can_be_replied_to(api, monkeypatch):
+    from app.config import get_settings
+    from app.services import accounts, mailer
+    accounts.reset_limits()
+    got = []
+    monkeypatch.setattr(mailer, "send", lambda to, subject, text, reply_to=None, raise_errors=False: got.append((to, reply_to)))
+    api.post("/contact/", data={"name": "Ada", "email": "ada@example.com", "topic": "Something else", "message": "Hello"})
+    assert got == [("care@lavelondon.com", "ada@example.com")]

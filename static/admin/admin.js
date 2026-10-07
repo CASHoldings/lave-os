@@ -950,7 +950,7 @@
     const tab = params.get("tab") || "services";
     const isAdmin = me.role === "admin";
     const c = shell("settings", "Settings");
-    const tabs = [["services", "Price list"], ["slots", "Slots"], ["closures", "Closures"], ...(isAdmin ? [["team", "Team"]] : [])];
+    const tabs = [["services", "Price list"], ["slots", "Slots"], ["closures", "Closures"], ...(isAdmin ? [["team", "Team"], ["email", "Email"]] : [])];
     c.innerHTML = `<div class="row">${tabs.map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/settings?tab=${k}">${l}</a>`).join("")}</div>
       ${isAdmin ? "" : `<p class="notice">Only admins can change settings.</p>`}<div id="pane"><p class="loading">Loading…</p></div>`;
     const pane = c.querySelector("#pane");
@@ -974,6 +974,24 @@
         const f = Object.fromEntries(new FormData(e.target).entries());
         return api("POST", "/api/staff/services", { code: f.code.toUpperCase(), name: f.name, category: f.category, unit: f.unit, price_pence: toPence(f.price) });
       }, "Service added"));
+    }
+
+    if (tab === "email") {
+      const e = await api("GET", "/api/staff/email");
+      pane.innerHTML = `<section class="panel stack">
+        <h2>Email sending</h2>
+        ${e.configured ? `<p class="ok small">Set up: sending through <strong>${esc(e.host)}</strong> as <strong>${esc(e.mail_from)}</strong>.</p>`
+          : `<p class="notice">Not set up yet, so sign-in links, password resets and receipts aren't being sent. Add the LAVE_SMTP_ settings in Render → lave-os → Environment.</p>`}
+        <dl class="kv"><dt>Mail server</dt><dd>${esc(e.host || "–")}${e.host ? ":" + e.port : ""}</dd><dt>Username</dt><dd>${esc(e.user || "–")}</dd><dt>Sent from</dt><dd>${esc(e.mail_from)}</dd></dl>
+        <div class="row"><button class="btn primary" data-test-email>Send a test email to ${esc(e.send_to)}</button></div>
+        <p class="small muted" id="email-result" role="status"></p></section>`;
+      pane.querySelector("[data-test-email]").addEventListener("click", async (ev) => {
+        const out = pane.querySelector("#email-result");
+        ev.target.disabled = true; out.textContent = "Sending…";
+        try { const r = await api("POST", "/api/staff/email/test"); out.className = "small ok"; out.textContent = `Sent. Check the inbox for ${r.sent_to} (and the spam folder, the first time).`; }
+        catch (ex) { out.className = "small error"; out.textContent = ex.message; }
+        ev.target.disabled = false;
+      });
     }
 
     if (tab === "slots") {
