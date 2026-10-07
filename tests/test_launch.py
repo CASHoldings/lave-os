@@ -140,4 +140,10 @@ def test_contact_messages_can_be_replied_to(api, monkeypatch):
     got = []
     monkeypatch.setattr(mailer, "send", lambda to, subject, text, reply_to=None, raise_errors=False: got.append((to, reply_to)))
     api.post("/contact/", data={"name": "Ada", "email": "ada@example.com", "topic": "Something else", "message": "Hello"})
-    assert got == [("care@lavelondon.com", "ada@example.com")]
+    assert got == [("hello@lavelondon.com", "ada@example.com")]
+
+
+def test_one_address_for_sending_and_contact(monkeypatch):
+    from app.config import Settings
+    assert Settings().contact_address == "hello@lavelondon.com"
+    assert Settings(mail_from="LAVE <care@lavelondon.com>").contact_address == "care@lavelondon.com"

@@ -50,7 +50,8 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    mail_from: str = "LAVE <care@lavelondon.com>"
+    # Emails come from this address, and contact-form messages are delivered to it.
+    mail_from: str = "LAVE <hello@lavelondon.com>"
 
     # Apothecary delivery (UK only): flat rate, free above a basket value, always free for members.
     shop_shipping_pence: int = 495
@@ -87,6 +88,11 @@ class Settings(BaseSettings):
             if v.startswith(prefix):
                 return "postgresql+psycopg://" + v[len(prefix):]
         return v
+
+    @property
+    def contact_address(self) -> str:
+        from email.utils import parseaddr
+        return parseaddr(self.mail_from)[1] or "hello@lavelondon.com"
 
     @property
     def media_path(self) -> Path:

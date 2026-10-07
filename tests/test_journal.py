@@ -63,7 +63,7 @@ def test_contact_form(api, staff_headers):
     assert r.headers["location"] == "/contact/?sent=1"
     msgs = api.get("/api/staff/messages", headers=staff_headers).json()
     assert msgs[0]["topic"] == "LAVE Privé"
-    assert mailer.OUTBOX[0]["to"] == "care@lavelondon.com"
+    assert mailer.OUTBOX[0]["to"] == "hello@lavelondon.com"
 
 
 def test_upload_rejects_non_images(api, staff_headers, tmp_path, monkeypatch):
