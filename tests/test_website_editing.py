@@ -138,6 +138,10 @@ def test_wordpress_import_copies_and_rewrites(db_session, api, tmp_path):
         assert fetched == [u for u in sorted(left)]
 
     assert "/media/" in api.get("/").text and "lavelondon.com/wp-content/uploads/2025/08/LAVE_London" not in api.get("/").text
+    # Logos and the browser-tab icon come from the library too, so nothing depends on WordPress.
+    import re
+    left_on_page = set(re.findall(r"https://lavelondon\.com/wp-content[^\"' )]+", api.get("/atelier/").text))
+    assert left_on_page and all("ECLAT" in u for u in left_on_page)  # only the image that failed to copy
 
 
 def test_products_and_variants(api, staff_headers):

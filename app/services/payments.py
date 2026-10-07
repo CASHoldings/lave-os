@@ -29,7 +29,7 @@ from app.services.clock import local_now
 def _stripe() -> stripe.StripeClient:
     settings = get_settings()
     if not settings.stripe_enabled:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Card payments aren't set up yet. Add the Stripe keys to the server settings.")
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Card payments aren't switched on yet. Please try again soon, or email care@lavelondon.com.")
     return stripe.StripeClient(settings.stripe_secret_key)
 
 

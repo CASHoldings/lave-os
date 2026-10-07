@@ -610,7 +610,7 @@ from app.models import ContactMessage, PageContent, Post, PostStatus  # noqa: E4
 from app.schemas import MarkdownIn, PageIn, PostIn, PublishChange  # noqa: E402
 from app.services import content as cms  # noqa: E402
 
-MEDIA_DIR = _Path(__file__).resolve().parent.parent.parent / "media"
+MEDIA_DIR = get_settings().media_path
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif"}
 MAX_UPLOAD = 8 * 1024 * 1024
 

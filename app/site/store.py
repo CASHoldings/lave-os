@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import SiteContent
-from app.site.content import Column, Section, SubNav
+from app.models import Media, SiteContent
+from app.site.content import BRAND, Column, Section, SubNav
 from app.site.defaults import DOCUMENTS
 
 SAFE_HREF = ("/", "https://", "http://", "#", "mailto:", "tel:")
@@ -98,6 +98,7 @@ def validate(key: str, value: dict, current: dict) -> dict:
 class Site:
     docs: dict[str, dict]
     sections: list[Section]
+    brand: dict[str, str]  # logos and icon: the library copy once imported, else the WordPress original
 
     @property
     def by_key(self) -> dict[str, Section]:
@@ -135,7 +136,8 @@ def load(db: Session) -> Site:
         return _cache["site"]
     saved = {r.key: r.value for r in db.scalars(select(SiteContent))}
     docs = {k: saved.get(k) or spec["default"]() for k, spec in DOCUMENTS.items()}
-    site = Site(docs, sections_from(docs["menus"]))
+    copies = dict(db.execute(select(Media.source_url, Media.url).where(Media.source_url.in_(BRAND.values()))).all())
+    site = Site(docs, sections_from(docs["menus"]), {k: copies.get(u, u) for k, u in BRAND.items()})
     _cache.update(stamp=stamp, site=site)
     CURRENT.update(docs)
     return site

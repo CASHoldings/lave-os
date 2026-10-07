@@ -4,7 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from app.plans import gbp
 from app.services import shop
 
 BASKET_COOKIE = "lave_basket"
+from app.config import get_settings
 from app.db import get_db
 from app.models import WaitlistEntry
 from app.site import catalogue, content
@@ -44,13 +45,14 @@ def render(request: Request, template: str, status_code: int = 200, **ctx) -> HT
     basket_count = sum(shop.parse_basket(request.cookies.get(BASKET_COOKIE)).values())
     site = request.state.site
     footer = dict(site.docs["footer"], social=[dict(x, icon=SOCIAL_ICONS.get(x["name"], "")) for x in site.docs["footer"]["social"]],
-                  anagram=content.FOOTER["anagram"])
+                  anagram=site.brand["anagram"])
     base = {
         "site": site,
         "viewer": {"first_name": viewer.get("fn", "")} if viewer else None,
         "basket_count": basket_count,
         "sections": site.sections, "section": None, "subnav": None, "slug": slugify, "footer": footer,
-        "logo_navy": content.LOGO_NAVY, "logo_white": content.LOGO_WHITE, "year": date.today().year,
+        "logo_navy": site.brand["logo_navy"], "logo_white": site.brand["logo_white"], "favicon": site.brand["favicon"],
+        "year": date.today().year,
         "asset_version": ASSET_VERSION, "image_url": catalogue.image_url,
     }
     return TEMPLATES.TemplateResponse(request, template, {**base, **ctx}, status_code=status_code)
@@ -66,6 +68,37 @@ def _section(request: Request, key: str):
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return render(request, "site/home.html", home=request.state.site.docs["home"])
+
+
+@router.get("/robots.txt")
+def robots():
+    base = get_settings().site_url.rstrip("/")
+    text = ("User-agent: *\nDisallow: /admin\nDisallow: /api/\nDisallow: /account/\nDisallow: /basket/\n"
+            "Disallow: /checkout/\nDisallow: /search/\n\nSitemap: " + base + "/sitemap.xml\n")
+    return Response(text, media_type="text/plain")
+
+
+@router.get("/sitemap.xml")
+def sitemap(request: Request, db: Session = Depends(get_db)):
+    from xml.sax.saxutils import escape
+
+    from app.models import Service
+    from app.services import content as cms
+
+    site = request.state.site
+    paths = ["/", "/book/", "/contact/", "/policies/", "/laveworld/knowledge/"]
+    for s in site.sections:
+        paths.append(s.path)
+        for n in s.subnav:
+            paths.append(f"{s.path}{n.slug}/")
+    paths += [f"/atelier/services/{slug}/" for slug in db.scalars(
+        select(Service.slug).where(Service.show_online.is_(True), Service.active.is_(True), Service.slug != ""))]
+    paths += [f"/apothecary/products/{p.slug}/" for p in shop.products(db)]
+    paths += [f"/journal/{p.slug}/" for p in cms.published(db, limit=1000)]
+    base = get_settings().site_url.rstrip("/")
+    urls = "".join(f"<url><loc>{escape(base + p)}</loc></url>" for p in dict.fromkeys(paths))
+    return Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                    + urls + "</urlset>", media_type="application/xml")
 
 
 @router.get("/search/", response_class=HTMLResponse)

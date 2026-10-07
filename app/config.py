@@ -1,6 +1,10 @@
 from functools import lru_cache
+from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -9,6 +13,11 @@ class Settings(BaseSettings):
     # "production" unless set: development-only shortcuts (test sign-in, fake payments) must be switched on deliberately.
     env: str = "production"
     database_url: str = "sqlite:///./lave.db"
+    # Where uploaded and imported images are kept. On Render this is the persistent disk.
+    media_dir: str = ""
+    # First admin, created by `python -m app.release` when the database has no staff yet.
+    first_admin_email: str = ""
+    first_admin_password: str = ""
 
     # Signs staff and client session tokens issued by this API.
     secret_key: str = "change-me-in-production"
@@ -69,6 +78,19 @@ class Settings(BaseSettings):
             problems.append("LAVE_SITE_URL must start with https://")
         if problems:
             raise RuntimeError("LAVE OS won't start in production: " + "; ".join(problems))
+
+    @field_validator("database_url")
+    @classmethod
+    def _psycopg(cls, v: str) -> str:
+        # Hosts hand out postgres:// or postgresql:// addresses; SQLAlchemy needs to be told to use psycopg 3.
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
+
+    @property
+    def media_path(self) -> Path:
+        return Path(self.media_dir) if self.media_dir else PROJECT / "media"
 
     @property
     def is_dev(self) -> bool:

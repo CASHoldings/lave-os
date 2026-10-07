@@ -1,0 +1,14 @@
+{% extends "site/base.html" %}
+{% block title %}Page not found | LAVE{% endblock %}
+{% block main %}
+<section class="welcome tight">
+  <p class="eyebrow">Page not found</p>
+  <h1>We couldn't find that page</h1>
+  <p class="lead">It may have moved when we rebuilt the site. Search for what you need, or start from one of these.</p>
+  <form class="search-form" method="get" action="/search/" role="search">
+    <input name="q" placeholder="Try silk, coat, bedding, shirts" aria-label="Search LAVE">
+    <button class="btn dark" type="submit">Search</button>
+  </form>
+  <div class="ctas"><a class="btn" href="/atelier/">The Atelier</a><a class="btn" href="/apothecary/">The Apothecary</a><a class="btn ghost" href="/book/">Book a collection</a></div>
+</section>
+{% endblock %}

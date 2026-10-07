@@ -15,7 +15,11 @@ def send(to: str, subject: str, text: str) -> None:
     settings = get_settings()
     OUTBOX.appendleft({"to": to, "subject": subject, "text": text})
     if not settings.smtp_host:
-        log.warning("Email not sent (no SMTP configured) to=%s subject=%s\n%s", to, subject, text)
+        # Emails can hold sign-in links, so only print the body on a developer's machine.
+        if settings.is_dev:
+            log.warning("Email not sent (no SMTP configured) to=%s subject=%s\n%s", to, subject, text)
+        else:
+            log.warning("Email not sent (no SMTP configured) to=%s subject=%s", to, subject)
         return
     msg = EmailMessage()
     msg["From"] = settings.mail_from

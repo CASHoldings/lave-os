@@ -1,0 +1,69 @@
+# Render Blueprint: in Render, New → Blueprint, choose this repository, and Render creates everything below.
+# Settings marked `sync: false` are asked for when you create the Blueprint (or added later under Environment).
+
+services:
+  - type: web
+    name: lave-os
+    runtime: python
+    region: frankfurt          # closest Render region to London
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: python -m app.release
+    # One process: sign-in rate limits and the image-copy progress are kept in memory.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /healthz
+    autoDeploy: true
+    # Render issues the HTTPS certificates. DNS records to add at Hostinger: see LAUNCH.md.
+    domains:
+      - lavelondon.com
+      - www.lavelondon.com
+    disk:
+      name: media
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+      - key: LAVE_ENV
+        value: production
+      - key: LAVE_DATABASE_URL
+        fromDatabase:
+          name: lave-db
+          property: connectionString
+      - key: LAVE_MEDIA_DIR
+        value: /var/data/media
+      - key: LAVE_SECRET_KEY
+        generateValue: true
+      - key: LAVE_WP_SSO_SECRET
+        generateValue: true
+      # Used in emailed links, the sitemap and secure cookies.
+      - key: LAVE_SITE_URL
+        value: https://lavelondon.com
+      - key: LAVE_CORS_ORIGINS
+        value: '["https://lavelondon.com", "https://www.lavelondon.com"]'
+      # First admin login. Remove the password here once you've signed in.
+      - key: LAVE_FIRST_ADMIN_EMAIL
+        sync: false
+      - key: LAVE_FIRST_ADMIN_PASSWORD
+        sync: false
+      # Email (phase 7, step 2)
+      - key: LAVE_SMTP_HOST
+        sync: false
+      - key: LAVE_SMTP_USER
+        sync: false
+      - key: LAVE_SMTP_PASSWORD
+        sync: false
+      # Stripe (phase 7, step 3). Test keys until launch.
+      - key: LAVE_STRIPE_SECRET_KEY
+        sync: false
+      - key: LAVE_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: LAVE_STRIPE_WEBHOOK_SECRET
+        sync: false
+
+databases:
+  - name: lave-db
+    region: frankfurt
+    plan: basic-256mb
+    postgresMajorVersion: "17"
+    ipAllowList: []            # only the app (inside Render) can reach the database

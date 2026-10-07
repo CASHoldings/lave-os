@@ -66,33 +66,22 @@ Tests: `.venv/bin/python -m pytest -q`
 
 ## Deploy
 
-1. **Server.** Any host that runs a Python web app and Postgres works, for example Render, Railway, Fly.io, or a small VPS. Run:
-   `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers`
-   Serve it over HTTPS at a subdomain such as `os.lavelondon.com`.
-2. **Database.** Set `LAVE_DATABASE_URL` to Postgres, then run `python -m app.seed --admin you@lavelondon.com` once. This creates the tables, the default slot pattern and the starting price list.
-3. **Secrets.** Set `LAVE_SECRET_KEY` and `LAVE_WP_SSO_SECRET` to long random values. See `.env.example`.
-4. **Stripe.**
-   - Add your keys.
-   - Create three monthly Prices for the memberships (Essence, Elevate, Éclat) and put their IDs in `LAVE_STRIPE_PRICE_*`.
-   - Add a webhook endpoint `https://os.lavelondon.com/api/stripe/webhook` for these events:
-     - `setup_intent.succeeded`
-     - `payment_intent.succeeded`
-     - `payment_intent.payment_failed`
-     - `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
-   - Put the signing secret in `LAVE_STRIPE_WEBHOOK_SECRET`.
-   - Turn on the Customer Portal so members can manage their plan.
-5. **WordPress.**
-   - Zip `wordpress/lave-os-connector/` and upload it under Plugins → Add New → Upload, then activate it.
-   - In `wp-config.php` add `define('LAVE_OS_SSO_SECRET', '<same value as LAVE_WP_SSO_SECRET>');`
-   - Under Settings → LAVE OS, set the LAVE OS address.
-   - Put `[lave_booking]` on the "Book a collection" page and `[lave_account]` on a client account page. In Elementor, use the Shortcode widget.
-   - Once you're happy, deactivate the old `laundry-booking-system` plugin.
+LAVE OS runs on Render (`render.yaml`): one web service, a Postgres database and a disk for images, all in Frankfurt.
+Step-by-step launch instructions for lavelondon.com are in [LAUNCH.md](LAUNCH.md).
+
+- **Each deploy** runs `python -m app.release` first: it brings the database up to date and, on a brand-new database only,
+  loads the starting content and creates the first admin from `LAVE_FIRST_ADMIN_EMAIL` / `LAVE_FIRST_ADMIN_PASSWORD`.
+- **Pushing to `main`** on GitHub deploys automatically. If the new version fails its health check (`/healthz`), Render keeps the old one running.
+- **Settings** are environment variables with the `LAVE_` prefix (see `.env.example`). Render generates the two secret keys.
+- **One process only**: sign-in rate limits and the image-copy progress live in memory.
+- **Old WordPress addresses** forward to their new pages (`app/site/redirects.py`). Unknown addresses show the LAVE "not found" page.
+- **The WordPress connector** in `wordpress/` is no longer needed now the whole site runs on LAVE OS. It's kept for reference.
 
 ## Before going live
 
 - **Prices**: the starting price list in `app/seed.py` is placeholder. Replace it with LAVE's real prices under Settings → Price list.
 - **Slot pattern**: the defaults are Monday–Saturday, 1-hour windows from 6am to 10pm (4 bookings each, £4), 3-hour Saver windows (8 each, free), and atelier counter hours from 8am to 8pm. Adjust them under Settings → Slots.
-- **Database migrations**: tables are created by `app.seed`. Alembic is installed; set up migrations before the first schema change after launch.
+- **Database migrations**: `app.release` adds new tables and columns automatically. Renaming or removing a column needs a proper migration (Alembic is installed).
 - **Notifications**: email works over SMTP (sign-in links, receipts, dispatch). Text messages ("we'll text you when the driver is close") aren't built yet.
 - **Rate limits** on sign-in and forms are kept in memory, so they reset on restart and aren't shared between servers. Move them to Redis or the database if you run more than one server.
 - **Stock** isn't held while a client is on the Stripe payment page. If two people buy the last item at once, the second order is flagged "Oversold" in Shop → To pack.

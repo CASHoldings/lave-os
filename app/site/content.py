@@ -190,3 +190,6 @@ FOOTER = {
 
 LOGO_NAVY = WP + "2024/07/LAVE-logo-4000w-scaled.webp"
 LOGO_WHITE = WP + "2024/05/LAVE-logo-white-4000w-scaled.webp"
+FAVICON = WP + "2026/06/cropped-LAVE_2026_Anagram-32x32.webp"
+# Brand images used on every page. "Copy images now" in /admin copies these too, and the site then uses the copies.
+BRAND = {"logo_navy": LOGO_NAVY, "logo_white": LOGO_WHITE, "anagram": FOOTER["anagram"], "favicon": FAVICON}

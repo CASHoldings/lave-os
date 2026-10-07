@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session
 from app.models import Media, PageContent, Post, Product, Service, SiteContent
 from app.services.clock import local_now
 
-MEDIA_DIR = Path(__file__).resolve().parent.parent.parent / "media"
+from app.config import get_settings
+
+MEDIA_DIR = get_settings().media_path
 WP_PREFIX = "https://lavelondon.com/wp-content/uploads/"
 WP_URL = re.compile(r"https://lavelondon\.com/wp-content/uploads/[^\s\"')]+")
 MAX_IMPORT = 15 * 1024 * 1024
@@ -38,7 +40,7 @@ def sniff(data: bytes) -> str | None:
 
 def save_bytes(db: Session, data: bytes, ext: str, filename: str = "", source_url: str = "", media_dir: Path | None = None) -> Media:
     folder = media_dir or MEDIA_DIR
-    folder.mkdir(exist_ok=True)
+    folder.mkdir(parents=True, exist_ok=True)
     name = f"{local_now():%Y%m}-{secrets.token_hex(8)}{ext}"
     (folder / name).write_bytes(data)
     m = Media(url=f"/media/{name}", filename=filename[:200], source_url=source_url[:600], size_bytes=len(data))
@@ -59,7 +61,11 @@ def _wp(url_or_path: str) -> str | None:
 
 def borrowed_urls(db: Session, docs: dict) -> set[str]:
     """Every image address on the site that still points at lavelondon.com."""
+    from app.site.content import BRAND
+
     urls = set(WP_URL.findall(json.dumps(docs)))
+    copied = set(db.scalars(select(Media.source_url).where(Media.source_url.in_(BRAND.values()))))
+    urls |= set(BRAND.values()) - copied
     for model, field in ((Service, "image"), (Product, "image"), (Post, "cover_image"), (PageContent, "image")):
         for value in db.scalars(select(getattr(model, field))):
             if u := _wp(value or ""):

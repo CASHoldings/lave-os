@@ -22,7 +22,10 @@ def upgrade() -> list[str]:
                 default = ""
                 if col.default is not None and getattr(col.default, "is_scalar", False):
                     v = col.default.arg
-                    default = f" DEFAULT {int(v) if isinstance(v, bool) else repr(v)}"
+                    if isinstance(v, bool):  # Postgres wants TRUE/FALSE; SQLite accepts both
+                        default = f" DEFAULT {'TRUE' if v else 'FALSE'}"
+                    else:
+                        default = f" DEFAULT {repr(v)}"
                 elif isinstance(col.type.python_type, type) and col.type.python_type in (list, dict):
                     default = " DEFAULT '[]'" if col.type.python_type is list else " DEFAULT '{}'"
                 conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {col.name} {ddl_type}{default}'))
