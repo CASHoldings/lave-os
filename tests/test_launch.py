@@ -147,3 +147,14 @@ def test_one_address_for_sending_and_contact(monkeypatch):
     from app.config import Settings
     assert Settings().contact_address == "hello@lavelondon.com"
     assert Settings(mail_from="LAVE <care@lavelondon.com>").contact_address == "care@lavelondon.com"
+
+
+def test_reset_admin_password_from_the_command_line(db_session, api, monkeypatch):
+    import pytest
+    from app import reset_password
+    monkeypatch.setattr(reset_password, "SessionLocal", db_session)
+    assert "Password changed for admin@lavelondon.com" in reset_password.reset(" Admin@LaveLondon.com ", "a-brand-new-password")
+    ok = api.post("/api/staff/auth/login", json={"email": "admin@lavelondon.com", "password": "a-brand-new-password"})
+    assert ok.status_code == 200
+    with pytest.raises(SystemExit):
+        reset_password.reset("nobody@lavelondon.com", "a-brand-new-password")
