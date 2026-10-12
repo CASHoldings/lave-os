@@ -384,6 +384,27 @@ def patch_client(client_id: int, body: ClientPatch, staff: StaffUser = Depends(o
     return ser.client(c, staff_view=True)
 
 
+@router.post("/clients/{client_id}/membership/end")
+def end_membership(client_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """End a membership now: cancels the Stripe subscription if Stripe still knows it, and stops member benefits."""
+    import stripe as _stripe_lib
+    from app.models import MembershipStatus
+    c = db.get(Client, client_id)
+    if not c or not c.membership or c.membership.status == MembershipStatus.cancelled:
+        raise HTTPException(404, "This client has no membership to end.")
+    m, note = c.membership, "Membership ended."
+    if m.stripe_subscription_id and get_settings().stripe_enabled:
+        try:
+            payments._stripe().v1.subscriptions.cancel(m.stripe_subscription_id)
+            note = "Membership ended and the Stripe subscription cancelled."
+        except _stripe_lib.InvalidRequestError:
+            # e.g. a subscription from test mode, which live Stripe doesn't know about.
+            note = "Membership ended. Stripe had no matching subscription, so nothing was cancelled there."
+    m.status, m.paused, m.resumes_at = MembershipStatus.cancelled, False, None
+    db.commit()
+    return {"note": note, "client": ser.client(c, staff_view=True)}
+
+
 # Vault
 
 @router.get("/vault")

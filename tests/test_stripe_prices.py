@@ -252,3 +252,28 @@ def test_test_mode_customer_is_replaced_after_going_live(db_session, monkeypatch
         assert payments.ensure_customer(db, client) == "cus_live_1"
         assert client.stripe_customer_id == "cus_live_1" and client.has_card_on_file is False
         assert payments.ensure_customer(db, client) == "cus_live_1" and len(created) == 1  # reused from then on
+
+
+def test_admin_ends_a_membership(api, staff_headers, db_session, monkeypatch):
+    cancelled = []
+
+    def cancel(sid):
+        if sid == "sub_from_test_mode":
+            raise stripe.InvalidRequestError("No such subscription", "id")
+        cancelled.append(sid)
+
+    monkeypatch.setattr(get_settings(), "stripe_secret_key", "sk_live_x")
+    monkeypatch.setattr(payments, "_stripe", lambda: SimpleNamespace(v1=SimpleNamespace(subscriptions=SimpleNamespace(cancel=cancel))))
+    with db_session() as db:
+        old = _member(db)
+        old.membership.stripe_subscription_id = "sub_from_test_mode"
+        live = _member(db, "year")
+        live.membership.stripe_subscription_id = "sub_live"
+        db.commit()
+        ids = old.id, live.id
+    r = api.post(f"/api/staff/clients/{ids[0]}/membership/end", headers=staff_headers)
+    assert r.status_code == 200 and "no matching subscription" in r.json()["note"]
+    assert r.json()["client"]["membership"]["status"] == "cancelled"
+    r = api.post(f"/api/staff/clients/{ids[1]}/membership/end", headers=staff_headers)
+    assert "cancelled" in r.json()["note"] and cancelled == ["sub_live"]
+    assert api.post(f"/api/staff/clients/{ids[1]}/membership/end", headers=staff_headers).status_code == 404

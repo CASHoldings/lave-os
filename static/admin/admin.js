@@ -393,7 +393,8 @@
     const prefs = Object.entries(x.preferences || {});
     c.innerHTML = `
       <div class="row between"><div class="row">${x.membership ? pill(x.membership.status === "active" ? x.membership.plan_name + " member" : "Membership " + x.membership.status) : ""}
-        <span class="muted small">${x.paid_orders} paid orders</span></div>
+        <span class="muted small">${x.paid_orders} paid orders</span>
+        ${me.role === "admin" && x.membership && x.membership.status !== "cancelled" ? `<span id="end-box"><button class="link small danger-text" id="end-membership">End membership</button></span>` : ""}</div>
         <button class="btn primary" id="walk-in">New walk-in order</button></div>
       <div class="cols-3">
         <div class="stack">
@@ -427,6 +428,15 @@
       </div>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
     c.querySelector("#client-edit").addEventListener("submit", act((e) => { e.preventDefault(); return api("PATCH", "/api/staff/clients/" + id, Object.fromEntries(new FormData(e.target).entries())); }, "Saved"));
+    c.querySelector("#end-membership")?.addEventListener("click", () => {
+      const box = c.querySelector("#end-box");
+      box.innerHTML = `<span class="small">End ${esc(x.membership.plan_name)} now? Billing stops and benefits end today.</span>
+        <button class="btn danger sm" data-yes>End membership</button> <button class="btn ghost sm" data-no>Keep</button>`;
+      box.querySelector("[data-no]").addEventListener("click", () => route());
+      box.querySelector("[data-yes]").addEventListener("click", async () => {
+        try { const r = await api("POST", `/api/staff/clients/${id}/membership/end`); toast(r.note); route(); } catch (e) { toast(e.message, true); }
+      });
+    });
     c.querySelector("#walk-in").addEventListener("click", async () => {
       try { const o = await api("POST", "/api/staff/orders", { client_id: Number(id) }); location.hash = "#/orders/" + o.id; }
       catch (e) { toast(e.message, true); }
