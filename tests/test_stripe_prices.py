@@ -231,3 +231,24 @@ def test_pause_endpoint_and_account_page(api, client_headers, db_session, monkey
     assert r.status_code == 200 and r.json()["membership"]["status"] == "paused" and r.json()["membership"]["resumes_at"]
     r = api.post("/api/me/membership/resume", headers=client_headers)
     assert r.json()["membership"]["status"] == "active"
+
+
+def test_test_mode_customer_is_replaced_after_going_live(db_session, monkeypatch):
+    created = []
+
+    def retrieve(cid):
+        if cid == "cus_from_test_mode":
+            raise stripe.InvalidRequestError("No such customer: 'cus_from_test_mode'", "id")
+        return stripe.StripeObject.construct_from({"id": cid}, "k")
+
+    fake = SimpleNamespace(v1=SimpleNamespace(customers=SimpleNamespace(
+        retrieve=retrieve, create=lambda params: created.append(params) or SimpleNamespace(id="cus_live_1"))))
+    monkeypatch.setattr(get_settings(), "stripe_secret_key", "sk_live_x")
+    monkeypatch.setattr(payments, "_stripe", lambda: fake)
+    with db_session() as db:
+        client = Client(email="t@lavelondon.com", first_name="T", stripe_customer_id="cus_from_test_mode", has_card_on_file=True)
+        db.add(client)
+        db.commit()
+        assert payments.ensure_customer(db, client) == "cus_live_1"
+        assert client.stripe_customer_id == "cus_live_1" and client.has_card_on_file is False
+        assert payments.ensure_customer(db, client) == "cus_live_1" and len(created) == 1  # reused from then on

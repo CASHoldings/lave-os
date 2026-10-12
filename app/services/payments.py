@@ -35,9 +35,17 @@ def _stripe() -> stripe.StripeClient:
 
 
 def ensure_customer(db: Session, client: Client) -> str:
+    sc = _stripe()
     if client.stripe_customer_id:
-        return client.stripe_customer_id
-    customer = _stripe().v1.customers.create(params={
+        # A customer made with test keys doesn't exist once live keys are in use (and vice versa): start afresh.
+        try:
+            existing = sc.v1.customers.retrieve(client.stripe_customer_id).to_dict()
+            if not existing.get("deleted"):
+                return client.stripe_customer_id
+        except stripe.InvalidRequestError:
+            pass
+        client.stripe_customer_id, client.has_card_on_file = None, False
+    customer = sc.v1.customers.create(params={
         "email": client.email,
         "name": client.full_name,
         "phone": client.phone or None,
