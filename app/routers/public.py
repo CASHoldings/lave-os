@@ -29,8 +29,8 @@ def config(db: Session = Depends(get_db)):
             {"code": p["code"], "name": p["name"], "tier": p["tier"], "tagline": p["tagline"],
              "price_pence": p["price_pence"], "annual_pence": p["annual_pence"], "includes": p["headline"],
              "builds_on": p["builds_on"] or None,
-             "available": bool(s.stripe_price_for(p["code"])),
-             "annual_available": bool(s.stripe_price_for(p["code"], "year"))}
+             "available": bool(s.stripe_price_for(p["code"]) or (s.stripe_enabled and p["price_pence"] > 0)),
+             "annual_available": bool(s.stripe_price_for(p["code"], "year") or (s.stripe_enabled and p["annual_pence"] > 0))}
             for p in PLANS
         ],
     }

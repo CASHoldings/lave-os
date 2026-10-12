@@ -59,10 +59,10 @@ def create_setup_intent(db: Session, client: Client) -> str:
 
 
 def _default_payment_method(sc: stripe.StripeClient, customer_id: str) -> str | None:
-    customer = sc.v1.customers.retrieve(customer_id)
+    customer = sc.v1.customers.retrieve(customer_id).to_dict()
     pm = (customer.get("invoice_settings") or {}).get("default_payment_method")
     if pm:
-        return pm if isinstance(pm, str) else pm.id
+        return pm if isinstance(pm, str) else pm.get("id")
     methods = sc.v1.customers.payment_methods.list(customer_id, params={"limit": 1})
     return methods.data[0].id if methods.data else None
 
@@ -127,11 +127,49 @@ def _mark_paid(db: Session, order: Order, staff_id: int | None = None) -> None:
     order_svc.log(db, order, "payment", f"Paid £{order.total_pence / 100:.2f}", staff_id)
 
 
+def plan_amount(db: Session, code: str, interval: str) -> int:
+    """What the membership costs per month or year, from the plans edited in /admin → Website."""
+    from app.site import store
+    plan = store.load(db).plan(code) or {}
+    return int(plan.get("annual_pence" if interval == "year" else "price_pence") or 0)
+
+
+def membership_price(db: Session, code: str, interval: str = "month") -> str:
+    """The Stripe Price for a plan, created or replaced automatically so it always matches the admin's price.
+
+    Prices are found by lookup key (lave_<plan>_<month|year>). When the amount in /admin changes, a new Price takes
+    over the lookup key and the old one is archived; existing members keep paying what they signed up for.
+    A price ID set in Render (LAVE_STRIPE_PRICE_<PLAN>[_ANNUAL]) overrides all this.
+    """
+    if override := get_settings().stripe_price_for(code, interval):
+        return override
+    amount = plan_amount(db, code, interval)
+    if amount <= 0:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "This membership isn't available online yet.")
+    from app.site import store
+    name = (store.load(db).plan(code) or {}).get("name", code.title())
+    sc, key = _stripe(), f"lave_{code}_{interval}"
+    current = next(iter(sc.v1.prices.list(params={"lookup_keys": [key], "active": True, "limit": 1}).data), None)
+    if current and current.unit_amount == amount and current.currency == "gbp":
+        return current.id
+    product_id = f"lave_membership_{code}"
+    try:
+        sc.v1.products.update(product_id, params={"name": f"LAVE {name} membership", "active": True})
+    except stripe.InvalidRequestError:
+        sc.v1.products.create(params={"id": product_id, "name": f"LAVE {name} membership", "metadata": {"plan": code}})
+    price = sc.v1.prices.create(params={
+        "product": product_id, "currency": "gbp", "unit_amount": amount, "recurring": {"interval": interval},
+        "lookup_key": key, "transfer_lookup_key": True, "nickname": f"{name} {'annual' if interval == 'year' else 'monthly'}",
+        "metadata": {"plan": code},
+    })
+    if current:
+        sc.v1.prices.update(current.id, params={"active": False})
+    return price.id
+
+
 def membership_checkout(db: Session, client: Client, plan: MembershipPlan, success_url: str, cancel_url: str,
                         interval: str = "month") -> str:
-    price = get_settings().stripe_price_for(plan.value, interval)
-    if not price:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "This membership isn't available online yet.")
+    price = membership_price(db, plan.value, interval)
     if client.membership and client.membership.status == MembershipStatus.active:
         raise HTTPException(status.HTTP_409_CONFLICT, "You already have an active membership. Manage it from your account.")
     customer_id = ensure_customer(db, client)
@@ -175,42 +213,51 @@ def handle_webhook(db: Session, payload: bytes, signature: str | None) -> str:
     if db.scalar(select(ProcessedWebhook).where(ProcessedWebhook.event_id == event.id)):
         return "duplicate"
 
-    obj = event.data.object
+    # Plain dicts: Stripe's objects don't support .get() in this library version.
+    raw = event.data.object
+    obj = raw.to_dict() if hasattr(raw, "to_dict") else dict(raw)
+    meta = obj.get("metadata") or {}
     kind = event.type
 
     if kind == "setup_intent.succeeded":
-        client = db.scalar(select(Client).where(Client.stripe_customer_id == obj.customer))
+        client = db.scalar(select(Client).where(Client.stripe_customer_id == obj.get("customer")))
         if client:
-            sc.v1.customers.update(obj.customer, params={"invoice_settings": {"default_payment_method": obj.payment_method}})
+            sc.v1.customers.update(obj["customer"], params={"invoice_settings": {"default_payment_method": obj.get("payment_method")}})
             client.has_card_on_file = True
 
-    elif kind == "checkout.session.completed" and (obj.metadata or {}).get("lave_shop_order"):
+    elif kind == "checkout.session.completed" and meta.get("lave_shop_order"):
         from app.services import shop
-        order = shop.by_ref(db, obj.metadata["lave_shop_order"])
+        order = shop.by_ref(db, meta["lave_shop_order"])
         if order and obj.get("payment_status") == "paid":
             details = obj.get("customer_details") or {}
-            shipping = (obj.get("shipping_details") or obj.get("collected_information", {}).get("shipping_details") or {})
-            shop.mark_paid(db, order, email=details.get("email", ""), address=dict(shipping.get("address") or {}, name=shipping.get("name", "")))
+            shipping = obj.get("shipping_details") or (obj.get("collected_information") or {}).get("shipping_details") or {}
+            shop.mark_paid(db, order, email=details.get("email") or "",
+                           address=dict(shipping.get("address") or {}, name=shipping.get("name") or ""))
 
     elif kind == "payment_intent.succeeded":
-        order_id = (obj.metadata or {}).get("lave_order_id")
+        order_id = meta.get("lave_order_id")
         if order_id and (order := db.get(Order, int(order_id))):
             _mark_paid(db, order)
 
     elif kind == "payment_intent.payment_failed":
-        order_id = (obj.metadata or {}).get("lave_order_id")
+        order_id = meta.get("lave_order_id")
         if order_id and (order := db.get(Order, int(order_id))) and order.payment_status != PaymentStatus.paid:
             order.payment_status = PaymentStatus.failed
 
     elif kind in ("customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"):
-        meta = obj.metadata or {}
         client_id, plan = meta.get("lave_client_id"), meta.get("plan")
+        items = (obj.get("items") or {}).get("data") or [{}]
+        # If the member switched plan in Stripe's billing portal, the price says which plan they're on now.
+        price = items[0].get("price") or {}
+        price_plan = (price.get("metadata") or {}).get("plan") or ((price.get("lookup_key") or "").split("_") + ["", ""])[1]
+        if price_plan in {p.value for p in MembershipPlan}:
+            plan = price_plan
         if client_id and plan and (client := db.get(Client, int(client_id))):
             m = client.membership or Membership(client_id=client.id, plan=MembershipPlan(plan))
             m.plan = MembershipPlan(plan)
-            m.stripe_subscription_id = obj.id
-            m.status = MembershipStatus.cancelled if kind.endswith("deleted") else SUB_STATUS.get(obj.status, MembershipStatus.pending)
-            period_end = obj.get("current_period_end") or (obj["items"]["data"][0].get("current_period_end") if obj.get("items") else None)
+            m.stripe_subscription_id = obj.get("id")
+            m.status = MembershipStatus.cancelled if kind.endswith("deleted") else SUB_STATUS.get(obj.get("status"), MembershipStatus.pending)
+            period_end = obj.get("current_period_end") or items[0].get("current_period_end")
             if period_end:
                 m.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc).replace(tzinfo=None)
             db.add(m)

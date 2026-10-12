@@ -75,6 +75,10 @@ Step-by-step launch instructions for lavelondon.com are in [LAUNCH.md](LAUNCH.md
 - **Settings** are environment variables with the `LAVE_` prefix (see `.env.example`). Render generates the two secret keys.
 - **One process only**: sign-in rate limits and the image-copy progress live in memory.
 - **Old WordPress addresses** forward to their new pages (`app/site/redirects.py`). Unknown addresses show the LAVE "not found" page.
+- **Stripe**: set `LAVE_STRIPE_SECRET_KEY`, `LAVE_STRIPE_PUBLISHABLE_KEY` and `LAVE_STRIPE_WEBHOOK_SECRET`. Membership prices are created
+  in Stripe automatically from Website → Membership plans (lookup keys `lave_<plan>_<month|year>`); `LAVE_STRIPE_PRICE_*` overrides them.
+  Webhook: `https://lavelondon.com/api/stripe/webhook` with `checkout.session.completed`, `setup_intent.succeeded`,
+  `payment_intent.succeeded`, `payment_intent.payment_failed` and `customer.subscription.created/updated/deleted`.
 - **The WordPress connector** in `wordpress/` is no longer needed now the whole site runs on LAVE OS. It's kept for reference.
 
 ## Before going live

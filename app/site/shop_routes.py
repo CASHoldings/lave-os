@@ -159,8 +159,8 @@ def checkout_done(request: Request, ref: str, session: str = "", key: str = "",
     if order.status == ShopOrderStatus.pending_payment and session and session == order.stripe_session_id \
             and get_settings().stripe_enabled:
         from app.services.payments import _stripe
-        s = _stripe().v1.checkout.sessions.retrieve(session)
-        if s.payment_status == "paid":
+        s = _stripe().v1.checkout.sessions.retrieve(session).to_dict()  # Stripe objects don't support .get()
+        if s.get("payment_status") == "paid":
             details = s.get("customer_details") or {}
             shipping = s.get("shipping_details") or (s.get("collected_information") or {}).get("shipping_details") or {}
             shop.mark_paid(db, order, email=details.get("email", ""), address=dict(shipping.get("address") or {}, name=shipping.get("name", "")))

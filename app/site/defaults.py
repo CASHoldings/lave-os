@@ -182,7 +182,7 @@ DOCUMENTS = {
     "menus": {"title": "Menus", "help": "The photo columns and links in each dropdown. The four sections and their "
                                          "sub-menus are fixed, because pages and web addresses hang off their names.",
               "default": menus, "locked": ["sections", "subnav"], "readonly": ["key", "path", "sections.title", "subnav.title"]},
-    "plans": {"title": "Membership plans", "help": "Tier names, prices and benefits. Keep Stripe's prices in step with these.",
+    "plans": {"title": "Membership plans", "help": "Tier names, prices and benefits. Stripe follows these prices automatically; current members keep the price they joined at.",
               "default": plans, "locked": ["plans", "values"], "readonly": ["code", "tier"]},
     "footer": {"title": "Footer", "help": "Use **double asterisks** around words to make them bold.", "default": footer,
                "locked": ["social"], "readonly": ["name"]},
