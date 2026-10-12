@@ -158,3 +158,26 @@ def test_reset_admin_password_from_the_command_line(db_session, api, monkeypatch
     assert ok.status_code == 200
     with pytest.raises(SystemExit):
         reset_password.reset("nobody@lavelondon.com", "a-brand-new-password")
+
+
+def test_staff_forgot_password_by_email(api):
+    import re
+    from app.services import accounts, mailer
+    accounts.reset_limits()
+    mailer.OUTBOX.clear()
+    # Same answer whether or not the email is a staff account.
+    assert api.post("/api/staff/auth/forgot", json={"email": "nobody@lavelondon.com"}).json() == {"ok": True}
+    assert not mailer.OUTBOX
+    assert api.post("/api/staff/auth/forgot", json={"email": "Admin@lavelondon.com"}).json() == {"ok": True}
+    mail = mailer.OUTBOX[0]
+    assert mail["to"] == "admin@lavelondon.com"
+    token = re.search(r"/admin#/reset/(\S+)", mail["text"]).group(1)
+
+    assert api.post("/api/staff/auth/reset", json={"token": token, "password": "short"}).status_code == 422
+    r = api.post("/api/staff/auth/reset", json={"token": token, "password": "a-fresh-admin-password"})
+    assert r.json() == {"ok": True, "email": "admin@lavelondon.com"}
+    assert api.post("/api/staff/auth/login", json={"email": "admin@lavelondon.com", "password": "a-fresh-admin-password"}).status_code == 200
+    # The link works once.
+    again = api.post("/api/staff/auth/reset", json={"token": token, "password": "another-new-password"})
+    assert again.status_code == 400 and "expired or has already been used" in again.json()["detail"]
+    assert api.post("/api/staff/auth/reset", json={"token": "x" * 40, "password": "another-new-password"}).status_code == 400

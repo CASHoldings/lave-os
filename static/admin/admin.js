@@ -76,7 +76,9 @@
       <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
       <p class="error" hidden></p>
       <button class="btn primary" type="submit">Sign in</button>
+      <button class="link small" type="button" id="forgot">Forgot password?</button>
     </form></div>`;
+    document.getElementById("forgot").addEventListener("click", renderForgot);
     document.getElementById("login").addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target).entries());
@@ -84,6 +86,51 @@
         me = (await api("POST", "/api/staff/auth/login", f)).staff;
         route();
       } catch (ex) { const el = e.target.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
+    });
+  }
+
+  function renderForgot() {
+    app.innerHTML = `<div class="login"><form id="forgot-form">
+      <div class="brand">LAVE<small style="display:block;font-size:11px;letter-spacing:.24em;margin-top:6px">Atelier OS</small></div>
+      <p class="small">Enter your staff email and we'll send you a link to choose a new password.</p>
+      <label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <p class="error" hidden></p><p class="small ok" hidden role="status"></p>
+      <button class="btn primary" type="submit">Email me a link</button>
+      <button class="link small" type="button" id="back">Back to sign in</button>
+    </form></div>`;
+    document.getElementById("back").addEventListener("click", renderLogin);
+    document.getElementById("forgot-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target, err = f.querySelector(".error"), ok = f.querySelector(".ok");
+      try {
+        await api("POST", "/api/staff/auth/forgot", { email: f.email.value });
+        err.hidden = true; ok.hidden = false;
+        ok.textContent = "If that email belongs to a staff account, a link is on its way. It works for one hour.";
+      } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+    });
+  }
+
+  function renderReset(token) {
+    app.innerHTML = `<div class="login"><form id="reset-form">
+      <div class="brand">LAVE<small style="display:block;font-size:11px;letter-spacing:.24em;margin-top:6px">Atelier OS</small></div>
+      <p class="small">Choose a new password (12 characters or more).</p>
+      <label>New password<input name="password" type="password" autocomplete="new-password" minlength="12" required></label>
+      <label>Type it again<input name="again" type="password" autocomplete="new-password" minlength="12" required></label>
+      <p class="error" hidden></p>
+      <button class="btn primary" type="submit">Save new password</button>
+    </form></div>`;
+    document.getElementById("reset-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target, err = f.querySelector(".error");
+      if (f.password.value !== f.again.value) { err.textContent = "The two passwords don't match."; err.hidden = false; return; }
+      try {
+        const r = await api("POST", "/api/staff/auth/reset", { token, password: f.password.value });
+        history.replaceState(null, "", "/admin#/today");
+        renderLogin();
+        document.querySelector('#login input[name="email"]').value = r.email;
+        const note = document.querySelector("#login .error");
+        note.className = "small ok"; note.textContent = "Password changed. Sign in with your new password."; note.hidden = false;
+      } catch (ex) { err.textContent = ex.message; err.hidden = false; }
     });
   }
 
@@ -1052,6 +1099,7 @@
   /* Router */
 
   async function route() {
+    if (location.hash.startsWith("#/reset/")) { renderReset(location.hash.slice("#/reset/".length)); return; }
     if (!me) {
       try { me = await api("GET", "/api/staff/me"); } catch (_) { return; }
     }

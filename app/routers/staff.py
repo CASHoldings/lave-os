@@ -1,7 +1,7 @@
 """Endpoints for the staff dashboard."""
 from datetime import date, datetime, time, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -50,7 +50,9 @@ from app.schemas import (
     SlotTemplateIn,
     SlotTemplatePatch,
     StaffCreate,
+    StaffForgot,
     StaffLogin,
+    StaffReset,
     StaffPatch,
     VaultPatch,
     WalkInOrder,
@@ -77,6 +79,34 @@ def login(body: StaffLogin, response: Response, db: Session = Depends(get_db)):
     response.set_cookie(STAFF_COOKIE, token, httponly=True, samesite="strict", secure=not get_settings().is_dev,
                         max_age=get_settings().staff_session_hours * 3600, path="/")
     return {"staff": ser.staff(staff), "token": token}
+
+
+@router.post("/auth/forgot")
+def forgot_password(body: StaffForgot, request: Request, db: Session = Depends(get_db)):
+    """Email a one-hour reset link. Always answers the same way, so it can't be used to discover staff emails."""
+    from app.auth import issue_staff_reset_token
+    from app.services import accounts, mailer
+    ip = request.client.host if request.client else "unknown"
+    if accounts.allow(f"staff-forgot:{ip}", limit=5, window_seconds=3600):
+        staff = find_staff_by_email(db, body.email)
+        if staff and staff.active:
+            link = f"{get_settings().site_url.rstrip('/')}/admin#/reset/{issue_staff_reset_token(staff)}"
+            mailer.send(staff.email, "Reset your LAVE OS password",
+                        f"Hello {staff.name},\n\nSomeone asked to reset the password for your LAVE OS account. "
+                        f"If it was you, choose a new password here within the next hour:\n\n{link}\n\n"
+                        f"If it wasn't you, ignore this email; your password hasn't changed.\n\nLAVE")
+    return {"ok": True}
+
+
+@router.post("/auth/reset")
+def reset_password(body: StaffReset, db: Session = Depends(get_db)):
+    from app.auth import hash_password, staff_from_reset_token
+    staff = staff_from_reset_token(db, body.token)
+    if not staff:
+        raise HTTPException(400, "This reset link has expired or has already been used. Ask for a new one.")
+    staff.password_hash = hash_password(body.password)
+    db.commit()
+    return {"ok": True, "email": staff.email}
 
 
 @router.post("/auth/logout", status_code=204)

@@ -60,6 +60,31 @@ def issue_staff_token(staff: StaffUser) -> str:
     return _issue({"sub": str(staff.id), "typ": "staff", "role": staff.role.value}, get_settings().staff_session_hours)
 
 
+def _password_mark(staff: StaffUser) -> str:
+    # Changes whenever the password changes, so a reset link works once and old links die after a reset.
+    import hashlib
+    return hashlib.sha256((staff.password_hash or "").encode()).hexdigest()[:16]
+
+
+def issue_staff_reset_token(staff: StaffUser) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {"sub": str(staff.id), "typ": "staff-reset", "pm": _password_mark(staff), "iat": now, "exp": now + timedelta(hours=1)}
+    return jwt.encode(payload, get_settings().secret_key, algorithm=ALGO)
+
+
+def staff_from_reset_token(db: Session, token: str) -> StaffUser | None:
+    try:
+        claims = jwt.decode(token, get_settings().secret_key, algorithms=[ALGO], options={"require": ["exp", "sub"]})
+    except jwt.PyJWTError:
+        return None
+    if claims.get("typ") != "staff-reset":
+        return None
+    staff = db.get(StaffUser, int(claims["sub"]))
+    if not staff or not staff.active or claims.get("pm") != _password_mark(staff):
+        return None
+    return staff
+
+
 def decode_wp_sso(token: str) -> dict:
     """Validate a token minted by the WordPress connector."""
     try:

@@ -97,6 +97,15 @@ class StaffLogin(BaseModel):
     password: str
 
 
+class StaffForgot(BaseModel):
+    email: EmailStr
+
+
+class StaffReset(BaseModel):
+    token: str = Field(min_length=10, max_length=2000)
+    password: str = Field(min_length=12, max_length=200)
+
+
 class StaffCreate(BaseModel):
     email: EmailStr
     name: str
