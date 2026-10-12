@@ -185,6 +185,45 @@ def membership_checkout(db: Session, client: Client, plan: MembershipPlan, succe
     return session.url
 
 
+PAUSE_MONTHS = (1, 2, 3)
+
+
+def pause_membership(db: Session, client: Client, months: int) -> Membership:
+    """Pause a monthly membership: Stripe voids the invoices in between, and member benefits stop until it resumes."""
+    m = client.membership
+    if not m or not m.stripe_subscription_id or m.status != MembershipStatus.active:
+        raise HTTPException(status.HTTP_409_CONFLICT, "There's no active membership to pause.")
+    if m.paused:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Your membership is already paused.")
+    if m.billing_interval == "year":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Annual memberships can't be paused. Email us and we'll help.")
+    if months not in PAUSE_MONTHS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a pause of 1, 2 or 3 months.")
+    resumes = _add_months(local_now(), months)
+    _stripe().v1.subscriptions.update(m.stripe_subscription_id, params={
+        "pause_collection": {"behavior": "void", "resumes_at": int(resumes.replace(tzinfo=timezone.utc).timestamp())}})
+    m.paused, m.resumes_at = True, resumes
+    db.commit()
+    return m
+
+
+def resume_membership(db: Session, client: Client) -> Membership:
+    m = client.membership
+    if not m or not m.paused or not m.stripe_subscription_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Your membership isn't paused.")
+    _stripe().v1.subscriptions.update(m.stripe_subscription_id, params={"pause_collection": ""})
+    m.paused, m.resumes_at = False, None
+    db.commit()
+    return m
+
+
+def _add_months(when: datetime, months: int) -> datetime:
+    import calendar
+    month = when.month - 1 + months
+    year, month = when.year + month // 12, month % 12 + 1
+    return when.replace(year=year, month=month, day=min(when.day, calendar.monthrange(year, month)[1]))
+
+
 def billing_portal(db: Session, client: Client, return_url: str) -> str:
     customer_id = ensure_customer(db, client)
     session = _stripe().v1.billing_portal.sessions.create(params={"customer": customer_id, "return_url": return_url})
@@ -193,6 +232,7 @@ def billing_portal(db: Session, client: Client, return_url: str) -> str:
 
 SUB_STATUS = {
     "active": MembershipStatus.active,
+    "paused": MembershipStatus.active,  # still a member, just paused (see Membership.paused)
     "trialing": MembershipStatus.active,
     "past_due": MembershipStatus.past_due,
     "unpaid": MembershipStatus.past_due,
@@ -244,7 +284,8 @@ def handle_webhook(db: Session, payload: bytes, signature: str | None) -> str:
         if order_id and (order := db.get(Order, int(order_id))) and order.payment_status != PaymentStatus.paid:
             order.payment_status = PaymentStatus.failed
 
-    elif kind in ("customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"):
+    elif kind in ("customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
+                  "customer.subscription.paused", "customer.subscription.resumed"):
         client_id, plan = meta.get("lave_client_id"), meta.get("plan")
         items = (obj.get("items") or {}).get("data") or [{}]
         # If the member switched plan in Stripe's billing portal, the price says which plan they're on now.
@@ -257,6 +298,12 @@ def handle_webhook(db: Session, payload: bytes, signature: str | None) -> str:
             m.plan = MembershipPlan(plan)
             m.stripe_subscription_id = obj.get("id")
             m.status = MembershipStatus.cancelled if kind.endswith("deleted") else SUB_STATUS.get(obj.get("status"), MembershipStatus.pending)
+            m.billing_interval = ((price.get("recurring") or {}).get("interval")) or m.billing_interval
+            # Two kinds of pause in Stripe: a paused subscription, or an active one whose payments are paused.
+            pause = obj.get("pause_collection") or {}
+            m.paused = obj.get("status") == "paused" or bool(pause)
+            m.resumes_at = (datetime.fromtimestamp(pause["resumes_at"], tz=timezone.utc).replace(tzinfo=None)
+                            if m.paused and pause.get("resumes_at") else None)
             period_end = obj.get("current_period_end") or items[0].get("current_period_end")
             if period_end:
                 m.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc).replace(tzinfo=None)

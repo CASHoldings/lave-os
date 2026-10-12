@@ -151,7 +151,7 @@ class Totals:
 
 
 def is_member(client: Client | None) -> bool:
-    return bool(client and client.membership and client.membership.status == MembershipStatus.active)
+    return bool(client and client.membership and client.membership.is_active)
 
 
 def totals(db: Session, basket: dict[int, int], client: Client | None, fulfilment: str = "delivery") -> Totals:

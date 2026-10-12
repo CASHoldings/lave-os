@@ -34,7 +34,7 @@ def _bold(text: str):
 
 TEMPLATES.env.filters["bold"] = _bold
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "30"
+ASSET_VERSION = "31"
 
 router = APIRouter(include_in_schema=False, dependencies=[Depends(site_dependency)])
 SOCIAL_ICONS = {name: icon for name, _url, icon in content.FOOTER["social"]}

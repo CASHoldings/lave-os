@@ -163,3 +163,71 @@ def test_saved_card_is_found_on_the_customer(monkeypatch):
     expanded = stripe.StripeObject.construct_from({"id": "cus_2", "invoice_settings": {"default_payment_method": {"id": "pm_456"}}}, "k")
     fake.v1.customers.retrieve = lambda cid: expanded
     assert payments._default_payment_method(fake, "cus_2") == "pm_456"
+
+
+def _member(db, interval="month"):
+    client = Client(email=f"p-{interval}@lavelondon.com", first_name="P")
+    db.add(client)
+    db.flush()
+    db.add(Membership(client_id=client.id, plan=MembershipPlan.elevate, status=MembershipStatus.active,
+                      stripe_subscription_id="sub_9", billing_interval=interval))
+    db.commit()
+    db.refresh(client)
+    return client
+
+
+def test_member_pauses_and_resumes(db_session, monkeypatch):
+    from app.services import shop
+    calls = []
+    fake = SimpleNamespace(v1=SimpleNamespace(subscriptions=SimpleNamespace(update=lambda sid, params: calls.append((sid, params)))))
+    monkeypatch.setattr(get_settings(), "stripe_secret_key", "sk_test_x")
+    monkeypatch.setattr(payments, "_stripe", lambda: fake)
+    with db_session() as db:
+        client = _member(db)
+        assert shop.is_member(client)
+        m = payments.pause_membership(db, client, 2)
+        assert m.paused and m.effective_status == "paused" and not shop.is_member(client)
+        sid, params = calls[-1]
+        assert sid == "sub_9" and params["pause_collection"]["behavior"] == "void" and params["pause_collection"]["resumes_at"] > 0
+        with pytest.raises(Exception):
+            payments.pause_membership(db, client, 1)  # already paused
+        payments.resume_membership(db, client)
+        assert calls[-1] == ("sub_9", {"pause_collection": ""}) and shop.is_member(client)
+
+        annual = _member(db, "year")
+        with pytest.raises(Exception) as err:
+            payments.pause_membership(db, annual, 1)
+        assert "Annual" in str(err.value.detail)
+
+
+def test_pause_made_in_stripe_reaches_lave(db_session, monkeypatch):
+    with db_session() as db:
+        client = _member(db)
+        sub = {"id": "sub_9", "status": "active", "metadata": {"lave_client_id": str(client.id), "plan": "elevate"},
+               "pause_collection": {"behavior": "void", "resumes_at": 1800000000},
+               "items": {"data": [{"price": {"lookup_key": "lave_elevate_month", "recurring": {"interval": "month"}}}]}}
+        _deliver(db, monkeypatch, "customer.subscription.updated", sub, "evt_pause")
+        db.refresh(client)
+        assert client.membership.paused and client.membership.resumes_at.year == 2027
+        sub["pause_collection"] = None
+        _deliver(db, monkeypatch, "customer.subscription.updated", sub, "evt_resume")
+        db.refresh(client)
+        assert not client.membership.paused and client.membership.resumes_at is None
+
+
+def test_pause_endpoint_and_account_page(api, client_headers, db_session, monkeypatch):
+    from app.models import Client as C
+    fake = SimpleNamespace(v1=SimpleNamespace(subscriptions=SimpleNamespace(update=lambda sid, params: None)))
+    monkeypatch.setattr(get_settings(), "stripe_secret_key", "sk_test_x")
+    monkeypatch.setattr(payments, "_stripe", lambda: fake)
+    me = api.get("/api/me", headers=client_headers).json()
+    with db_session() as db:
+        db.add(Membership(client_id=me["id"], plan=MembershipPlan.essence, status=MembershipStatus.active,
+                          stripe_subscription_id="sub_e", billing_interval="month"))
+        db.commit()
+    assert api.get("/api/me", headers=client_headers).json()["membership"]["can_pause"] is True
+    assert api.post("/api/me/membership/pause", headers=client_headers, json={"months": 6}).status_code == 422
+    r = api.post("/api/me/membership/pause", headers=client_headers, json={"months": 1})
+    assert r.status_code == 200 and r.json()["membership"]["status"] == "paused" and r.json()["membership"]["resumes_at"]
+    r = api.post("/api/me/membership/resume", headers=client_headers)
+    assert r.json()["membership"]["status"] == "active"

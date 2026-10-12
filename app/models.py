@@ -187,8 +187,20 @@ class Membership(Timestamped, Base):
     status: Mapped[MembershipStatus] = mapped_column(Enum(MembershipStatus), default=MembershipStatus.pending)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(64))
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime)
+    billing_interval: Mapped[str | None] = mapped_column(String(8))  # "month" or "year"
+    # Paused: no charges and no member benefits until resumes_at (or until resumed by hand).
+    paused: Mapped[bool] = mapped_column(Boolean, default=False)
+    resumes_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     client: Mapped[Client] = relationship(back_populates="membership")
+
+    @property
+    def is_active(self) -> bool:
+        return self.status == MembershipStatus.active and not self.paused
+
+    @property
+    def effective_status(self) -> str:
+        return "paused" if self.status == MembershipStatus.active and self.paused else self.status.value
 
 
 class Service(Timestamped, Base):

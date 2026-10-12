@@ -33,8 +33,9 @@ def address(a: Address) -> dict:
 def membership(m: Membership | None) -> dict | None:
     if not m:
         return None
-    return {"plan": m.plan.value, "plan_name": plan_name(m.plan.value), "status": m.status.value,
-            "current_period_end": iso(m.current_period_end)}
+    return {"plan": m.plan.value, "plan_name": plan_name(m.plan.value), "status": m.effective_status,
+            "current_period_end": iso(m.current_period_end), "resumes_at": iso(m.resumes_at),
+            "billing_interval": m.billing_interval, "can_pause": m.is_active and m.billing_interval != "year"}
 
 
 def client(c: Client, staff_view: bool = False) -> dict:

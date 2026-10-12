@@ -76,6 +76,10 @@ class WardrobePatch(BaseModel):
     hidden: bool | None = None
 
 
+class MembershipPause(BaseModel):
+    months: int = Field(ge=1, le=3)
+
+
 class MembershipCheckout(BaseModel):
     plan: MembershipPlan
     interval: str = Field("month", pattern="^(month|year)$")

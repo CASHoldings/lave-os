@@ -26,6 +26,7 @@ from app.schemas import (
     BookingRequest,
     CardSaved,
     MembershipCheckout,
+    MembershipPause,
     ProfileUpdate,
     ReturnUrl,
     VaultRetrieval,
@@ -260,6 +261,18 @@ def membership_checkout(body: MembershipCheckout, client: Client = Depends(curre
     url = payments.membership_checkout(db, client, body.plan, success_url=body.return_url, cancel_url=body.return_url,
                                        interval=body.interval)
     return {"url": url}
+
+
+@router.post("/membership/pause")
+def membership_pause(body: MembershipPause, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    payments.pause_membership(db, client, body.months)
+    return ser.client(client)
+
+
+@router.post("/membership/resume")
+def membership_resume(client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    payments.resume_membership(db, client)
+    return ser.client(client)
 
 
 @router.post("/membership/portal")

@@ -919,11 +919,27 @@
       const m = this.client.membership;
       const returnUrl = location.href.split("#")[0] + "#lave-membership";
       if (m && m.status !== "cancelled") {
+        const paused = m.status === "paused";
         panel.innerHTML = `<div class="plan" style="max-width:420px;margin:0 auto">
           <p class="eyebrow">Your membership</p><h2>${esc(m.plan_name)}</h2>
           <span class="status ${m.status === "active" ? "done" : "warn"}">${esc(m.status.replace("_", " "))}</span>
-          ${m.current_period_end ? `<p class="muted">Renews ${DAY_LONG.format(parse(m.current_period_end))}</p>` : ""}
-          <button class="btn primary" id="portal">Manage membership</button><p class="error" hidden></p></div>`;
+          ${paused ? `<p class="muted">No payments and no member benefits while paused.${m.resumes_at ? ` Resumes ${DAY_LONG.format(parse(m.resumes_at))}.` : ""}</p>
+              <button class="btn primary" id="resume">Resume now</button>`
+            : m.current_period_end ? `<p class="muted">Renews ${DAY_LONG.format(parse(m.current_period_end))}</p>` : ""}
+          ${m.can_pause ? `<div class="stack" id="pause-box"><button class="btn" id="pause">Pause membership</button></div>` : ""}
+          <button class="btn ${paused ? "" : "primary"}" id="portal">Card, invoices and cancelling</button><p class="error" hidden></p></div>`;
+        const fail = (e) => { const el = panel.querySelector(".error"); el.textContent = e.message; el.hidden = false; };
+        this.$("#pause")?.addEventListener("click", () => {
+          this.$("#pause-box").innerHTML = `<p class="small">Pause for how long? You won't be charged, and benefits stop until it resumes.</p>
+            <div class="row">${[1, 2, 3].map((n) => `<button class="btn" data-months="${n}">${n} month${n > 1 ? "s" : ""}</button>`).join("")}</div>`;
+          this.on("[data-months]", "click", async (_, b) => {
+            try { this.client = await this.call("POST", "/api/me/membership/pause", { months: Number(b.dataset.months) }); this.show(); }
+            catch (e) { fail(e); }
+          });
+        });
+        this.$("#resume")?.addEventListener("click", async () => {
+          try { this.client = await this.call("POST", "/api/me/membership/resume"); this.show(); } catch (e) { fail(e); }
+        });
         this.$("#portal").addEventListener("click", async () => {
           try { location.href = (await this.call("POST", "/api/me/membership/portal", { return_url: returnUrl })).url; }
           catch (e) { const el = panel.querySelector(".error"); el.textContent = e.message; el.hidden = false; }

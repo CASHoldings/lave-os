@@ -53,7 +53,8 @@
       <header><h2>Membership</h2><a href="/account/membership/">{{ "Manage" if client.membership and client.membership.status.value != "cancelled" else "Plans" }}</a></header>
       {% if client.membership and client.membership.status.value != "cancelled" %}
         <p class="big-word">{{ {"essence": "Essence", "elevate": "Elevate", "eclat": "Éclat"}.get(client.membership.plan.value, client.membership.plan.value) }}</p>
-        <p class="muted">{{ client.membership.status.value|replace("_", " ")|capitalize }}{% if client.membership.current_period_end %} · renews {{ client.membership.current_period_end.strftime("%-d %B") }}{% endif %}</p>
+        {% set ms = client.membership.effective_status %}
+        <p class="muted">{{ ms|replace("_", " ")|capitalize }}{% if ms == "paused" and client.membership.resumes_at %} · resumes {{ client.membership.resumes_at.strftime("%-d %B") }}{% elif client.membership.current_period_end %} · renews {{ client.membership.current_period_end.strftime("%-d %B") }}{% endif %}</p>
       {% else %}
         <p class="muted">Monthly care from £29, with collection, repairs, storage and member events.</p>
       {% endif %}
