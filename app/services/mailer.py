@@ -56,9 +56,9 @@ def send(to: str, subject: str, text: str, reply_to: str | None = None, raise_er
 
 def _explain(exc: Exception) -> str:
     if isinstance(exc, smtplib.SMTPAuthenticationError):
-        return "The mail server rejected the username or password (for SendGrid: user apikey, password = the API key)."
+        return "The mail server rejected the username or password (for Postmark: both are the Server API Token)."
     if isinstance(exc, smtplib.SMTPSenderRefused):
-        return f"The mail server won't send from {get_settings().mail_from}. Check the sender is verified in SendGrid."
+        return f"The mail server won't send from {get_settings().mail_from}. Check the domain is verified in Postmark."
     if isinstance(exc, smtplib.SMTPResponseException):
         return f"The mail server said: {exc.smtp_code} {exc.smtp_error.decode(errors='replace')[:200]}"
     return f"Couldn't reach the mail server: {exc}"
