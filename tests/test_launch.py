@@ -9,9 +9,8 @@ def test_old_wordpress_addresses_redirect(api):
         "/collection/collection-booking-slot-2026-09-21-on-10am-11am/": "/book/",
         "/membership-account/membership-levels/": "/memberships/plans/",
         "/product/lave-elevate/": "/memberships/plans/",
-        "/product/leather-blazer-dry-cleaning-luxury-care-for-structured-style/":
-            "/atelier/services/leather-blazer-dry-cleaning-luxury-care-for-structured-style/",
-        "/product/something-retired/": "/atelier/clean/",
+        "/product/leather-blazer-dry-cleaning-luxury-care-for-structured-style/": "/atelier/prices/#leather-jacket",
+        "/product/something-retired/": "/atelier/prices/",
         "/product-tag/boys/": "/atelier/clean/children/",
         "/product-tag/cashmere/": "/search/?q=cashmere",
         "/portfolio/venenatis-nam-phasellus/": "/",
@@ -20,7 +19,7 @@ def test_old_wordpress_addresses_redirect(api):
     for old, new in cases.items():
         r = api.get(old, follow_redirects=False)
         assert r.status_code == 301 and r.headers["location"] == new, (old, r.status_code, r.headers.get("location"))
-        assert api.get(old).status_code == 200, old
+        assert api.get(old.split("#")[0]).status_code == 200, old
 
 
 def test_missing_slash_still_arrives(api):
@@ -66,7 +65,7 @@ def test_robots_and_sitemap(api):
     assert "Disallow: /admin" in robots and "Sitemap: http://localhost:8000/sitemap.xml" in robots
     sm = api.get("/sitemap.xml")
     assert sm.headers["content-type"].startswith("application/xml")
-    for path in ("/atelier/", "/apothecary/wash/", "/memberships/plans/", "/laveworld/story/", "/atelier/services/"):
+    for path in ("/atelier/", "/apothecary/wash/", "/memberships/plans/", "/laveworld/story/", "/atelier/prices/", "/atelier/packs/", "/atelier/clean/bedding/"):
         assert f"http://localhost:8000{path}" in sm.text
     # Every address in the sitemap answers.
     import re

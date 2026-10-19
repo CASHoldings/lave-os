@@ -163,19 +163,6 @@ def test_products_and_variants(api, staff_headers):
     assert page.status_code == 200 and "For silk and satin." in page.text
 
 
-def test_service_website_fields(api, staff_headers):
-    r = api.post("/api/staff/services", headers=staff_headers,
-                 json={"code": "DC_SCARF", "name": "Silk scarf – dry clean", "category": "clean", "price_pence": 1400,
-                       "show_online": True, "summary": "Hand-finished.", "collections": ["women", "cats"]})
-    assert r.status_code == 201, r.text
-    s = r.json()
-    assert s["slug"] == "silk-scarf" and s["collections"] == ["women"]
-    assert "Silk scarf" in api.get("/atelier/clean/women/").text
-    assert api.get(f"/atelier/services/{s['slug']}/").status_code == 200
-    api.patch(f"/api/staff/services/{s['id']}", headers=staff_headers, json={"show_online": False})
-    assert "Silk scarf" not in api.get("/atelier/clean/women/").text
-
-
 def test_section_and_submenu_names_are_fixed(api, staff_headers):
     menus = _doc(api, staff_headers, "menus")["value"]
     lw = next(s for s in menus["sections"] if s["key"] == "laveworld")

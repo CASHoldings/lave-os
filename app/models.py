@@ -225,6 +225,17 @@ class Service(Timestamped, Base):
     # Note for the founder about something to check on this listing.
     review_note: Mapped[str] = mapped_column(Text, default="")
 
+    # Product repository (the full price list, edited in /admin → Products or imported from the pricing sheet).
+    product_category: Mapped[str] = mapped_column(String(80), default="")  # e.g. "Coats"; blank for legacy services
+    sale_mode: Mapped[str] = mapped_column(String(20), default="single")  # pack | single_or_pack | single | quote | per_m2 | per_kg
+    service_type: Mapped[str] = mapped_column(String(40), default="")  # Dry clean, Wash & press, Alteration…
+    cost_pence: Mapped[int | None] = mapped_column(Integer)  # what processing costs LAVE (SoFresh); blank until known
+    price_basis: Mapped[str] = mapped_column(String(60), default="")
+    internal_notes: Mapped[str] = mapped_column(Text, default="")
+    sort: Mapped[int] = mapped_column(Integer, default=0)
+    # A retired website listing points at the repository item that replaced it (for redirects).
+    replaced_by_id: Mapped[int | None] = mapped_column(Integer)
+
     @property
     def title(self) -> str:
         """The name without the SEO tail after the dash."""
@@ -262,6 +273,9 @@ class Order(Timestamped, Base):
     requested_services: Mapped[list] = mapped_column(JSON, default=list)
     # Wardrobe pieces the client said they're sending (ids of WardrobeItem).
     requested_wardrobe: Mapped[list] = mapped_column(JSON, default=list)
+    # What the client said they're sending, from their price-list estimate (a snapshot; staff confirm after inspection).
+    requested_items: Mapped[list] = mapped_column(JSON, default=list)
+    estimate_pence: Mapped[int | None] = mapped_column(Integer)
     client_notes: Mapped[str] = mapped_column(Text, default="")
     staff_notes: Mapped[str] = mapped_column(Text, default="")
     fees_pence: Mapped[int] = mapped_column(Integer, default=0)
@@ -411,6 +425,23 @@ class WardrobeItem(Timestamped, Base):
 
     service: Mapped[Service | None] = relationship()
     garments: Mapped[list[Garment]] = relationship(foreign_keys=[Garment.wardrobe_item_id], order_by=Garment.id)
+
+
+class Pack(Timestamped, Base):
+    """A mixed pack of repository items, priced as the sum of its items (no discounts)."""
+    __tablename__ = "packs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(120), unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(20), default="themed")  # starter | themed
+    note: Mapped[str] = mapped_column(Text, default="")  # who it's for / when it sells
+    summary: Mapped[str] = mapped_column(Text, default="")  # client-facing description
+    items: Mapped[list] = mapped_column(JSON, default=list)  # [{"service_id": 12, "qty": 3}]
+    months: Mapped[list] = mapped_column(JSON, default=list)  # months it's in season (1-12); empty = all year
+    image: Mapped[str] = mapped_column(String(400), default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    show_online: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class SiteSetting(Base):

@@ -1,7 +1,7 @@
 """Endpoints for signed-in clients, called by the embeds on the WordPress site."""
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -107,7 +107,8 @@ def remove_address(address_id: int, client: Client = Depends(current_client), db
 # Booking
 
 @router.post("/bookings", status_code=201)
-def book(body: BookingRequest, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+def book(body: BookingRequest, response: Response, lave_list: str | None = Cookie(default=None),
+         client: Client = Depends(current_client), db: Session = Depends(get_db)):
     settings = get_settings()
     if body.address_id is not None:
         _own_address(db, client, body.address_id)
@@ -115,8 +116,12 @@ def book(body: BookingRequest, client: Client = Depends(current_client), db: Ses
     pieces = wardrobe_svc.owned(db, client.id, body.wardrobe_item_ids)
     if len(pieces) != len(set(body.wardrobe_item_ids)):
         raise HTTPException(404, "Some of those pieces aren't in your Wardrobe.")
+    # The client's list from the price list goes with the booking as an estimate, then the list is cleared.
+    from app.services import repository as repo
+    planned = repo.summarise(db, repo.parse_list(lave_list))
     order = Order(client_id=client.id, requested_services=body.requested_services, client_notes=body.notes,
-                  requested_wardrobe=[p.id for p in pieces])
+                  requested_wardrobe=[p.id for p in pieces], requested_items=repo.snapshot(planned),
+                  estimate_pence=planned.estimate_pence if planned.lines else None)
     db.add(order)
     db.flush()
 
@@ -134,6 +139,8 @@ def book(body: BookingRequest, client: Client = Depends(current_client), db: Ses
     order_svc.log(db, order, OrderStatus.awaiting_collection.value)
     db.commit()
     db.refresh(order)
+    if lave_list:
+        response.delete_cookie(repo.LIST_COOKIE, path="/")
     return ser.order(order, detail=True)
 
 

@@ -38,6 +38,8 @@ def db_session():
         load_starting_catalogue(s)
         load_sample_products(s)
         load_starter_content(s)
+        from app.services.repository import load_repository
+        load_repository(s)
         s.add(StaffUser(email="admin@lavelondon.com", name="Ada", role=StaffRole.admin, password_hash=hash_password("admin-password")))
         s.add(StaffUser(email="driver@lavelondon.com", name="Dev", role=StaffRole.driver, password_hash=hash_password("driver-password")))
         s.commit()

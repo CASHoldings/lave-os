@@ -61,8 +61,8 @@ EXACT = {
     "/product/lave-essence-your-gateway-to-seamless-fabric-care/": "/memberships/plans/",
     "/product/lave-elevate/": "/memberships/plans/",
     "/product/lave-eclat/": "/memberships/plans/",
-    "/product/lave-care/": "/atelier/clean/",
-    "/product/on-demand-refresh/": "/atelier/clean/",
+    "/product/lave-care/": "/atelier/prices/",
+    "/product/on-demand-refresh/": "/atelier/prices/",
     "/product/beds-bulks/": "/atelier/clean/bedding/",
     "/cart/": "/basket/",
     "/checkout/": "/basket/",
@@ -109,8 +109,13 @@ def resolve(path: str, db: Session) -> str | None:
     if path in DEMO_PAGES:
         return "/"
     if m := PRODUCT.match(path):
-        slug = db.scalar(select(Service.slug).where(Service.slug == m.group(1), Service.show_online.is_(True)))
-        return f"/atelier/services/{slug}/" if slug else "/atelier/clean/"
+        # Old WooCommerce product → the price-list item that replaced it.
+        service = db.scalar(select(Service).where(Service.slug == m.group(1)))
+        if service and service.replaced_by_id:
+            service = db.get(Service, service.replaced_by_id)
+        if service and service.product_category and service.active and service.show_online:
+            return f"/atelier/prices/#{service.slug}"
+        return "/atelier/prices/"
     if m := TAG.match(path):
         tag = m.group(1)
         if tag in CHILD_TAGS:

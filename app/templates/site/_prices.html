@@ -1,0 +1,51 @@
+{# Shared pieces for the price list, packs and the client's list. #}
+
+{% macro add_button(kind, id, name, in_list, back) %}
+{% set key = ("p" if kind == "pack" else "i") ~ id %}
+<form class="add-form" method="post" action="/atelier/list/" data-add>
+  <input type="hidden" name="action" value="add"><input type="hidden" name="kind" value="{{ kind }}">
+  <input type="hidden" name="id" value="{{ id }}"><input type="hidden" name="qty" value="1"><input type="hidden" name="back" value="{{ back }}">
+  <button class="add-btn{% if in_list.get(key) %} added{% endif %}" type="submit" aria-label="Add {{ name }} to your list">
+    <span class="add-plus" aria-hidden="true">+</span><span class="add-text">{% if in_list.get(key) %}{{ in_list[key] }} in list{% else %}Add{% endif %}</span>
+  </button>
+</form>
+{% endmacro %}
+
+{% macro price_row(s, price_of, in_list, back) %}
+{% set p = price_of(s) %}
+<li class="price-row" id="{{ s.slug }}" data-name="{{ (s.name ~ ' ' ~ s.service_type)|lower }}">
+  <div class="price-what">
+    <span class="price-name">{{ s.name }}</span>
+    <span class="price-meta">{{ s.service_type }}{% if p.note %} · {{ p.note }}{% endif %}</span>
+    {% if s.summary %}<span class="price-desc">{{ s.summary }}</span>{% endif %}
+  </div>
+  <div class="price-amount">
+    <span class="price-main">{% if p.prefix %}<span class="price-from">{{ p.prefix }}</span> {% endif %}{{ p.main|gbp }}{% if p.suffix %} <span class="price-unit">{{ p.suffix }}</span>{% endif %}</span>
+    {% if p.pack %}<span class="price-pack">5 for {{ p.pack|gbp }}</span>{% endif %}
+  </div>
+  {{ add_button("item", s.id, s.name, in_list, back) }}
+</li>
+{% endmacro %}
+
+{% macro pack_card(card, in_list, back) %}
+{% set p = card.pack %}
+<article class="pack-card" id="{{ p.slug }}">
+  {% if p.note %}<p class="pack-when">{{ p.note }}</p>{% endif %}
+  <h3>{{ p.name }}</h3>
+  {% if p.summary %}<p class="pack-summary">{{ p.summary }}</p>{% endif %}
+  <ul class="pack-items">{% for s, q in card.lines %}<li><span class="pack-qty">{{ q }} ×</span> {{ s.name }}</li>{% endfor %}</ul>
+  <div class="pack-foot">
+    <div><span class="pack-price">{{ card.price_pence|gbp }}</span><span class="pack-count">{{ card.count }} item{{ "s" if card.count != 1 }}</span></div>
+    {{ add_button("pack", p.id, p.name, in_list, back) }}
+  </div>
+</article>
+{% endmacro %}
+
+{% macro list_bar(summary) %}
+<aside class="list-bar" data-list-bar {% if not summary.count %}hidden{% endif %} aria-live="polite">
+  <div class="list-bar-inner">
+    <span><strong>Your list</strong> · <span data-list-count>{{ summary.count }}</span> item(s) · estimate <strong data-list-estimate>{{ summary.estimate_pence|gbp }}</strong></span>
+    <a class="btn dark" href="/atelier/list/">Review and book</a>
+  </div>
+</aside>
+{% endmacro %}

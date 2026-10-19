@@ -34,7 +34,16 @@ def _bold(text: str):
 
 TEMPLATES.env.filters["bold"] = _bold
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "31"
+ASSET_VERSION = "37"
+
+PERSONALS = ["women", "men", "children", "pets"]
+HOMES = ["bedding", "drapery", "tableware", "furnishings"]
+HOME_INTROS = {
+    "bedding": "Sheets, duvets, pillows and blankets, laundered and finished to hotel standard.",
+    "drapery": "Curtains and blinds, measured and cleaned with care for lining and fabric.",
+    "tableware": "Table cloths, napkins and runners, crisply pressed for the next occasion.",
+    "furnishings": "Sofa and chair covers, cushions, throws and rugs, refreshed for the home.",
+}
 
 router = APIRouter(include_in_schema=False, dependencies=[Depends(site_dependency)])
 SOCIAL_ICONS = {name: icon for name, _url, icon in content.FOOTER["social"]}
@@ -43,13 +52,15 @@ SOCIAL_ICONS = {name: icon for name, _url, icon in content.FOOTER["social"]}
 def render(request: Request, template: str, status_code: int = 200, **ctx) -> HTMLResponse:
     viewer = peek_client(request.cookies.get(CLIENT_COOKIE))
     basket_count = sum(shop.parse_basket(request.cookies.get(BASKET_COOKIE)).values())
+    from app.services.repository import LIST_COOKIE, parse_list
+    list_count = sum(parse_list(request.cookies.get(LIST_COOKIE)).values())
     site = request.state.site
     footer = dict(site.docs["footer"], social=[dict(x, icon=SOCIAL_ICONS.get(x["name"], "")) for x in site.docs["footer"]["social"]],
                   anagram=site.brand["anagram"])
     base = {
         "site": site,
         "viewer": {"first_name": viewer.get("fn", "")} if viewer else None,
-        "basket_count": basket_count,
+        "basket_count": basket_count, "list_count": list_count,
         "sections": site.sections, "section": None, "subnav": None, "slug": slugify, "footer": footer,
         "logo_navy": site.brand["logo_navy"], "logo_white": site.brand["logo_white"], "favicon": site.brand["favicon"],
         "year": date.today().year,
@@ -91,8 +102,10 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
         paths.append(s.path)
         for n in s.subnav:
             paths.append(f"{s.path}{n.slug}/")
-    paths += [f"/atelier/services/{slug}/" for slug in db.scalars(
-        select(Service.slug).where(Service.show_online.is_(True), Service.active.is_(True), Service.slug != ""))]
+    from app.services import repository as repo
+    paths += ["/atelier/prices/", "/atelier/packs/"]
+    counts = repo.collection_counts(db)
+    paths += [f"/atelier/clean/{c}/" for c in repo.COLLECTION_PAGES if counts.get(c)]
     paths += [f"/apothecary/products/{p.slug}/" for p in shop.products(db)]
     paths += [f"/journal/{p.slug}/" for p in cms.published(db, limit=1000)]
     base = get_settings().site_url.rstrip("/")
@@ -108,7 +121,8 @@ def search(request: Request, q: str = "", db: Session = Depends(get_db)):
     services, pages = [], []
     if len(q) >= 2:
         needle = q.lower()
-        services = [s for s in catalogue.search(db, needle)]
+        from app.services import repository as repo
+        services = repo.search(db, needle)
         for sec in request.state.site.sections:
             for sub in sec.subnav:
                 for col in sub.columns:
@@ -133,19 +147,16 @@ def join_waitlist(first_name: str = Form(""), surname: str = Form(""), email: st
     return RedirectResponse("/apothecary/?waitlist=joined#waitlist", status_code=303)
 
 
-@router.get("/atelier/services/{slug}/", response_class=HTMLResponse)
-def service_page(request: Request, slug: str, db: Session = Depends(get_db)):
-    service = catalogue.by_slug(db, slug)
-    if not service:
+@router.get("/atelier/services/{slug}/")
+def service_page(slug: str, db: Session = Depends(get_db)):
+    """Items live on the price list now; old service pages point at the item that replaced them."""
+    from app.models import Service
+    service = db.scalar(select(Service).where(Service.slug == slug))
+    if service and service.replaced_by_id:
+        service = db.get(Service, service.replaced_by_id)
+    if not service or not service.product_category or not service.active or not service.show_online:
         raise HTTPException(404)
-    collection = (service.collections or [None])[0]
-    group = catalogue.group_of(service)
-    related = []
-    if collection:
-        related = [s for g, items in catalogue.for_collection(db, collection) if g == group for s in items if s.id != service.id][:4]
-    atelier = request.state.site.by_key["atelier"]
-    return render(request, "site/service.html", section=atelier, subnav=atelier.subnav[0],
-                  service=service, image=catalogue.image_url(service), collection=collection, group=group, related=related)
+    return RedirectResponse(f"/atelier/prices/#{service.slug}", status_code=301)
 
 
 @router.get("/{section_key}/", response_class=HTMLResponse)
@@ -156,8 +167,9 @@ def section_page(request: Request, section_key: str, waitlist: str = "", db: Ses
         return render(request, "site/membership.html", section=section, page=site.page("membership"), plans=site.plans,
                       compare=site.docs["plans"]["compare"], extras=site.docs["plans"]["extras"])
     if section.key == "atelier":
+        from app.services import repository as repo
         return render(request, "site/atelier.html", section=section, page=site.page("atelier"), plans=site.plans,
-                      counts=catalogue.counts(db))
+                      counts=repo.collection_counts(db))
     if section.key == "laveworld":
         raise HTTPException(404)  # served by journal_routes
     raise HTTPException(404)
@@ -175,10 +187,16 @@ def subnav_page(request: Request, section_key: str, sub_slug: str):
 @router.get("/{section_key}/{sub_slug}/{item_slug}/", response_class=HTMLResponse)
 def item_page(request: Request, section_key: str, sub_slug: str, item_slug: str, db: Session = Depends(get_db)):
     section = _section(request, section_key)
-    if section.key == "atelier" and sub_slug == "clean" and item_slug in catalogue.PERSONALS:
+    from app.services import repository as repo
+    if section.key == "atelier" and sub_slug == "clean" and item_slug in repo.COLLECTION_PAGES:
+        personal = item_slug in PERSONALS
+        intros = request.state.site.page("atelier")["collections"]
+        entries = repo.parse_list(request.cookies.get(repo.LIST_COOKIE))
         return render(request, "site/collection.html", section=section, subnav=section.subnav[0], item=item_slug.capitalize(),
-                      current=item_slug, collections=catalogue.PERSONALS, intro=request.state.site.page("atelier")["collections"][item_slug],
-                      groups=catalogue.for_collection(db, item_slug))
+                      current=item_slug, collections=PERSONALS if personal else HOMES, personal=personal,
+                      intro=intros.get(item_slug) or HOME_INTROS.get(item_slug, ""),
+                      departments=repo.catalogue(db, item_slug), price_of=repo.client_price, in_list=entries,
+                      summary=repo.summarise(db, entries))
     sub = next((s for s in section.subnav if s.slug == sub_slug), None)
     item = next((link for s in ([sub] if sub else []) for c in s.columns for link in c.labels if slugify(link) == item_slug), None)
     if not item:

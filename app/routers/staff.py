@@ -500,7 +500,8 @@ def remove_blackout(blackout_id: int, staff: StaffUser = Depends(admin_only), db
 
 @router.get("/services")
 def list_services(staff: StaffUser = anyone, db: Session = Depends(get_db)):
-    return [ser.service(s) for s in db.scalars(select(Service).order_by(Service.category, Service.name))]
+    # Price-list items first, in the repository's order; the retired starting list last.
+    return [ser.service(s) for s in db.scalars(select(Service).order_by((Service.product_category == "").asc(), Service.sort, Service.name))]
 
 
 @router.post("/services", status_code=201)
@@ -946,3 +947,164 @@ def email_test(staff: StaffUser = Depends(admin_only)):
     except mailer.MailError as e:
         raise HTTPException(502, str(e))
     return {"sent_to": staff.email}
+
+
+# Product repository (admins only: it carries costs and margins)
+
+from fastapi import File, Form, UploadFile  # noqa: E402
+from fastapi.responses import Response as _Response  # noqa: E402
+
+from app.models import Pack  # noqa: E402
+from app.schemas import PackIn, RepoItemIn, RepoItemPatch, RepoRules  # noqa: E402
+from app.services import repository as repo  # noqa: E402
+
+
+def _repo_item(s: Service) -> dict:
+    return {**ser.service(s), "cost_pence": s.cost_pence, "price_basis": s.price_basis, "internal_notes": s.internal_notes,
+            "margin": repo.margin(s.price_pence, s.cost_pence), "sort": s.sort,
+            "pack_pence": s.price_pence * 5 if s.sale_mode in ("pack", "single_or_pack") else None}
+
+
+def _repo_pack(p: Pack, by_id: dict) -> dict:
+    fig = repo.pack_figures(p, by_id)
+    return {"id": p.id, "slug": p.slug, "name": p.name, "kind": p.kind, "note": p.note, "summary": p.summary, "months": p.months or [],
+            "image": p.image, "active": p.active, "show_online": p.show_online, "price_pence": fig["price_pence"], "count": fig["count"],
+            "cost_pence": fig["cost_pence"], "margin": fig["margin"], "unavailable": fig["unavailable"],
+            "items": [{"service_id": s.id, "qty": q, "name": s.name, "price_pence": s.price_pence} for s, q in fig["lines"]]}
+
+
+@router.get("/repository")
+def repository_overview(staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    all_items = repo.items(db)
+    by_id = {s.id: s for s in all_items}
+    rules = repo.rules(db)
+    active = [s for s in all_items if s.active]
+    margins = [repo.margin(s.price_pence, s.cost_pence) for s in active]
+    categories = list(dict.fromkeys(s.product_category for s in all_items))
+    return {
+        "items": [_repo_item(s) for s in all_items],
+        "categories": categories,
+        "sale_modes": repo.SALE_LABELS,
+        "service_types": sorted({s.service_type for s in all_items if s.service_type}),
+        "collections": repo.COLLECTION_PAGES,
+        "packs": [_repo_pack(p, by_id) for p in repo.packs(db)],
+        "rules": rules,
+        "stats": {"items": len(active), "online": sum(1 for s in active if s.show_online),
+                  "missing_cost": sum(1 for m in margins if m is None), "quote": sum(1 for s in active if s.sale_mode == "quote"),
+                  "low_margin": sum(1 for m in margins if m is not None and m < rules["minimum_margin"]),
+                  "packs": sum(1 for p in repo.packs(db) if p.active)},
+    }
+
+
+def _apply_item(s: Service, data: dict, db: Session) -> None:
+    from app.models import ServiceCategory
+    for k, v in data.items():
+        if k == "collections":
+            v = [c for c in (v or []) if c in repo.COLLECTION_PAGES]
+        setattr(s, k, v)
+    s.category = repo._SERVICE_CATEGORY.get(s.service_type, ServiceCategory.clean)
+    s.unit = {"per_m2": "m2", "per_kg": "kg"}.get(s.sale_mode, "item")
+
+
+@router.post("/repository/items", status_code=201)
+def repository_add_item(body: RepoItemIn, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    if db.scalar(select(Service.id).where(Service.product_category != "", func.lower(Service.name) == body.name.strip().lower())):
+        raise HTTPException(409, "There's already an item with that name.")
+    data = body.model_dump()
+    collections = data.pop("collections")
+    s = Service(code=repo._new_code(db, body.name), active=True, tags=[],
+                sort=(db.scalar(select(func.max(Service.sort))) or 0) + 1)
+    _apply_item(s, data, db)
+    s.slug = repo._unique_slug(db, s.name)
+    s.collections = collections if collections is not None else repo.default_collections(s.product_category, s.name)
+    db.add(s)
+    db.commit()
+    return _repo_item(s)
+
+
+@router.patch("/repository/items/{item_id}")
+def repository_edit_item(item_id: int, body: RepoItemPatch, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    s = db.get(Service, item_id)
+    if not s or not s.product_category:
+        raise HTTPException(404, "Item not found.")
+    data = body.model_dump(exclude_unset=True)
+    if "name" in data and data["name"] != s.name:
+        if db.scalar(select(Service.id).where(Service.product_category != "", func.lower(Service.name) == data["name"].strip().lower(),
+                                              Service.id != s.id)):
+            raise HTTPException(409, "There's already an item with that name.")
+    _apply_item(s, data, db)
+    db.commit()
+    return _repo_item(s)
+
+
+def _pack_fields(p: Pack, body: PackIn, db: Session) -> None:
+    ids = [line.service_id for line in body.items]
+    found = set(db.scalars(select(Service.id).where(Service.id.in_(ids), Service.product_category != "")))
+    if missing := [i for i in ids if i not in found]:
+        raise HTTPException(400, f"Unknown items in the pack: {missing}.")
+    p.name, p.kind, p.note, p.summary, p.image = body.name.strip(), body.kind, body.note, body.summary, body.image
+    p.items = [line.model_dump() for line in body.items]
+    p.months = sorted({m for m in body.months if 1 <= m <= 12})
+    p.active, p.show_online = body.active, body.show_online
+
+
+@router.post("/repository/packs", status_code=201)
+def repository_add_pack(body: PackIn, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services.content import unique_slug
+    p = Pack(slug=unique_slug(db, body.name, model=Pack), sort=(db.scalar(select(func.max(Pack.sort))) or 0) + 1)
+    _pack_fields(p, body, db)
+    db.add(p)
+    db.commit()
+    return _repo_pack(p, {s.id: s for s in repo.items(db)})
+
+
+@router.put("/repository/packs/{pack_id}")
+def repository_edit_pack(pack_id: int, body: PackIn, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    p = db.get(Pack, pack_id)
+    if not p:
+        raise HTTPException(404, "Pack not found.")
+    _pack_fields(p, body, db)
+    db.commit()
+    return _repo_pack(p, {s.id: s for s in repo.items(db)})
+
+
+@router.delete("/repository/packs/{pack_id}", status_code=204)
+def repository_delete_pack(pack_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    p = db.get(Pack, pack_id)
+    if not p:
+        raise HTTPException(404, "Pack not found.")
+    db.delete(p)
+    db.commit()
+
+
+@router.put("/repository/rules")
+def repository_rules(body: RepoRules, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    for k, v in body.model_dump().items():
+        repo.set_setting(db, "rules_text" if k == "text" else k, v)
+    db.commit()
+    return repo.rules(db)
+
+
+@router.post("/repository/import")
+async def repository_import(file: UploadFile = File(...), apply: bool = Form(False), retire_missing: bool = Form(False),
+                            staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    raw = await file.read(5 * 1024 * 1024 + 1)
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(400, "That file is over 5 MB. Export just the item list as CSV.")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1252", errors="replace")
+    if not apply:
+        return repo.preview_import(db, text)
+    result = repo.apply_import(db, text, retire_missing=retire_missing)
+    if not result["applied"]:
+        raise HTTPException(400, " ".join(result["problems"][:5]))
+    return result
+
+
+@router.get("/repository/export.csv")
+def repository_export(staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services.clock import local_now
+    return _Response(repo.export_csv(db), media_type="text/csv",
+                     headers={"Content-Disposition": f'attachment; filename="LAVE_Products_{local_now():%Y-%m-%d}.csv"'})

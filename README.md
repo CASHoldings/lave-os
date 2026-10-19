@@ -28,6 +28,7 @@ Visitors ──▶ lavelondon.com (this app, server-rendered pages)
 | Apothecary | Products with size and scent · basket · delivery or collection · Stripe Checkout | Orders to pack, dispatch with tracking · price and stock per option · selling on/off (emails the waitlist) |
 | Journal | THREAD by LAVE, events (LAVE Experiences), press · LAVEWorld pages · contact form | Write, preview, schedule and publish posts · edit LAVEWorld pages · upload images · read contact messages |
 | Website | Every page's text and photos, menus, membership plans and prices, footer | Edit and save live (admins), reset to original · image library with alt text · copy images off lavelondon.com · Atelier services and Apothecary products |
+| Products | The full Atelier price list on /atelier/prices/, packs on /atelier/packs/, and a client list sent with each booking as an estimate | The private product repository: 329 items with cost and margin, 71 packs priced as the sum of their items, pricing rules, CSV import (with a preview of every change) and export |
 
 Rules the system enforces:
 - slot capacity

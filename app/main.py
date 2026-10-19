@@ -12,6 +12,7 @@ from app.routers import client, public, staff
 from app.site import account_routes as site_accounts
 from app.site import routes as site
 from app.site import journal_routes as site_journal
+from app.site import price_routes as site_prices
 from app.site import shop_routes as site_shop
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     # Last: the website's /{section}/ routes would otherwise shadow the paths above.
     app.include_router(site_accounts.router)
     app.include_router(site_shop.router)
+    app.include_router(site_prices.router)
     app.include_router(site_journal.router)
     app.include_router(site.router)
     return app

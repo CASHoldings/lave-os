@@ -1,0 +1,330 @@
+Category,Item,How sold,Service,LAVE price £,Pack of 5 £,LAVE cost £,Margin %,Price basis,Notes
+Shirts & tops (wash & press),"Shirt, non-member folded",Packs only,Wash & press,£6.99,£34.95,£1.68,76%,American Standard,
+Shirts & tops (wash & press),"Shirt, non-member hung",Packs only,Wash & press,£5.99,£29.95,£1.40,77%,American Standard,
+Shirts & tops (wash & press),"Shirt, hung - press only",Single,Wash & press,£3.99,,,,American Standard,
+Shirts & tops (wash & press),"Shirt, folded - press only",Single,Wash & press,£4.99,,,,American Standard,
+Shirts & tops (wash & press),"Shirt, linen/dark hung",Packs only,Wash & press,£4.99,£24.95,,,American Standard,
+Shirts & tops (wash & press),"Shirt, linen/dark folded",Packs only,Wash & press,£5.99,£29.95,,,American Standard,
+Shirts & tops (wash & press),"Shirt, lady washable",Packs only,Wash & press,£4.99,£24.95,£1.50,70%,American Standard,
+Shirts & tops (wash & press),"T-shirt, washable",Packs only,Wash & press,£5.99,£29.95,£1.40,77%,American Standard,
+Shirts & tops (wash & press),"T-shirt/polo, washable",Packs only,Wash & press,£7.99,£39.95,£1.40,82%,American Standard,
+Shirts & tops (wash & press),"Top, long sleeve (wash & press)",Packs only,Wash & press,£7.99,£39.95,,,American Standard,"American basis: T-shirt/polo, washable."
+Shirts & tops (wash & press),Blouse (wash & press),Packs only,Wash & press,£4.99,£24.95,,,American Standard,American basis: lady washable shirt.
+Shirts & tops (wash & press),Sweatshirt / hoodie,Packs only,Wash & press,£12.99,£64.95,,,American Standard,American basis: light knitwear.
+Shirts & tops (wash & press),Vest top,Packs only,Wash & press,£5.99,£29.95,,,American Standard,"American basis: T-shirt, washable."
+Shirts & tops (wash & press),"Shirt, silk (men's)",Single or pack,Wash & press,£15.99,£79.95,£3.50,78%,American Standard,American basis: silk top/blouse.
+Tops & shirts (dry clean),"Top/blouse, plain",Packs only,Dry clean,£13.99,£69.95,£3.00,79%,American Standard,
+Tops & shirts (dry clean),"Top/blouse, silk",Single or pack,Dry clean,£15.99,£79.95,£3.50,78%,American Standard,
+Tops & shirts (dry clean),"Top, beaded",Single,Dry clean,£19.99,,£4.50,77%,American Standard,
+Tops & shirts (dry clean),T-shirt,Packs only,Dry clean,£11.99,£59.95,£1.75,85%,American Standard,
+Tops & shirts (dry clean),"Shirt, dry clean",Packs only,Dry clean,£12.99,£64.95,£3.00,77%,American Standard,
+Tops & shirts (dry clean),Bolero / shrug,Single or pack,Dry clean,£12.99,£64.95,,,American Standard,American basis: light knitwear.
+Tops & shirts (dry clean),Poncho / cape,Single or pack,Dry clean,£17.99,£89.95,,,American Standard,American basis: pashmina/shawl.
+Suits & formal,Tie,Single or pack,Dry clean,£12.99,£64.95,£2.48,81%,American Standard,
+Suits & formal,Suit (2pc),Single or pack,Dry clean,£25.99,£129.95,£7.95,69%,American Standard,
+Suits & formal,"Suit, 3-piece",Single or pack,Dry clean,£30.99,£154.95,£10.48,66%,American Standard,
+Suits & formal,Dinner suit,Single or pack,Dry clean,£30.99,£154.95,£9.95,68%,American Standard,
+Suits & formal,"Suit, skirt+jacket",Single or pack,Dry clean,£25.99,£129.95,£7.93,69%,American Standard,SoFresh = jacket + skirt rates
+Suits & formal,"Suit, dress+jacket",Single or pack,Dry clean,£30.99,£154.95,£10.20,67%,American Standard,SoFresh = jacket + dress rates
+Suits & formal,"Jumpsuit, short",Single or pack,Dry clean,£24.99,£124.95,£6.50,74%,American Standard,
+Suits & formal,"Jumpsuit, long",Single or pack,Dry clean,£28.99,£144.95,£6.50,78%,American Standard,
+Suits & formal,Waistcoat,Single or pack,Dry clean,£13.99,£69.95,£3.13,78%,American Standard,
+Suits & formal,Suit (2 pcs) combo,Single,Dry clean,£44.99,,,,American Standard,American sells this only as Premier; LAVE price = American Premier price. No SoFresh cost yet.
+Suits & formal,"Suit, linen 2-piece",Single or pack,Dry clean,£25.99,£129.95,£6.98,73%,American Standard,American basis: 2-piece suit.
+Suits & formal,"Morning suit, 2-piece",Single or pack,Dry clean,£30.99,£154.95,£8.25,73%,American Standard,American basis: dinner suit.
+Suits & formal,"Morning suit, 3-piece",Single or pack,Dry clean,£30.99,£154.95,£9.25,70%,American Standard,American basis: 3-piece suit.
+Suits & formal,Dinner jacket,Single or pack,Dry clean,£16.99,£84.95,£4.50,74%,American Standard,American basis: tailored jacket.
+Suits & formal,Dinner trousers,Single or pack,Dry clean,£12.99,£64.95,,,American Standard,American basis: standard trousers.
+Suits & formal,Bow tie,Single or pack,Dry clean,£12.99,£64.95,£1.75,87%,American Standard,American basis: tie.
+Suits & formal,Cummerbund,Single or pack,Dry clean,£13.99,£69.95,,,American Standard,American basis: waistcoat.
+Suits & formal,Playsuit,Single or pack,Dry clean,£24.99,£124.95,,,American Standard,American basis: short jumpsuit.
+Jackets,"Jacket, standard",Single or pack,Dry clean,£15.99,£79.95,£4.45,72%,American Standard,
+Jackets,"Jacket, tailored",Single or pack,Dry clean,£16.99,£84.95,£4.45,74%,American Standard,
+Jackets,"Jacket, quilted",Single or pack,Dry clean,£23.99,£119.95,,,American Standard,
+Jackets,"Jacket, puffa",Single or pack,Dry clean,£30.99,£154.95,£11.00,65%,American Standard,
+Jackets,"Jacket, zipped",Single or pack,Dry clean,£16.99,£84.95,£4.45,74%,American Standard,
+Jackets,"Jacket, leather trim",Single,Dry clean,£35.99,,£5.00,86%,American Standard,"SoFresh ""jacket with trim"" rate"
+Jackets,"Jacket, linen",Single or pack,Dry clean,£16.99,£84.95,,,American Standard,American basis: tailored jacket.
+Jackets,Gilet / body warmer (puffa),Single or pack,Dry clean,£23.99,£119.95,,,American Standard,American basis: quilted jacket.
+Jackets,Fleece,Single or pack,Dry clean,£16.99,£84.95,£3.00,82%,American Standard,American basis: zipped jacket.
+Jackets,"Jacket, designer",Quote,Dry clean,£72.99,,£25.50,65%,Cost-based (65% min margin),SoFresh designer rate; price per piece
+Trousers,"Trousers, standard",Packs only,Dry clean,£12.99,£64.95,£3.50,73%,American Standard,
+Trousers,"Trousers, 3/4",Packs only,Dry clean,£13.99,£69.95,£3.50,75%,American Standard,
+Trousers,Jeans,Packs only,Dry clean,£12.99,£64.95,£3.00,77%,American Standard,
+Trousers,Shorts,Packs only,Dry clean,£10.99,£54.95,£2.38,78%,American Standard,
+Trousers,"Trousers, leather trim",Single,Dry clean,£20.99,,,,American Standard,
+Trousers,"Trousers, culottes",Single or pack,Dry clean,£15.99,£79.95,£3.50,78%,American Standard,
+Trousers,"Trousers, wash & press",Packs only,Wash & press,£12.99,£64.95,,,American Standard,American basis: standard trousers.
+Trousers,"Trousers, silk / delicate",Single or pack,Dry clean,£15.99,£79.95,£4.25,73%,American Standard,American basis: culottes.
+Trousers,"Trousers, linen",Single or pack,Dry clean,£15.99,£79.95,£4.25,73%,American Standard,American basis: culottes.
+Trousers,"Trousers, velvet",Single or pack,Dry clean,£15.99,£79.95,£4.25,73%,American Standard,American basis: culottes.
+Trousers,Leggings,Packs only,Wash & press,£7.99,£39.95,,,American Standard,American basis: washable T-shirt/polo.
+Trousers,Tracksuit bottoms / joggers,Packs only,Wash & press,£12.99,£64.95,,,American Standard,American basis: standard trousers.
+Skirts,"Skirt, plain short",Single or pack,Dry clean,£13.99,£69.95,£3.48,75%,American Standard,
+Skirts,"Skirt, plain long",Single or pack,Dry clean,£14.99,£74.95,£3.48,77%,American Standard,"SoFresh ""from"" price"
+Skirts,"Skirt, part pleated",Single or pack,Dry clean,£17.99,£89.95,£4.50,75%,American Standard,
+Skirts,"Skirt, full pleat",Single or pack,Dry clean,£24.99,£124.95,£4.50,82%,American Standard,
+Skirts,"Kilt, full scottish",Single or pack,Dry clean,£37.99,£189.95,£4.50,88%,American Standard,
+Skirts,"Skirt, silk / delicate",Single or pack,Dry clean,£17.99,£89.95,£4.50,75%,American Standard,American basis: part-pleated skirt.
+Skirts,"Skirt, wash & press",Single or pack,Wash & press,£13.99,£69.95,,,American Standard,American basis: plain short skirt.
+Dresses,"Dress, plain short",Single or pack,Dry clean,£23.99,£119.95,£5.75,76%,American Standard,
+Dresses,"Dress, short silk",Single or pack,Dry clean,£25.99,£129.95,£7.50,71%,American Standard,
+Dresses,"Dress, plain long",Single or pack,Dry clean,£26.99,£134.95,£5.75,79%,American Standard,
+Dresses,"Dress, long silk",Single or pack,Dry clean,£30.99,£154.95,£7.50,76%,American Standard,
+Dresses,"Dress, evening",Quote,Dry clean,£33.99,,£10.00,71%,American Standard,"SoFresh ""from"" price"
+Dresses,"Dress, evening silk",Quote,Dry clean,£40.99,,£7.50,82%,American Standard,SoFresh delicate dress rate
+Dresses,"Dress, evening long",Quote,Dry clean,£50.99,,£10.00,80%,American Standard,"SoFresh ""from"" price"
+Dresses,"Dress, beaded delicate",Quote,Dry clean,£35.99,,,,American Standard,
+Dresses,"Dress, beaded silk",Quote,Dry clean,£40.99,,,,American Standard,
+Dresses,"Dress, beaded long",Quote,Dry clean,£53.99,,,,American Standard,
+Dresses,"Dress, delicate",Single or pack,Dry clean,£25.99,£129.95,£7.50,71%,American Standard,American basis: short silk dress.
+Dresses,"Dress, wash & press",Single or pack,Wash & press,£23.99,£119.95,,,American Standard,American basis: plain short dress.
+Dresses,Nightdress,Single or pack,Dry clean,£10.99,£54.95,,,American Standard,American basis: pyjamas.
+Bridal & occasion,"Wedding dress (clean, hung)",Quote,Specialist clean,£275.99,,£87.50,68%,Market reference ×1.67,SoFresh £175 includes box; quote after inspection
+Bridal & occasion,Wedding dress (clean + boxed),Quote,Specialist clean,£350.99,,£87.50,75%,Market reference ×1.67,From price; quote after inspection
+Bridal & occasion,Wedding dress box (box only),Quote,Specialist clean,£41.99,,,,Market reference ×1.67,
+Bridal & occasion,Bridal veil,Quote,Specialist clean,£17.99,,,,American Standard,American basis: pashmina/shawl.
+Bridal & occasion,Bridesmaid dress,Quote,Specialist clean,£33.99,,,,American Standard,American basis: evening dress.
+Bridal & occasion,Ball gown,Quote,Specialist clean,£50.99,,,,American Standard,American basis: long evening dress.
+Bridal & occasion,Prom dress,Quote,Specialist clean,£33.99,,,,American Standard,American basis: evening dress.
+Bridal & occasion,Christening gown,Quote,Specialist clean,£23.99,,,,American Standard,American basis: plain short dress.
+Bridal & occasion,Academic / graduation gown,Quote,Specialist clean,£26.99,,,,American Standard,American basis: plain long dress.
+Bridal & occasion,Ceremonial / church robe,Quote,Specialist clean,£26.99,,,,American Standard,American basis: plain long dress.
+Coats,"Coat, 3/4",Single or pack,Dry clean,£23.99,£119.95,£8.48,65%,American Standard,
+Coats,"Coat, long",Single or pack,Dry clean,£27.99,£139.95,£8.48,70%,American Standard,
+Coats,"Coat, puffa",Single or pack,Dry clean,£45.99,£229.95,£11.00,76%,American Standard,
+Coats,"Coat, cashmere",Single or pack,Dry clean,£30.99,£154.95,£8.48,73%,American Standard,SoFresh overcoat rate; luxury coats £49.30 at SoFresh
+Coats,"Coat, leather trim",Single,Dry clean,£45.99,,,,American Standard,
+Coats,"Coat, trench",Single or pack,Dry clean,£26.99,£134.95,£8.48,69%,American Standard,
+Coats,"Coat, imitation fur",Quote,Dry clean,£45.99,,,,American Standard,SoFresh fur rate (£90) is for real fur; get a faux-fur rate
+Coats,"Coat / jacket, Moncler / Canada Goose",Quote,Dry clean,£99.99,,£27.50,72%,American Standard,American basis: Premier puffa coat.
+Coats,"Coat, designer (Burberry / Max Mara)",Quote,Dry clean,£69.99,,£24.65,65%,American Standard,American basis: Premier cashmere coat.
+Coats,"Coat, wash & press",Single or pack,Wash & press,£27.99,£139.95,,,American Standard,American basis: long coat.
+Knitwear & accessories,"Knitwear, light",Single or pack,Dry clean,£12.99,£64.95,£3.63,72%,American Standard,
+Knitwear & accessories,"Knitwear, heavy",Single or pack,Dry clean,£14.99,£74.95,£4.38,71%,American Standard,
+Knitwear & accessories,"Scarf, small",Single or pack,Dry clean,£13.99,£69.95,£2.73,80%,American Standard,
+Knitwear & accessories,"Scarf, large",Single or pack,Dry clean,£15.99,£79.95,£2.73,83%,American Standard,
+Knitwear & accessories,Cap/hat,Single or pack,Dry clean,£15.99,£79.95,£2.98,81%,American Standard,
+Knitwear & accessories,Pashmina/shawl,Single or pack,Dry clean,£17.99,£89.95,£4.00,78%,American Standard,
+Knitwear & accessories,Dressing gown,Single or pack,Dry clean,£20.99,£104.95,£4.50,79%,American Standard,
+Knitwear & accessories,Cardigan,Single or pack,Dry clean,£12.99,£64.95,£3.50,73%,American Standard,American basis: light knitwear.
+Knitwear & accessories,"Cardigan, long",Single or pack,Dry clean,£14.99,£74.95,,,American Standard,American basis: heavy knitwear.
+Knitwear & accessories,"Jumper, cashmere",Single or pack,Dry clean,£14.99,£74.95,£4.50,70%,American Standard,American basis: heavy knitwear.
+Knitwear & accessories,Shawl,Single or pack,Dry clean,£17.99,£89.95,£4.50,75%,American Standard,American basis: pashmina/shawl.
+Knitwear & accessories,"Shawl, silk",Single or pack,Dry clean,£17.99,£89.95,£5.50,69%,American Standard,American basis: pashmina/shawl.
+Knitwear & accessories,"Scarf, silk",Single or pack,Dry clean,£15.99,£79.95,£4.00,75%,American Standard,American basis: large scarf.
+Knitwear & accessories,Handkerchief,Single or pack,Dry clean,£2.99,£14.95,£0.75,75%,American Standard,American basis: socks (smallest laundry item).
+Knitwear & accessories,"Handkerchief, silk",Single or pack,Dry clean,£4.49,£22.45,£1.75,61%,American Standard,American basis: pillowcase.
+Knitwear & accessories,"Gloves, fabric",Single or pack,Dry clean,£12.99,£64.95,£3.00,77%,American Standard,American doesn't list fabric gloves; priced at American's small-accessory rate (tie £12.99)
+Knitwear & accessories,"Belt, fabric",Single or pack,Dry clean,£12.99,£64.95,,,American Standard,American basis: tie.
+Knitwear & accessories,Collar (detachable),Single or pack,Dry clean,£4.49,£22.45,,,American Standard,American basis: pillowcase.
+Knitwear & accessories,Petticoat / slip,Single or pack,Dry clean,£11.99,£59.95,,,American Standard,American basis: dry-clean T-shirt.
+Traditional & cultural wear,Sari,Quote,Specialist clean,£30.99,,,,American Standard,American basis: long silk dress.
+Traditional & cultural wear,Kurta,Quote,Specialist clean,£26.99,,,,American Standard,American basis: plain long dress.
+Traditional & cultural wear,Kaftan,Quote,Specialist clean,£26.99,,,,American Standard,American basis: plain long dress.
+Traditional & cultural wear,Agbada (3-piece),Quote,Specialist clean,£30.99,,,,American Standard,From-price = American 3-piece suit (American has no agbada). Quote after inspection; heavy embroidery may need more.
+Traditional & cultural wear,Boubou / grand boubou,Quote,Specialist clean,£26.99,,,,American Standard,From-price = American long plain dress (American has no boubou). Quote after inspection.
+Traditional & cultural wear,Gele / head wrap,Quote,Specialist clean,£15.99,,,,American Standard,From-price = American large scarf (American has no gele). Quote after inspection.
+Traditional & cultural wear,Abaya,Quote,Specialist clean,£26.99,,,,American Standard,From-price = American long plain dress (American has no abaya). Quote after inspection.
+Traditional & cultural wear,Lehenga,Quote,Specialist clean,£50.99,,,,American Standard,From-price = American long evening dress (American has no lehenga). Quote after inspection.
+Traditional & cultural wear,Kimono,Quote,Specialist clean,£30.99,,,,American Standard,From-price = American long silk dress (American has no kimono). Quote after inspection.
+Children's,"Child's item, age 0-3",Single or pack,Wash & press,£5.99,£29.95,,,American Standard,American basis: washable T-shirt.
+Children's,"Child's item, age 3-6",Single or pack,Wash & press,£5.99,£29.95,,,American Standard,American basis: washable T-shirt.
+Children's,Child's dress (dry clean),Single or pack,Dry clean,£13.99,£69.95,,,American Standard,American basis: plain short skirt.
+Children's,Child's coat (dry clean),Single or pack,Dry clean,£15.99,£79.95,,,American Standard,American basis: standard jacket.
+Children's,Child's suit (dry clean),Single or pack,Dry clean,£15.99,£79.95,,,American Standard,American basis: standard jacket.
+Children's,Child's knitwear,Single or pack,Wash & press,£12.99,£64.95,,,American Standard,American basis: light knitwear.
+Children's,Child's trousers,Single or pack,Wash & press,£10.99,£54.95,,,American Standard,American basis: shorts.
+Children's,Soft toy,Single or pack,Wash & press,£16.99,£84.95,,,American Standard,American basis: medium cushion cover.
+"Sportswear, workwear & uniforms",Tracksuit (top + bottoms),Single or pack,Wash & press,£20.98,£104.90,,,American Standard,American basis: polo + standard trousers.
+"Sportswear, workwear & uniforms",Swimwear / bikini,Single or pack,Wash & press,£3.99,£19.95,,,American Standard,American basis: bra.
+"Sportswear, workwear & uniforms",Lab coat,Single or pack,Wash & press,£15.99,£79.95,,,American Standard,American basis: standard jacket.
+"Sportswear, workwear & uniforms",Overalls / boiler suit,Single or pack,Wash & press,£28.99,£144.95,,,American Standard,American basis: long jumpsuit.
+"Sportswear, workwear & uniforms",Waterproofing treatment (add-on),Single,Treatment (add-on),£4.99,,,,Market reference ×1.67,
+"Leather, suede, wax & fur",Leather jacket,Quote,Specialist clean,£109.99,,£34.45,69%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Leather trousers,Quote,Specialist clean,£89.99,,£29.15,68%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Leather waistcoat,Quote,Specialist clean,£49.99,,,,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Leather skirt,Quote,Specialist clean,£89.99,,£34.45,62%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur","Leather dress, short",Quote,Specialist clean,£89.99,,,,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur","Leather dress, long",Quote,Specialist clean,£119.99,,,,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur","Leather coat, 3/4",Quote,Specialist clean,£123.99,,£39.75,68%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur","Leather coat, long",Quote,Specialist clean,£129.99,,£39.75,69%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Suede jacket,Quote,Specialist clean,£89.99,,£34.45,62%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Suede trousers,Quote,Specialist clean,£89.99,,£29.15,68%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Suede skirt,Quote,Specialist clean,£79.99,,£34.45,57%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur","Suede coat, long",Quote,Specialist clean,£129.99,,£39.75,69%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Wax jacket,Quote,Specialist clean,£119.99,,,,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur","Wax coat, long",Quote,Specialist clean,£139.99,,,,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Real fur jacket,Quote,Specialist clean,£139.99,,,,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Real fur coat,Quote,Specialist clean,£159.99,,£45.00,72%,American Standard,From price; final price after inspection
+"Leather, suede, wax & fur",Sheepskin / shearling coat,Quote,Specialist clean,£129.99,,,,American Standard,American basis: long leather coat.
+"Leather, suede, wax & fur","Gloves, leather (pair)",Quote,Specialist clean,£49.99,,£20.68,59%,American Standard,American from-price
+"Leather, suede, wax & fur",Item with leather / fur / suede trim,Quote,Specialist clean,£45.99,,£13.50,71%,American Standard,American basis: leather-trim coat.
+"Shoes, trainers & bags","Handbag, leather",Quote,Specialist clean,£79.99,,,,American Standard,American from-price
+"Shoes, trainers & bags","Bag, fabric / tote",Single,Specialist clean,£10.99,,,,Market reference ×1.67,
+"Shoes, trainers & bags",Trainers clean,Single,Specialist clean,£25.99,,,,Market reference ×1.67,Market excludes trainers valued over £250
+"Shoes, trainers & bags",Ugg / sheepskin boots,Quote,Specialist clean,£50.99,,,,Market reference ×1.67,
+"Shoes, trainers & bags",Shoe shine,Single,Specialist clean,£25.99,,,,Market reference ×1.67,
+"Shoes, trainers & bags",Slippers,Single,Specialist clean,£5.99,,,,Market reference ×1.67,
+Bed linen,Pillowcase,Single or pack,Laundry & finish,£4.49,£22.45,£1.05,77%,American Standard,
+Bed linen,"Sheet, flat single",Single or pack,Laundry & finish,£9.99,£49.95,£2.48,75%,American Standard,
+Bed linen,"Sheet, flat double",Single or pack,Laundry & finish,£12.99,£64.95,£3.25,75%,American Standard,
+Bed linen,"Sheet, flat king",Single or pack,Laundry & finish,£13.99,£69.95,£3.60,74%,American Standard,
+Bed linen,"Sheet, fitted single",Single or pack,Laundry & finish,£9.99,£49.95,£2.48,75%,American Standard,
+Bed linen,"Sheet, fitted double",Single or pack,Laundry & finish,£12.99,£64.95,£3.25,75%,American Standard,
+Bed linen,"Sheet, fitted king",Single or pack,Laundry & finish,£13.99,£69.95,£3.60,74%,American Standard,
+Bed linen,"Duvet cover, single",Single or pack,Laundry & finish,£11.99,£59.95,£4.13,66%,American Standard,
+Bed linen,"Duvet cover, double",Single or pack,Laundry & finish,£12.99,£64.95,£4.50,65%,American Standard,
+Bed linen,"Duvet cover, king",Single or pack,Laundry & finish,£14.99,£74.95,£4.88,67%,American Standard,
+Bed linen,"Sheet, super king",Single or pack,Laundry & finish,£13.99,£69.95,£3.75,73%,American Standard,American basis: king sheet.
+Bed linen,"Duvet cover, super king",Single or pack,Laundry & finish,£14.99,£74.95,£5.50,63%,American Standard,American basis: king duvet cover.
+Bed linen,"Pillowcase, silk",Single or pack,Laundry & finish,£4.49,£22.45,£2.00,55%,American Standard,American basis: pillowcase.
+Bed linen,Valance,Single or pack,Laundry & finish,£12.99,£64.95,,,American Standard,American basis: double fitted sheet.
+Bed linen,Bed runner / footer,Single or pack,Laundry & finish,£22.99,£114.95,,,American Standard,American basis: single bedspread.
+Bed linen,"Bed set, single (sheet, cover, 1 pillowcase)",Single,Laundry & finish,£26.47,,£7.00,74%,American Standard,American basis: sum of the pieces.
+Bed linen,"Bed set, double (sheet, cover, 2 pillowcases)",Single,Laundry & finish,£34.96,,£8.13,77%,American Standard,American basis: sum of the pieces.
+Bed linen,"Bed set, king (sheet, cover, 4 pillowcases)",Single,Laundry & finish,£46.94,,£10.75,77%,American Standard,American basis: sum of the pieces.
+Bed linen,"Bed set, super king",Single,Laundry & finish,£46.94,,£10.50,78%,American Standard,American basis: sum of the pieces (king sizes).
+"Duvets, pillows & home","Duvet, non-feather single",Single or pack,Laundry (large item),£23.99,£119.95,£9.00,62%,American Standard,
+"Duvets, pillows & home","Duvet, non-feather double",Single or pack,Laundry (large item),£32.99,£164.95,£10.63,68%,American Standard,
+"Duvets, pillows & home","Duvet, non-feather king",Single or pack,Laundry (large item),£39.99,£199.95,£11.75,71%,American Standard,
+"Duvets, pillows & home","Duvet, feather single",Single or pack,Laundry (large item),£37.99,£189.95,£9.00,76%,American Standard,
+"Duvets, pillows & home","Duvet, feather double",Single or pack,Laundry (large item),£44.99,£224.95,£13.75,69%,American Standard,
+"Duvets, pillows & home","Duvet, feather king",Single or pack,Laundry (large item),£49.99,£249.95,£13.75,72%,American Standard,
+"Duvets, pillows & home","Blanket, single",Single or pack,Laundry (large item),£21.99,£109.95,£7.75,65%,American Standard,
+"Duvets, pillows & home","Blanket, double",Single or pack,Laundry (large item),£25.99,£129.95,£9.00,65%,American Standard,
+"Duvets, pillows & home","Blanket, king",Single or pack,Laundry (large item),£29.99,£149.95,£9.00,70%,American Standard,
+"Duvets, pillows & home","Chair cover, single",Single or pack,Laundry (large item),£18.99,£94.95,,,American Standard,
+"Duvets, pillows & home",Stool,Single or pack,Laundry (large item),£14.99,£74.95,,,American Standard,
+"Duvets, pillows & home","Sofa cover, single",Single or pack,Laundry (large item),£24.99,£124.95,,,American Standard,
+"Duvets, pillows & home","Sofa cover, double",Single or pack,Laundry (large item),£32.99,£164.95,,,American Standard,
+"Duvets, pillows & home","Sofa cover, 3-settee",Single or pack,Laundry (large item),£49.99,£249.95,,,American Standard,
+"Duvets, pillows & home","Pillow, non-feather",Single or pack,Laundry (large item),£19.99,£99.95,£4.63,77%,American Standard,
+"Duvets, pillows & home","Pillow, feather",Single or pack,Laundry (large item),£23.99,£119.95,£6.50,73%,American Standard,
+"Duvets, pillows & home","Mattress protector, single",Single or pack,Laundry (large item),£21.99,£109.95,£7.00,68%,American Standard,
+"Duvets, pillows & home","Mattress protector, double (quilted / double layer)",Quote,Laundry (large item),£29.99,,£17.50,42%,American Standard,SoFresh charges £35 for double-layer. From-price = American king protector; negotiate SoFresh rate or quote after inspection.
+"Duvets, pillows & home","Mattress protector, king",Single or pack,Laundry (large item),£29.99,£149.95,£10.48,65%,American Standard,
+"Duvets, pillows & home","Bed spread, single",Single or pack,Laundry (large item),£22.99,£114.95,,,American Standard,
+"Duvets, pillows & home","Bed spread, double",Single or pack,Laundry (large item),£25.99,£129.95,,,American Standard,
+"Duvets, pillows & home","Bed spread, king",Single or pack,Laundry (large item),£32.99,£164.95,,,American Standard,
+"Duvets, pillows & home","Cushion cover, medium",Single or pack,Laundry (large item),£16.99,£84.95,£4.25,75%,American Standard,
+"Duvets, pillows & home",Dog blanket,Single or pack,Laundry (large item),£19.99,£99.95,,,American Standard,
+"Duvets, pillows & home",Dog cushion/bed,Single or pack,Laundry (large item),£26.99,£134.95,,,American Standard,
+"Duvets, pillows & home","Duvet, non-feather super king",Single or pack,Laundry (large item),£39.99,£199.95,£12.48,69%,American Standard,American basis: non-feather king duvet.
+"Duvets, pillows & home","Duvet, feather super king",Single or pack,Laundry (large item),£49.99,£249.95,,,American Standard,American basis: feather king duvet.
+"Duvets, pillows & home","Mattress topper, fibre",Single or pack,Laundry (large item),£29.99,£149.95,£12.50,58%,American Standard,American basis: king mattress protector.
+"Duvets, pillows & home","Mattress topper, feather",Single or pack,Laundry (large item),£44.99,£224.95,,,American Standard,American basis: feather double duvet.
+"Duvets, pillows & home",Throw,Single or pack,Laundry (large item),£25.99,£129.95,£12.50,52%,American Standard,American basis: double blanket.
+"Duvets, pillows & home","Throw, small",Single or pack,Laundry (large item),£21.99,£109.95,,,American Standard,American basis: single blanket.
+"Duvets, pillows & home","Blanket, small",Single or pack,Laundry (large item),£21.99,£109.95,,,American Standard,American basis: single blanket.
+"Duvets, pillows & home",Sleeping bag,Single or pack,Laundry (large item),£32.99,£164.95,,,American Standard,American basis: non-feather double duvet.
+"Duvets, pillows & home",Futon cover,Single or pack,Laundry (large item),£32.99,£164.95,,,American Standard,American basis: double sofa cover.
+"Duvets, pillows & home",Sofa arm caps,Single or pack,Laundry (large item),£16.99,£84.95,,,American Standard,American basis: medium cushion cover.
+"Duvets, pillows & home","Cushion cover, small",Single or pack,Laundry (large item),£16.99,£84.95,£3.25,81%,American Standard,American basis: medium cushion cover (American has one size).
+"Duvets, pillows & home","Cushion cover, large",Single or pack,Laundry (large item),£16.99,£84.95,£4.75,72%,American Standard,American basis: medium cushion cover (American has one size).
+"Duvets, pillows & home","Cushion (filled), small",Single or pack,Laundry (large item),£19.99,£99.95,£3.50,82%,American Standard,American basis: non-feather pillow.
+"Duvets, pillows & home","Cushion (filled), large",Single or pack,Laundry (large item),£23.99,£119.95,,,American Standard,American basis: feather pillow.
+"Duvets, pillows & home",Yoga blanket / bolster cover,Single or pack,Laundry (large item),£21.99,£109.95,,,American Standard,American basis: single blanket.
+Table & kitchen linen,"Table cloth, medium",Single or pack,Laundry & finish,£21.99,£109.95,£6.50,70%,American Standard,
+Table & kitchen linen,"Table cloth, large",Single or pack,Laundry & finish,£24.99,£124.95,£6.50,74%,American Standard,
+Table & kitchen linen,Napkin,Single or pack,Laundry & finish,£3.99,£19.95,£0.50,87%,American Standard,American basis: face towel.
+Table & kitchen linen,Table runner,Single or pack,Laundry & finish,£14.99,£74.95,£6.75,55%,American Standard,American basis: small tablecloth (American list £14.99).
+Table & kitchen linen,Table mat,Single or pack,Laundry & finish,£3.99,£19.95,,,American Standard,American basis: face towel.
+Table & kitchen linen,Tea towel,Single or pack,Laundry & finish,£3.99,£19.95,£0.75,81%,American Standard,American basis: face towel.
+Table & kitchen linen,Apron,Single or pack,Laundry & finish,£4.99,£24.95,£1.50,70%,American Standard,American basis: hand towel.
+Table & kitchen linen,Tea cosy,Single or pack,Laundry & finish,£4.99,£24.95,,,American Standard,American basis: hand towel.
+Curtains & blinds,"Curtains, unlined (per m²)",Per m²,Dry clean (per m²),£11.99,,,,Market reference ×1.67,SoFresh charges £9.99-£15 per kg; cost known after weighing
+Curtains & blinds,"Curtains, lined (per m²)",Per m²,Dry clean (per m²),£11.99,,,,Market reference ×1.67,SoFresh charges £9.99-£15 per kg; cost known after weighing
+Curtains & blinds,"Curtains, thermal / blackout (per m²)",Per m²,Dry clean (per m²),£12.99,,,,Market reference ×1.67,SoFresh charges £9.99-£15 per kg; cost known after weighing
+Curtains & blinds,"Curtains, heavy (per m²)",Per m²,Dry clean (per m²),£13.99,,,,Market reference ×1.67,SoFresh charges £9.99-£15 per kg; cost known after weighing
+Curtains & blinds,"Blinds, fabric (per m²)",Per m²,Dry clean (per m²),£7.99,,,,Market reference ×1.67,
+Rugs,Rug (per kg),Quote,Specialist clean,£9.99,,,,Market reference ×1.67,Market minimum charge £26.50
+Rugs,"Rug, small (1 x 1.25 m)",Quote,Specialist clean,£100.99,,,,Market reference ×1.67,
+Rugs,"Rug, medium (1.5 x 2 m)",Quote,Specialist clean,£125.99,,,,Market reference ×1.67,
+Rugs,"Rug, large (1.2 x 2.5 m)",Quote,Specialist clean,£166.99,,,,Market reference ×1.67,
+Rugs,Rug stain guard (add-on),Quote,Specialist clean,£16.99,,,,Market reference ×1.67,Johnson charges £10-£20 extra
+Laundry items,Bath towel,Single or pack,Laundry & finish,£7.99,£39.95,£1.50,81%,American Standard,SoFresh lists £2.99 (full list) and £4.00 (home list); confirm
+Laundry items,Bath sheet,Single or pack,Laundry & finish,£11.99,£59.95,£3.25,73%,American Standard,
+Laundry items,Hand towel,Single or pack,Laundry & finish,£4.99,£24.95,£1.25,75%,American Standard,
+Laundry items,Face towel,Single or pack,Laundry & finish,£3.99,£19.95,,,American Standard,
+Laundry items,Bath mat,Single or pack,Laundry & finish,£9.99,£49.95,£2.50,75%,American Standard,
+Laundry items,Socks (pair),Packs only,Laundry & finish,£2.99,£14.95,£0.50,83%,American Standard,
+Laundry items,Bra,Single or pack,Laundry & finish,£3.99,£19.95,,,American Standard,
+Laundry items,"Pyjama, pair",Single or pack,Laundry & finish,£10.99,£54.95,,,American Standard,
+Laundry items,Bag wash 6-8 pcs,Single,Wash & fold,£25.00,,,,American Standard,
+Laundry items,Bag wash 10-15 pcs,Single,Wash & fold,£30.00,,,,American Standard,
+Laundry items,Bag wash 20-30 pcs,Single,Wash & fold,£35.99,,,,American Standard,
+Laundry items,Underwear,Packs only,Laundry & finish,£2.99,£14.95,£0.50,83%,American Standard,American basis: socks.
+Laundry items,Bath robe,Single or pack,Laundry & finish,£20.99,£104.95,£3.25,85%,American Standard,American basis: dressing gown.
+Laundry items,"Service wash, extra kg over 8 kg",Per kg,Laundry & finish,£4.99,,,,American Standard,American basis: large bag price per kg.
+Laundry items,"Ironing (per kg, on hangers)",Per kg,Wash & fold,£15.99,,£5.50,66%,Cost-based (65% min margin),No market price found
+Wash & fold bags,Small bag (up to 4 kg),Single,Wash & fold,£17.99,,£8.58,52%,American Standard,"LAVE size definition (18 Oct 2026). Same price as American small. Processed as a SoFresh 6 kg bag, so margin stays 52%: the entry bag, for light loads."
+Wash & fold bags,Medium bag (up to 6 kg),Single,Wash & fold,£26.99,,£8.58,68%,American Standard,LAVE size definition (18 Oct 2026). American medium price; SoFresh 6 kg bag. This is the membership allowance bag.
+Wash & fold bags,Large bag (up to 8 kg),Single,Wash & fold,£39.99,,£10.00,75%,American Standard,LAVE size definition (18 Oct 2026). American large price; SoFresh 8 kg bag. Over 8 kg: extra kg at the service-wash rate.
+Pressing only,"Trousers, press only",Single,Press only,£8.99,,£2.25,75%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Jeans, press only",Single,Press only,£8.99,,£2.25,75%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Shorts, press only",Single,Press only,£7.99,,£1.50,81%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"T-shirt, press only",Single,Press only,£5.99,,£1.13,81%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Blouse, press only",Single,Press only,£9.99,,£2.00,80%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Skirt, press only",Single,Press only,£9.99,,£2.25,77%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Suit 2-piece, press only",Single,Press only,£17.99,,£4.75,74%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Suit 3-piece, press only",Single,Press only,£20.99,,,,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Jacket, press only",Single,Press only,£10.99,,£3.00,73%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Dress, press only",Single,Press only,£15.99,,£4.50,72%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Dress, evening, press only",Single,Press only,£22.99,,£6.75,71%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Jumpsuit, press only",Single,Press only,£16.99,,£5.20,69%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Knitwear / cardigan, press only",Single,Press only,£8.99,,£2.00,78%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Duvet cover single, press only",Single,Press only,£7.99,,£2.75,66%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Duvet cover double, press only",Single,Press only,£8.99,,£3.75,58%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Duvet cover king, press only",Single,Press only,£9.99,,£3.75,62%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Sheet single, press only",Single,Press only,£6.99,,£2.00,71%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Sheet double, press only",Single,Press only,£8.99,,£3.00,67%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Sheet king, press only",Single,Press only,£9.99,,£3.00,70%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Pressing only,"Pillowcase, press only",Single,Press only,£2.99,,£1.00,67%,American Standard,Add-on only (with a cleaning order). Price = American cleaning price × American press-only ratio (README B9)
+Ski wear,Gloves,Single or pack,Specialist clean,£26.99,£134.95,,,American Standard,
+Ski wear,Ski jacket,Single or pack,Specialist clean,£49.99,£249.95,,,American Standard,
+Ski wear,Ski suit,Single or pack,Specialist clean,£69.99,£349.95,,,American Standard,
+Ski wear,Ski trousers,Single or pack,Specialist clean,£47.00,£235.00,,,American Standard,
+Alterations,"Trousers, shorten basic",Single,Alteration,£19.99,,£7.25,64%,American Standard,
+Alterations,"Trousers, shorten orig. finish",Single,Alteration,£28.99,,,,American Standard,
+Alterations,"Trousers, lengthen",Single,Alteration,£22.99,,,,American Standard,
+Alterations,"Trousers, take in/let out waist",Single,Alteration,£25.99,,,,American Standard,
+Alterations,"Trousers, new zip invisible",Single,Alteration,£28.99,,£8.25,72%,American Standard,
+Alterations,"Jacket, shorten sleeve normal",Single,Alteration,£39.99,,,,American Standard,
+Alterations,"Jacket, shorten length",Quote,Alteration,£44.99,,,,American Standard,
+Alterations,"Jacket, new zip",Quote,Alteration,£46.99,,£15.00,68%,American Standard,
+Alterations,"Dress, shorten basic",Single,Alteration,£26.99,,£9.00,67%,American Standard,
+Alterations,"Dress, new zip long",Quote,Alteration,£44.99,,,,American Standard,
+Alterations,"Skirt, shorten basic",Single,Alteration,£23.99,,,,American Standard,
+Alterations,"Coat, shorten sleeve",Quote,Alteration,£45.99,,,,American Standard,
+Alterations,"Coat, new full lining",Quote,Alteration,£140.99,,,,American Standard,From price; final price after inspection
+Alterations,"Jacket, shorten sleeve from shoulder",Quote,Alteration,£69.99,,,,American Standard,American from-price
+Alterations,"Jacket, take in / let out",Quote,Alteration,£49.99,,,,American Standard,American from-price
+Alterations,"Coat, shorten sleeve from shoulder",Quote,Alteration,£49.99,,,,American Standard,American from-price
+Alterations,"Coat, shorten length",Quote,Alteration,£69.99,,,,American Standard,American from-price
+Alterations,"Coat, lengthen sleeve",Quote,Alteration,£59.99,,,,American Standard,American from-price
+Alterations,"Dress, hem basic",Single,Alteration,£16.99,,,,American Standard,American from-price
+Alterations,"Dress, waist in / out",Single,Alteration,£36.99,,,,American Standard,American from-price
+Alterations,"Dress, hips",Quote,Alteration,£40.99,,,,American Standard,American from-price
+Alterations,"Dress, hips + waist",Quote,Alteration,£63.99,,,,American Standard,American from-price
+Alterations,"Skirt, re-hem basic",Single,Alteration,£18.99,,,,American Standard,American from-price
+Alterations,"Skirt, waist in / out",Single,Alteration,£33.99,,,,American Standard,American from-price
+Alterations,"Skirt, hips",Single,Alteration,£19.99,,,,American Standard,American from-price
+Alterations,"Skirt, waist + hips",Quote,Alteration,£44.99,,,,American Standard,American from-price
+Alterations,"Trousers, tapering",Quote,Alteration,£25.99,,£14.25,45%,American Standard,American basis: trouser waist alteration.
+Alterations,"Top, shorten",Single,Alteration,£23.99,,£9.00,62%,American Standard,American basis: skirt shorten.
+Alterations,"Top, sleeves shorten / lengthen",Quote,Alteration,£39.99,,£12.00,70%,American Standard,American basis: jacket sleeve shorten.
+Alterations,"Dress / skirt, shorten (pleated or layered)",Quote,Alteration,£40.99,,£20.50,50%,American Standard,American basis: dress hips alteration.
+Alterations,"Curtains, shorten (per metre)",Quote,Alteration,£16.99,,£8.00,53%,Market reference ×1.67,
+Repairs,"Button, sew on",Single,Repair,£5.99,,£1.50,75%,Market reference ×1.67,
+Repairs,Small repair,Single,Repair,£16.99,,,,American Standard,American basis: basic dress hem.
+Repairs,Medium repair,Single,Repair,£18.99,,,,American Standard,American basis: basic skirt re-hem.
+Repairs,Seam repair,Single,Repair,£18.99,,£5.00,74%,American Standard,American basis: basic skirt re-hem.
+Repairs,Patch repair,Single,Repair,£19.99,,£6.25,69%,American Standard,American basis: basic trouser shorten.
+Repairs,Pocket repair,Single,Repair,£19.99,,£5.00,75%,American Standard,American basis: basic trouser shorten.
+Repairs,Elbow patch,Quote,Repair,£28.99,,£9.00,69%,American Standard,"American basis: trouser shorten, original finish."
+Repairs,Belt loop,Single,Repair,£6.99,,£2.00,71%,Market reference ×1.67,Market ref is SoFresh's own counter price (no other price found)
+Repairs,"Name tag, sew in",Single,Repair,£3.99,,£1.10,72%,Market reference ×1.67,Market ref is SoFresh's own counter price (no other price found)
+Repairs,"Zip, short (up to 10"")",Single,Repair,£28.99,,£8.00,72%,American Standard,American basis: trouser invisible zip.
+Repairs,"Zip, medium (10-30"")",Single,Repair,£44.99,,£15.50,66%,American Standard,American basis: long dress zip.
+Repairs,"Zip, long (30""+)",Quote,Repair,£46.99,,£23.00,51%,American Standard,American basis: jacket zip.

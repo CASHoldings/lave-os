@@ -69,14 +69,14 @@ def test_full_booking_to_delivery(api, client_headers, staff_headers):
     # Can't inspect without items.
     assert api.post(f"/api/staff/orders/{oid}/status", headers=staff_headers, json={"status": "inspected"}).status_code == 409
 
-    services = {s["code"]: s for s in api.get("/api/services").json()}
+    services = {s["name"]: s for s in api.get("/api/services").json()}
     r = api.post(f"/api/staff/orders/{oid}/items", headers=staff_headers,
-                 json={"description": "Silk dress", "service_id": services["HAND_SILK"]["id"], "colour": "Ivory"})
+                 json={"description": "Silk dress", "service_id": services["Dress, short silk"]["id"], "colour": "Ivory"})
     r = api.post(f"/api/staff/orders/{oid}/items", headers=staff_headers,
-                 json={"description": "Wool coat", "service_id": services["DC_COAT"]["id"], "send_to_vault": True})
+                 json={"description": "Wool coat", "service_id": services["Coat, long"]["id"], "send_to_vault": True})
     detail = r.json()
     assert [i["tag_code"][-2:] for i in detail["items"]] == ["01", "02"]
-    assert detail["total_pence"] == 1600 + 2500 + 800
+    assert detail["total_pence"] == 2599 + 2799 + 800
 
     for st in ["inspected", "in_care", "quality_check", "ready"]:
         r = api.post(f"/api/staff/orders/{oid}/status", headers=staff_headers, json={"status": st})

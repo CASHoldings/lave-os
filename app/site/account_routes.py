@@ -197,9 +197,12 @@ def account_tab(request: Request, tab: str, client: Client | None = Depends(curr
 
 
 @router.get("/book/", response_class=HTMLResponse)
-def book(request: Request, mode: str = "", items: str = "", client: Client | None = Depends(current_site_client)):
+def book(request: Request, mode: str = "", items: str = "", client: Client | None = Depends(current_site_client),
+         db: Session = Depends(get_db)):
     items = ",".join(i for i in items.split(",") if i.isdigit())[:200]
     if not client:
         query = "&".join(q for q in [f"mode={mode}" if mode == "drop_off" else "", f"items={items}" if items else ""] if q)
         return _to_login("/book/" + (f"?{query}" if query else ""))
-    return render(request, "site/book.html", client=client, mode="drop_off" if mode == "drop_off" else "", items=items)
+    from app.services import repository as repo
+    planned = repo.summarise(db, repo.parse_list(request.cookies.get(repo.LIST_COOKIE)))
+    return render(request, "site/book.html", client=client, mode="drop_off" if mode == "drop_off" else "", items=items, planned=planned)

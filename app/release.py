@@ -51,6 +51,11 @@ def release() -> list[str]:
             load_sample_products(db)
             load_starter_content(db)
             notes.append("New database: loaded the starting slots, price list, catalogue, products and pages.")
+        # The product repository replaces the starting price list the first time it's deployed.
+        from app.services import repository
+        if loaded := repository.load_repository(db):
+            notes.append(f"Product repository loaded: {loaded['added']} items, {loaded['packs']} packs; "
+                         f"{loaded['retired_old']} old price-list entries retired.")
         if not db.scalar(select(func.count()).select_from(StaffUser)):
             email, password = settings.first_admin_email.strip().lower(), settings.first_admin_password
             if email and len(password) >= 12:

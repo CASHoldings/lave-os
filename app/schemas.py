@@ -1,6 +1,8 @@
 """Request bodies. Responses are plain dicts built in app/serializers.py."""
 from datetime import date
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models import (
@@ -276,6 +278,64 @@ class VariantIn(BaseModel):
     scent: str = Field("", max_length=60)
     price_pence: int = Field(ge=0)
     stock: int = Field(0, ge=0)
+
+
+SaleMode = Literal["pack", "single_or_pack", "single", "quote", "per_m2", "per_kg"]
+
+
+class RepoItemIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    product_category: str = Field(min_length=1, max_length=80)
+    sale_mode: SaleMode = "single"
+    service_type: str = Field("", max_length=40)
+    price_pence: int = Field(ge=0)
+    cost_pence: int | None = Field(None, ge=0)
+    price_basis: str = Field("", max_length=60)
+    internal_notes: str = Field("", max_length=4000)
+    summary: str = Field("", max_length=2000)
+    image: str = Field("", max_length=400)
+    show_online: bool = True
+    collections: list[str] | None = None
+
+
+class RepoItemPatch(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=200)
+    product_category: str | None = Field(None, min_length=1, max_length=80)
+    sale_mode: SaleMode | None = None
+    service_type: str | None = Field(None, max_length=40)
+    price_pence: int | None = Field(None, ge=0)
+    cost_pence: int | None = Field(None, ge=0)  # send null to clear
+    price_basis: str | None = Field(None, max_length=60)
+    internal_notes: str | None = Field(None, max_length=4000)
+    summary: str | None = Field(None, max_length=2000)
+    image: str | None = Field(None, max_length=400)
+    show_online: bool | None = None
+    active: bool | None = None
+    collections: list[str] | None = None
+
+
+class PackLineIn(BaseModel):
+    service_id: int
+    qty: int = Field(ge=1, le=50)
+
+
+class PackIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kind: Literal["starter", "themed"] = "themed"
+    note: str = Field("", max_length=400)
+    summary: str = Field("", max_length=2000)
+    items: list[PackLineIn] = Field(min_length=1, max_length=30)
+    months: list[int] = []
+    image: str = Field("", max_length=400)
+    active: bool = True
+    show_online: bool = True
+
+
+class RepoRules(BaseModel):
+    pack_minimum: int = Field(ge=1, le=20)
+    free_delivery_from_pence: int = Field(ge=0, le=100000)
+    minimum_margin: int = Field(ge=0, le=95)
+    text: str = Field("", max_length=20000)
 
 
 class SellingSwitch(BaseModel):

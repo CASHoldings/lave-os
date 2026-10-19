@@ -1,39 +1,36 @@
 {% extends "site/base.html" %}
+{% from "site/_prices.html" import price_row, list_bar %}
 {% block title %}{{ item }} | Laundry & Dry Cleaning | LAVE{% endblock %}
 {% block description %}{{ intro }}{% endblock %}
 {% block main %}
 <section class="welcome tight">
-  <h1 class="upper">Family laundry and dry cleaning</h1>
-  <p>Most garments endure careless cycles. At LAVE, we treat every piece with the care it deserves, keeping clothes fresh, protected and lasting for years.</p>
+  <h1 class="upper">{{ "Family laundry and dry cleaning" if personal else "Home textile care" }}</h1>
+  <p>{{ "Most garments endure careless cycles. At LAVE, we treat every piece with the care it deserves, keeping clothes fresh, protected and lasting for years." if personal else "The textiles that make a home, cleaned by hand-picked specialists and returned ready to use." }}</p>
 </section>
 <nav class="tabs" aria-label="Collections">
   {% for c in collections %}<a href="/atelier/clean/{{ c }}/" {% if c == current %}aria-current="page"{% endif %}>{{ c|capitalize }}</a>{% endfor %}
 </nav>
 <p class="collection-intro">{{ intro }}</p>
 
-{% if groups %}
-  {% if groups|length > 1 %}
-  <nav class="chips" aria-label="Garment types">{% for name, _ in groups %}<a href="#{{ slug(name) }}">{{ name }}</a>{% endfor %}</nav>
-  {% endif %}
-  {% for name, services in groups %}
-  <section class="catalogue" id="{{ slug(name) }}">
-    <h2 class="catalogue-title">{{ name }}</h2>
-    <div class="products">
-      {% for s in services %}
-      <a class="product" href="/atelier/services/{{ s.slug }}/">
-        <span class="product-img">{% if image_url(s) %}<img src="{{ image_url(s) }}" alt="" loading="lazy" decoding="async">{% endif %}</span>
-        <span class="product-name">{{ s.title }}</span>
-        <span class="product-price">£{{ "%.2f"|format(s.price_pence / 100) }}</span>
-      </a>
-      {% endfor %}
-    </div>
+{% if departments %}
+  {% for d in departments %}
+  <section class="price-dept">
+    <nav class="price-cats" aria-label="Categories">{% for c in d.categories %}<a href="#{{ c.slug }}">{{ c.name }}</a>{% endfor %}</nav>
+    {% for c in d.categories %}
+    <section class="price-cat" id="{{ c.slug }}">
+      <h3>{{ c.name }}</h3>
+      <ul class="price-list">{% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/clean/" ~ current ~ "/#" ~ s.slug) }}{% endfor %}</ul>
+    </section>
+    {% endfor %}
   </section>
   {% endfor %}
+  <section class="welcome tight"><div class="ctas"><a class="btn" href="/atelier/prices/">Full price list</a><a class="btn" href="/atelier/packs/">Packs</a></div></section>
 {% else %}
   <section class="welcome tight">
     <p class="lead">Services for {{ item|lower }} are being added.</p>
     <p>Book a collection and we'll itemise and price everything when it arrives, before we charge.</p>
-    <div class="ctas"><a class="btn dark" href="/book/">Book a collection</a></div>
+    <div class="ctas"><a class="btn dark" href="/book/">Book a collection</a><a class="btn" href="/atelier/prices/">Full price list</a></div>
   </section>
 {% endif %}
+{{ list_bar(summary) }}
 {% endblock %}

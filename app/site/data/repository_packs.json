@@ -1,0 +1,1481 @@
+[
+ {
+  "name": "The Work Week",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Shirt, non-member hung",
+    "qty": 3
+   },
+   {
+    "item": "Trousers, standard",
+    "qty": 2
+   }
+  ],
+  "note": "Office worker, 5-day week",
+  "listed_price_pence": 4395,
+  "count": 5
+ },
+ {
+  "name": "The Full Week",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Shirt, non-member hung",
+    "qty": 5
+   },
+   {
+    "item": "Trousers, standard",
+    "qty": 3
+   }
+  ],
+  "note": "One shirt a day, trousers rotated",
+  "listed_price_pence": 6892,
+  "count": 8
+ },
+ {
+  "name": "The Fortnight",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Shirt, non-member hung",
+    "qty": 10
+   },
+   {
+    "item": "Trousers, standard",
+    "qty": 5
+   }
+  ],
+  "note": "Fortnightly collection (Essence slot)",
+  "listed_price_pence": 12485,
+  "count": 15
+ },
+ {
+  "name": "Her Week",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Top/blouse, plain",
+    "qty": 3
+   },
+   {
+    "item": "Trousers, standard",
+    "qty": 2
+   }
+  ],
+  "note": "Professional women's work week",
+  "listed_price_pence": 6795,
+  "count": 5
+ },
+ {
+  "name": "Smart Casual",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Shirt, non-member hung",
+    "qty": 2
+   },
+   {
+    "item": "T-shirt/polo, washable",
+    "qty": 2
+   },
+   {
+    "item": "Jeans",
+    "qty": 1
+   }
+  ],
+  "note": "Hybrid / creative workplaces",
+  "listed_price_pence": 4095,
+  "count": 5
+ },
+ {
+  "name": "The Weekend",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "T-shirt, washable",
+    "qty": 2
+   },
+   {
+    "item": "Jeans",
+    "qty": 2
+   },
+   {
+    "item": "Shorts",
+    "qty": 1
+   }
+  ],
+  "note": "Weekend and leisure wear",
+  "listed_price_pence": 4895,
+  "count": 5
+ },
+ {
+  "name": "Gym & Lounge",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Leggings",
+    "qty": 2
+   },
+   {
+    "item": "Tracksuit bottoms / joggers",
+    "qty": 2
+   },
+   {
+    "item": "Sweatshirt / hoodie",
+    "qty": 1
+   }
+  ],
+  "note": "Run Club, yoga and gym members",
+  "listed_price_pence": 5495,
+  "count": 5
+ },
+ {
+  "name": "Essentials",
+  "kind": "starter",
+  "items": [
+   {
+    "item": "Socks (pair)",
+    "qty": 5
+   },
+   {
+    "item": "Underwear",
+    "qty": 5
+   }
+  ],
+  "note": "Add-on to any order",
+  "listed_price_pence": 2990,
+  "count": 10
+ },
+ {
+  "name": "Suit + 5 Shirts",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Suit (2pc)",
+    "qty": 1
+   },
+   {
+    "item": "Shirt, non-member hung",
+    "qty": 5
+   }
+  ],
+  "note": "All year. The standard trade bundle; a suit alone doesn't clear £45",
+  "listed_price_pence": 5594,
+  "count": 6
+ },
+ {
+  "name": "Bathroom Set",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Bath sheet",
+    "qty": 2
+   },
+   {
+    "item": "Hand towel",
+    "qty": 2
+   },
+   {
+    "item": "Face towel",
+    "qty": 2
+   },
+   {
+    "item": "Bath mat",
+    "qty": 1
+   }
+  ],
+  "note": "All year. Low-price items washed together weekly",
+  "listed_price_pence": 5193,
+  "count": 7
+ },
+ {
+  "name": "Dinner Party",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Table cloth, large",
+    "qty": 1
+   },
+   {
+    "item": "Napkin",
+    "qty": 8
+   },
+   {
+    "item": "Table runner",
+    "qty": 1
+   }
+  ],
+  "note": "All year; peaks Nov–Dec and Easter",
+  "listed_price_pence": 7190,
+  "count": 10
+ },
+ {
+  "name": "Black Tie",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Dinner suit",
+    "qty": 1
+   },
+   {
+    "item": "Shirt, dry clean",
+    "qty": 1
+   },
+   {
+    "item": "Bow tie",
+    "qty": 1
+   },
+   {
+    "item": "Cummerbund",
+    "qty": 1
+   }
+  ],
+  "note": "Nov–Dec party season; summer balls",
+  "listed_price_pence": 7096,
+  "count": 4
+ },
+ {
+  "name": "Kids' Pack",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Child's item, age 3-6",
+    "qty": 10
+   }
+  ],
+  "note": "All year. Children's items never reach £45 alone",
+  "listed_price_pence": 5990,
+  "count": 10
+ },
+ {
+  "name": "Kitchen Add-on",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Tea towel",
+    "qty": 5
+   },
+   {
+    "item": "Apron",
+    "qty": 2
+   }
+  ],
+  "note": "Add-on to any order",
+  "listed_price_pence": 2993,
+  "count": 7
+ },
+ {
+  "name": "Handkerchief 5",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Handkerchief",
+    "qty": 5
+   }
+  ],
+  "note": "Add-on to any order",
+  "listed_price_pence": 1495,
+  "count": 5
+ },
+ {
+  "name": "New Year Bedroom Reset",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet, feather double",
+    "qty": 1
+   },
+   {
+    "item": "Pillow, feather",
+    "qty": 2
+   }
+  ],
+  "note": "January (post-Christmas lull)",
+  "listed_price_pence": 9297,
+  "count": 3
+ },
+ {
+  "name": "Winter Put-Away",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Knitwear, heavy",
+    "qty": 3
+   },
+   {
+    "item": "Coat, long",
+    "qty": 1
+   },
+   {
+    "item": "Scarf, large",
+    "qty": 1
+   }
+  ],
+  "note": "March–April; offer with a Vault box",
+  "listed_price_pence": 8895,
+  "count": 5
+ },
+ {
+  "name": "Summer Linen",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Suit, linen 2-piece",
+    "qty": 1
+   },
+   {
+    "item": "Trousers, linen",
+    "qty": 1
+   },
+   {
+    "item": "Shirt, linen/dark hung",
+    "qty": 3
+   }
+  ],
+  "note": "June–August summer slump",
+  "listed_price_pence": 5695,
+  "count": 5
+ },
+ {
+  "name": "Back to School",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Child's item, age 3-6",
+    "qty": 6
+   },
+   {
+    "item": "Child's trousers",
+    "qty": 2
+   },
+   {
+    "item": "Child's knitwear",
+    "qty": 2
+   }
+  ],
+  "note": "Late August",
+  "listed_price_pence": 8390,
+  "count": 10
+ },
+ {
+  "name": "Autumn Bring-Out",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet, feather double",
+    "qty": 1
+   },
+   {
+    "item": "Pillow, feather",
+    "qty": 2
+   },
+   {
+    "item": "Coat, long",
+    "qty": 1
+   }
+  ],
+  "note": "September–October; coats back from storage",
+  "listed_price_pence": 12096,
+  "count": 4
+ },
+ {
+  "name": "Ski Pack",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Ski jacket",
+    "qty": 1
+   },
+   {
+    "item": "Ski trousers",
+    "qty": 1
+   },
+   {
+    "item": "Gloves",
+    "qty": 1
+   }
+  ],
+  "note": "December–February (out and back)",
+  "listed_price_pence": 12398,
+  "count": 3
+ },
+ {
+  "name": "Living Room Refresh",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sofa cover, 3-settee",
+    "qty": 1
+   },
+   {
+    "item": "Cushion cover, medium",
+    "qty": 4
+   },
+   {
+    "item": "Throw",
+    "qty": 1
+   }
+  ],
+  "note": "Spring clean (March–April); interiors / LAVE Transit",
+  "listed_price_pence": 14394,
+  "count": 6
+ },
+ {
+  "name": "Linen & Dark Shirts",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Shirt, linen/dark folded",
+    "qty": 3
+   },
+   {
+    "item": "Shirt, lady washable",
+    "qty": 2
+   }
+  ],
+  "note": "All year. Dark and linen shirts washed cool together",
+  "listed_price_pence": 2795,
+  "count": 5
+ },
+ {
+  "name": "Her Everyday Layers",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Top, long sleeve (wash & press)",
+    "qty": 2
+   },
+   {
+    "item": "Blouse (wash & press)",
+    "qty": 2
+   },
+   {
+    "item": "Vest top",
+    "qty": 2
+   }
+  ],
+  "note": "All year. Women's wash & press basics",
+  "listed_price_pence": 3794,
+  "count": 6
+ },
+ {
+  "name": "Silk Care",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Shirt, silk (men's)",
+    "qty": 2
+   },
+   {
+    "item": "Top/blouse, silk",
+    "qty": 2
+   },
+   {
+    "item": "Scarf, silk",
+    "qty": 1
+   }
+  ],
+  "note": "All year. Delicates cleaned on one cycle",
+  "listed_price_pence": 7995,
+  "count": 5
+ },
+ {
+  "name": "Dry-Clean Tops",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "T-shirt",
+    "qty": 3
+   },
+   {
+    "item": "Bolero / shrug",
+    "qty": 1
+   },
+   {
+    "item": "Poncho / cape",
+    "qty": 1
+   }
+  ],
+  "note": "All year. Dry-clean-only tops",
+  "listed_price_pence": 6695,
+  "count": 5
+ },
+ {
+  "name": "Two Suits + Ties",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Suit, 3-piece",
+    "qty": 1
+   },
+   {
+    "item": "Suit (2pc)",
+    "qty": 1
+   },
+   {
+    "item": "Tie",
+    "qty": 3
+   }
+  ],
+  "note": "All year. Business travel / big week",
+  "listed_price_pence": 9595,
+  "count": 5
+ },
+ {
+  "name": "Her Suit Week",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Suit, skirt+jacket",
+    "qty": 1
+   },
+   {
+    "item": "Suit, dress+jacket",
+    "qty": 1
+   },
+   {
+    "item": "Top/blouse, plain",
+    "qty": 3
+   }
+  ],
+  "note": "All year. Women's tailoring",
+  "listed_price_pence": 9895,
+  "count": 5
+ },
+ {
+  "name": "Wedding Guest",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Morning suit, 2-piece",
+    "qty": 1
+   },
+   {
+    "item": "Morning suit, 3-piece",
+    "qty": 1
+   },
+   {
+    "item": "Waistcoat",
+    "qty": 1
+   },
+   {
+    "item": "Tie",
+    "qty": 2
+   }
+  ],
+  "note": "May–September wedding season",
+  "listed_price_pence": 10195,
+  "count": 5
+ },
+ {
+  "name": "Dinner Jacket Set",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Dinner jacket",
+    "qty": 1
+   },
+   {
+    "item": "Dinner trousers",
+    "qty": 1
+   },
+   {
+    "item": "Shirt, dry clean",
+    "qty": 2
+   },
+   {
+    "item": "Bow tie",
+    "qty": 1
+   }
+  ],
+  "note": "Nov–Dec party season; summer balls",
+  "listed_price_pence": 6895,
+  "count": 5
+ },
+ {
+  "name": "Jumpsuits & Playsuits",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Jumpsuit, short",
+    "qty": 1
+   },
+   {
+    "item": "Jumpsuit, long",
+    "qty": 1
+   },
+   {
+    "item": "Playsuit",
+    "qty": 1
+   },
+   {
+    "item": "Dress, plain short",
+    "qty": 2
+   }
+  ],
+  "note": "May–August events",
+  "listed_price_pence": 12695,
+  "count": 5
+ },
+ {
+  "name": "Jacket Rotation",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Jacket, standard",
+    "qty": 2
+   },
+   {
+    "item": "Jacket, tailored",
+    "qty": 1
+   },
+   {
+    "item": "Jacket, zipped",
+    "qty": 1
+   },
+   {
+    "item": "Jacket, linen",
+    "qty": 1
+   }
+  ],
+  "note": "All year. Office jackets",
+  "listed_price_pence": 8295,
+  "count": 5
+ },
+ {
+  "name": "Outerwear Autumn",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Jacket, quilted",
+    "qty": 1
+   },
+   {
+    "item": "Jacket, puffa",
+    "qty": 1
+   },
+   {
+    "item": "Gilet / body warmer (puffa)",
+    "qty": 1
+   },
+   {
+    "item": "Fleece",
+    "qty": 2
+   }
+  ],
+  "note": "October–November and March put-away",
+  "listed_price_pence": 11295,
+  "count": 5
+ },
+ {
+  "name": "Trouser Mix",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Trousers, 3/4",
+    "qty": 2
+   },
+   {
+    "item": "Trousers, culottes",
+    "qty": 1
+   },
+   {
+    "item": "Trousers, wash & press",
+    "qty": 2
+   }
+  ],
+  "note": "All year",
+  "listed_price_pence": 6995,
+  "count": 5
+ },
+ {
+  "name": "Delicate Bottoms",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Trousers, silk / delicate",
+    "qty": 2
+   },
+   {
+    "item": "Trousers, velvet",
+    "qty": 1
+   },
+   {
+    "item": "Skirt, silk / delicate",
+    "qty": 2
+   }
+  ],
+  "note": "All year; velvet peaks Nov–Dec",
+  "listed_price_pence": 8395,
+  "count": 5
+ },
+ {
+  "name": "Skirt Week",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Skirt, plain short",
+    "qty": 2
+   },
+   {
+    "item": "Skirt, plain long",
+    "qty": 2
+   },
+   {
+    "item": "Skirt, wash & press",
+    "qty": 1
+   }
+  ],
+  "note": "All year. Women's work week",
+  "listed_price_pence": 7195,
+  "count": 5
+ },
+ {
+  "name": "Pleats & Kilt",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Skirt, part pleated",
+    "qty": 2
+   },
+   {
+    "item": "Skirt, full pleat",
+    "qty": 2
+   },
+   {
+    "item": "Kilt, full scottish",
+    "qty": 1
+   }
+  ],
+  "note": "January (Burns Night); school pleats Aug–Sept",
+  "listed_price_pence": 12395,
+  "count": 5
+ },
+ {
+  "name": "Dress Week",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Dress, plain short",
+    "qty": 2
+   },
+   {
+    "item": "Dress, plain long",
+    "qty": 2
+   },
+   {
+    "item": "Dress, wash & press",
+    "qty": 1
+   }
+  ],
+  "note": "All year",
+  "listed_price_pence": 12595,
+  "count": 5
+ },
+ {
+  "name": "Silk Dresses",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Dress, short silk",
+    "qty": 2
+   },
+   {
+    "item": "Dress, long silk",
+    "qty": 2
+   },
+   {
+    "item": "Dress, delicate",
+    "qty": 1
+   }
+  ],
+  "note": "May–September occasions",
+  "listed_price_pence": 13995,
+  "count": 5
+ },
+ {
+  "name": "Nightwear",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Nightdress",
+    "qty": 2
+   },
+   {
+    "item": "Pyjama, pair",
+    "qty": 2
+   },
+   {
+    "item": "Dressing gown",
+    "qty": 1
+   }
+  ],
+  "note": "All year; gift season Dec",
+  "listed_price_pence": 6495,
+  "count": 5
+ },
+ {
+  "name": "Coat Season",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Coat, 3/4",
+    "qty": 2
+   },
+   {
+    "item": "Coat, trench",
+    "qty": 2
+   },
+   {
+    "item": "Coat, wash & press",
+    "qty": 1
+   }
+  ],
+  "note": "September–October bring-out; March put-away",
+  "listed_price_pence": 12995,
+  "count": 5
+ },
+ {
+  "name": "Winter Warmers",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Coat, puffa",
+    "qty": 1
+   },
+   {
+    "item": "Coat, cashmere",
+    "qty": 1
+   },
+   {
+    "item": "Scarf, small",
+    "qty": 2
+   },
+   {
+    "item": "Cap/hat",
+    "qty": 1
+   }
+  ],
+  "note": "November–February; put-away in April",
+  "listed_price_pence": 12095,
+  "count": 5
+ },
+ {
+  "name": "Knitwear Drawer",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Knitwear, light",
+    "qty": 3
+   },
+   {
+    "item": "Cardigan",
+    "qty": 2
+   }
+  ],
+  "note": "October–March",
+  "listed_price_pence": 6495,
+  "count": 5
+ },
+ {
+  "name": "Cashmere Care",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Jumper, cashmere",
+    "qty": 2
+   },
+   {
+    "item": "Cardigan, long",
+    "qty": 2
+   },
+   {
+    "item": "Pashmina/shawl",
+    "qty": 1
+   }
+  ],
+  "note": "April put-away (moth season)",
+  "listed_price_pence": 7795,
+  "count": 5
+ },
+ {
+  "name": "Wraps & Gloves",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Shawl",
+    "qty": 2
+   },
+   {
+    "item": "Shawl, silk",
+    "qty": 2
+   },
+   {
+    "item": "Gloves, fabric",
+    "qty": 1
+   }
+  ],
+  "note": "Winter; spring put-away",
+  "listed_price_pence": 8495,
+  "count": 5
+ },
+ {
+  "name": "Accessories Pack",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Belt, fabric",
+    "qty": 2
+   },
+   {
+    "item": "Collar (detachable)",
+    "qty": 2
+   },
+   {
+    "item": "Handkerchief, silk",
+    "qty": 3
+   },
+   {
+    "item": "Petticoat / slip",
+    "qty": 1
+   }
+  ],
+  "note": "Add-on to any order",
+  "listed_price_pence": 6042,
+  "count": 8
+ },
+ {
+  "name": "Little Ones",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Child's item, age 0-3",
+    "qty": 10
+   }
+  ],
+  "note": "All year. Baby clothes come in volume",
+  "listed_price_pence": 5990,
+  "count": 10
+ },
+ {
+  "name": "Kids' Occasion",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Child's dress (dry clean)",
+    "qty": 2
+   },
+   {
+    "item": "Child's suit (dry clean)",
+    "qty": 1
+   },
+   {
+    "item": "Child's coat (dry clean)",
+    "qty": 1
+   },
+   {
+    "item": "Soft toy",
+    "qty": 1
+   }
+  ],
+  "note": "Christmas, Easter, weddings",
+  "listed_price_pence": 7695,
+  "count": 5
+ },
+ {
+  "name": "Sports & Swim",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Tracksuit (top + bottoms)",
+    "qty": 2
+   },
+   {
+    "item": "Swimwear / bikini",
+    "qty": 3
+   }
+  ],
+  "note": "May–August; school sports Sept",
+  "listed_price_pence": 5393,
+  "count": 5
+ },
+ {
+  "name": "Workwear",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Lab coat",
+    "qty": 3
+   },
+   {
+    "item": "Overalls / boiler suit",
+    "qty": 2
+   }
+  ],
+  "note": "All year. Clinics, labs, trades (B2B)",
+  "listed_price_pence": 10595,
+  "count": 5
+ },
+ {
+  "name": "Single Bed Change",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sheet, flat single",
+    "qty": 1
+   },
+   {
+    "item": "Sheet, fitted single",
+    "qty": 1
+   },
+   {
+    "item": "Duvet cover, single",
+    "qty": 1
+   },
+   {
+    "item": "Pillowcase",
+    "qty": 2
+   }
+  ],
+  "note": "All year. Kids' and guest rooms",
+  "listed_price_pence": 4095,
+  "count": 5
+ },
+ {
+  "name": "Double Bed Change",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet cover, double",
+    "qty": 1
+   },
+   {
+    "item": "Sheet, fitted double",
+    "qty": 1
+   },
+   {
+    "item": "Valance",
+    "qty": 1
+   },
+   {
+    "item": "Pillowcase",
+    "qty": 2
+   }
+  ],
+  "note": "All year. Weekly linen",
+  "listed_price_pence": 4795,
+  "count": 5
+ },
+ {
+  "name": "King Bed Change",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sheet, flat king",
+    "qty": 1
+   },
+   {
+    "item": "Sheet, fitted king",
+    "qty": 1
+   },
+   {
+    "item": "Duvet cover, king",
+    "qty": 1
+   },
+   {
+    "item": "Pillowcase",
+    "qty": 4
+   }
+  ],
+  "note": "All year. Weekly linen",
+  "listed_price_pence": 6093,
+  "count": 7
+ },
+ {
+  "name": "Super King Luxe",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sheet, super king",
+    "qty": 2
+   },
+   {
+    "item": "Duvet cover, super king",
+    "qty": 1
+   },
+   {
+    "item": "Pillowcase, silk",
+    "qty": 2
+   }
+  ],
+  "note": "All year",
+  "listed_price_pence": 5195,
+  "count": 5
+ },
+ {
+  "name": "Guest Room Ready",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sheet, flat double",
+    "qty": 2
+   },
+   {
+    "item": "Bed runner / footer",
+    "qty": 1
+   },
+   {
+    "item": "Pillowcase",
+    "qty": 2
+   }
+  ],
+  "note": "Before Christmas and summer visitors",
+  "listed_price_pence": 5795,
+  "count": 5
+ },
+ {
+  "name": "Winter Duvets",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet, non-feather double",
+    "qty": 1
+   },
+   {
+    "item": "Duvet, non-feather single",
+    "qty": 2
+   },
+   {
+    "item": "Pillow, non-feather",
+    "qty": 2
+   }
+  ],
+  "note": "October swap to winter tog; April put-away",
+  "listed_price_pence": 12095,
+  "count": 5
+ },
+ {
+  "name": "King Duvet Reset",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet, non-feather king",
+    "qty": 1
+   },
+   {
+    "item": "Duvet, feather king",
+    "qty": 1
+   },
+   {
+    "item": "Pillow, non-feather",
+    "qty": 3
+   }
+  ],
+  "note": "January and spring clean",
+  "listed_price_pence": 14995,
+  "count": 5
+ },
+ {
+  "name": "Super King Reset",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet, non-feather super king",
+    "qty": 1
+   },
+   {
+    "item": "Duvet, feather super king",
+    "qty": 1
+   },
+   {
+    "item": "Mattress protector, king",
+    "qty": 1
+   },
+   {
+    "item": "Pillow, feather",
+    "qty": 2
+   }
+  ],
+  "note": "January and spring clean",
+  "listed_price_pence": 16795,
+  "count": 5
+ },
+ {
+  "name": "Kids' Rooms Reset",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Duvet, feather single",
+    "qty": 2
+   },
+   {
+    "item": "Mattress protector, single",
+    "qty": 2
+   },
+   {
+    "item": "Blanket, single",
+    "qty": 1
+   }
+  ],
+  "note": "Late August back to school",
+  "listed_price_pence": 14195,
+  "count": 5
+ },
+ {
+  "name": "Blankets & Throws",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Blanket, double",
+    "qty": 1
+   },
+   {
+    "item": "Blanket, king",
+    "qty": 1
+   },
+   {
+    "item": "Throw, small",
+    "qty": 1
+   },
+   {
+    "item": "Blanket, small",
+    "qty": 2
+   }
+  ],
+  "note": "October bring-out; April put-away",
+  "listed_price_pence": 12195,
+  "count": 5
+ },
+ {
+  "name": "Bed Spreads",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Bed spread, single",
+    "qty": 2
+   },
+   {
+    "item": "Bed spread, double",
+    "qty": 2
+   },
+   {
+    "item": "Bed spread, king",
+    "qty": 1
+   }
+  ],
+  "note": "Spring clean (March–April)",
+  "listed_price_pence": 13095,
+  "count": 5
+ },
+ {
+  "name": "Mattress Care",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Mattress topper, fibre",
+    "qty": 1
+   },
+   {
+    "item": "Mattress topper, feather",
+    "qty": 1
+   },
+   {
+    "item": "Mattress protector, king",
+    "qty": 2
+   },
+   {
+    "item": "Pillow, non-feather",
+    "qty": 1
+   }
+  ],
+  "note": "Spring clean; allergy season",
+  "listed_price_pence": 15495,
+  "count": 5
+ },
+ {
+  "name": "Sofa Refresh",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sofa cover, double",
+    "qty": 1
+   },
+   {
+    "item": "Sofa arm caps",
+    "qty": 2
+   },
+   {
+    "item": "Cushion cover, small",
+    "qty": 2
+   }
+  ],
+  "note": "Spring clean; before Christmas",
+  "listed_price_pence": 10095,
+  "count": 5
+ },
+ {
+  "name": "Armchair Refresh",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Chair cover, single",
+    "qty": 2
+   },
+   {
+    "item": "Sofa cover, single",
+    "qty": 1
+   },
+   {
+    "item": "Stool",
+    "qty": 1
+   },
+   {
+    "item": "Cushion (filled), small",
+    "qty": 1
+   }
+  ],
+  "note": "Spring clean; before Christmas",
+  "listed_price_pence": 9795,
+  "count": 5
+ },
+ {
+  "name": "Cushion Swap",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Cushion cover, large",
+    "qty": 2
+   },
+   {
+    "item": "Cushion (filled), large",
+    "qty": 2
+   },
+   {
+    "item": "Futon cover",
+    "qty": 1
+   }
+  ],
+  "note": "Seasonal interiors change",
+  "listed_price_pence": 11495,
+  "count": 5
+ },
+ {
+  "name": "Outdoor & Wellness",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Sleeping bag",
+    "qty": 2
+   },
+   {
+    "item": "Yoga blanket / bolster cover",
+    "qty": 3
+   }
+  ],
+  "note": "June–September festivals and camping",
+  "listed_price_pence": 13195,
+  "count": 5
+ },
+ {
+  "name": "Pet Pack",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Dog blanket",
+    "qty": 3
+   },
+   {
+    "item": "Dog cushion/bed",
+    "qty": 2
+   }
+  ],
+  "note": "All year. Washed separately from household items",
+  "listed_price_pence": 11395,
+  "count": 5
+ },
+ {
+  "name": "Sunday Lunch",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Table cloth, medium",
+    "qty": 1
+   },
+   {
+    "item": "Napkin",
+    "qty": 6
+   },
+   {
+    "item": "Table mat",
+    "qty": 6
+   },
+   {
+    "item": "Tea cosy",
+    "qty": 1
+   }
+  ],
+  "note": "Christmas, Easter, Sunday hosting",
+  "listed_price_pence": 7486,
+  "count": 14
+ },
+ {
+  "name": "Spa Towels",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Bath towel",
+    "qty": 4
+   },
+   {
+    "item": "Bath robe",
+    "qty": 1
+   }
+  ],
+  "note": "All year. Guest and spa set",
+  "listed_price_pence": 5295,
+  "count": 5
+ },
+ {
+  "name": "Lingerie & Lounge",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Bra",
+    "qty": 3
+   },
+   {
+    "item": "Underwear",
+    "qty": 2
+   }
+  ],
+  "note": "Add-on to any order",
+  "listed_price_pence": 1795,
+  "count": 5
+ },
+ {
+  "name": "Family Ski",
+  "kind": "themed",
+  "items": [
+   {
+    "item": "Ski suit",
+    "qty": 2
+   },
+   {
+    "item": "Ski jacket",
+    "qty": 1
+   },
+   {
+    "item": "Ski trousers",
+    "qty": 1
+   },
+   {
+    "item": "Gloves",
+    "qty": 1
+   }
+  ],
+  "note": "December–February (out and back)",
+  "listed_price_pence": 26396,
+  "count": 5
+ }
+]

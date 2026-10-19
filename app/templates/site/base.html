@@ -24,6 +24,7 @@
       <a href="/search/" class="hide-sm">Search</a>
       <a href="/account/">{{ viewer.first_name if viewer and viewer.first_name else "Account" }}</a>
       {% if basket_count %}<a href="/basket/" class="basket-link">Basket ({{ basket_count }})</a>{% endif %}
+      <a href="/atelier/list/" class="list-link" data-list-link {% if not list_count %}hidden{% endif %}>Your list (<span data-list-count>{{ list_count }}</span>)</a>
       <a href="/book/" class="book">Book a collection</a>
     </nav>
   </div>

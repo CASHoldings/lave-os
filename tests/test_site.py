@@ -25,19 +25,22 @@ def test_waitlist(api, db_session):
 
 def test_catalogue_pages(api):
     women = api.get("/atelier/clean/women/").text
-    assert "Wool Tweed Coat Cleaning Service for Women" in women and "£99.00" in women
-    assert "Expert Dry Cleaning for Knit Mini Dresses" not in women  # hidden duplicate
-    assert "Services for men are being added" in api.get("/atelier/clean/men/").text
-    page = api.get("/atelier/services/silk-chiffon-dry-cleaning/")
-    assert page.status_code == 404
-    page = api.get("/atelier/services/silk-chiffon-dress-dry-cleaning/")
-    assert page.status_code == 200 and "£80.00" in page.text
-    assert "30 services" in api.get("/atelier/").text
+    assert "Dress, plain short" in women and "£23.99" in women and "5 for £119.95" in women
+    assert "Duvet" not in women
+    assert "Child&#39;s item, age 0-3" in api.get("/atelier/clean/children/").text
+    assert "Dog blanket" in api.get("/atelier/clean/pets/").text
+    assert "Duvet cover, double" in api.get("/atelier/clean/bedding/").text
+    assert "Curtains, lined (per m²)" in api.get("/atelier/clean/drapery/").text
+    # Old service pages point at the item that replaced them on the price list.
+    r = api.get("/atelier/services/silk-chiffon-dress-dry-cleaning/", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/atelier/prices/#dress-short-silk"
+    assert api.get("/atelier/services/no-such-thing/").status_code == 404
+    assert "services" in api.get("/atelier/").text
 
 
 def test_search(api):
     r = api.get("/search/", params={"q": "cashmere"})
-    assert r.status_code == 200 and "Cashmere Jacket Dry Cleaning" in r.text
+    assert r.status_code == 200 and "Coat, cashmere" in r.text and "/atelier/prices/#coat-cashmere" in r.text
     assert "Bedding" in api.get("/search/", params={"q": "bedding"}).text
     assert "Nothing matches" in api.get("/search/", params={"q": "zzzz"}).text
 

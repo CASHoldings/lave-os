@@ -38,7 +38,7 @@ def config(db: Session = Depends(get_db)):
 
 @router.get("/services")
 def services(db: Session = Depends(get_db)):
-    rows = db.scalars(select(Service).where(Service.active.is_(True)).order_by(Service.category, Service.name))
+    rows = db.scalars(select(Service).where(Service.active.is_(True)).order_by((Service.product_category == "").asc(), Service.sort, Service.name))
     return [ser.service(s) for s in rows]
 
 

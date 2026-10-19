@@ -1,0 +1,50 @@
+{% extends "site/base.html" %}
+{% from "site/_prices.html" import price_row, list_bar %}
+{% block title %}Prices | LAVE Atelier, London{% endblock %}
+{% block description %}Every LAVE Atelier price before you book: dry cleaning, laundry, home textiles, pressing, alterations and repairs in London.{% endblock %}
+{% block main %}
+<section class="welcome tight">
+  <p class="eyebrow">LAVE Atelier</p>
+  <h1>Prices</h1>
+  <p>Every price, before you book. Add what you're sending to your list and we'll bring it to your collection; we confirm each piece when it arrives, before we charge.</p>
+  <div class="ctas"><a class="btn" href="/atelier/packs/">See our packs</a><a class="btn dark" href="/book/">Book a collection</a></div>
+</section>
+
+<ul class="price-notes" aria-label="How pricing works">
+  <li><strong>Packs of {{ rules.pack_minimum }}</strong>Everyday staples (shirts, tops, trousers, socks and underwear) are cleaned in packs of {{ rules.pack_minimum }} or more. Mix them as you like.</li>
+  <li><strong>Collection included</strong>Free collection and delivery on orders from {{ rules.free_delivery_from_pence|gbp }}. Members always included.</li>
+  <li><strong>Quoted with care</strong>Specialist pieces show a "from" price. We quote after inspection, and nothing is charged until you approve.</li>
+</ul>
+
+<div class="price-tools" data-price-tools>
+  <label class="price-search"><span class="sr">Search prices</span>
+    <input type="search" placeholder="Search: shirt, duvet, silk, zip…" data-price-search autocomplete="off"></label>
+  <nav class="price-depts" aria-label="Departments">
+    {% for d in departments %}<a href="#{{ d.key }}">{{ d.title }}</a>{% endfor %}<a href="/atelier/packs/">Packs</a>
+  </nav>
+</div>
+
+{% for d in departments %}
+<section class="price-dept" id="{{ d.key }}" data-dept>
+  <header class="price-dept-head">
+    <h2>{{ d.title }}</h2>
+    <p>{{ d.blurb }}</p>
+    <nav class="price-cats" aria-label="{{ d.title }} categories">{% for c in d.categories %}<a href="#{{ c.slug }}">{{ c.name }}</a>{% endfor %}</nav>
+  </header>
+  {% for c in d.categories %}
+  <section class="price-cat" id="{{ c.slug }}" data-cat>
+    <h3>{{ c.name }}</h3>
+    <ul class="price-list">
+      {% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/prices/#" ~ s.slug) }}{% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</section>
+{% endfor %}
+<p class="price-empty" data-price-empty hidden>Nothing matches that search. Try another word, or <a href="/contact/">ask us</a>.</p>
+
+<section class="welcome tight">
+  <p class="muted small">Prices include cleaning and finishing. LAVE isn't VAT-registered, so no VAT is added.</p>
+</section>
+{{ list_bar(summary) }}
+{% endblock %}

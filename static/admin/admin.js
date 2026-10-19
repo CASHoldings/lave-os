@@ -136,7 +136,7 @@
 
   function shell(active, title, actionsHtml = "") {
     const isOps = me.role !== "driver";
-    const links = [["today", "Today"], ...(isOps ? [["orders", "Orders"], ["clients", "Clients"], ["vault", "Vault"], ["shop", "Shop"], ["journal", "Journal"], ["website", "Website"], ["settings", "Settings"]] : [])];
+    const links = [["today", "Today"], ...(isOps ? [["orders", "Orders"], ["clients", "Clients"], ["vault", "Vault"], ["shop", "Shop"], ...(me.role === "admin" ? [["products", "Products"]] : []), ["journal", "Journal"], ["website", "Website"], ["settings", "Settings"]] : [])];
     app.innerHTML = `<div class="shell">
       <aside class="side">
         <div class="brand">LAVE<small>Atelier OS</small></div>
@@ -246,7 +246,13 @@
     const itemsEditable = ["collected", "inspected", "in_care", "quality_check"].includes(o.status) && o.payment_status !== "paid";
     const removable = ["collected", "inspected"].includes(o.status) && o.payment_status !== "paid";
     const paid = ["paid", "waived"].includes(o.payment_status);
-    const svcOptions = (sel) => `<option value="">No service</option>` + services.filter((s) => s.active || s.id === sel).map((s) => `<option value="${s.id}" data-price="${s.price_pence}" ${s.id === sel ? "selected" : ""}>${esc(s.name)} · ${money(s.price_pence)}</option>`).join("");
+    const svcOptions = (sel) => {
+      // Grouped by price-list category so 300+ items stay findable (type to jump within the list).
+      const groups = {};
+      services.filter((s) => s.active || s.id === sel).forEach((s) => { (groups[s.product_category || "Other"] ||= []).push(s); });
+      return `<option value="">No service</option>` + Object.entries(groups).map(([g, list]) => `<optgroup label="${esc(g)}">${list.map((s) =>
+        `<option value="${s.id}" data-price="${s.price_pence}" ${s.id === sel ? "selected" : ""}>${esc(s.name)} · ${s.sale_mode === "quote" ? "from " : ""}${money(s.price_pence)}</option>`).join("")}</optgroup>`).join("");
+    };
 
     c.innerHTML = `
       <div class="row between">
@@ -256,6 +262,9 @@
         </div>
       </div>
       ${o.requested_wardrobe?.length ? `<div class="notice"><strong>Sending again from their Wardrobe:</strong> ${o.requested_wardrobe.map((w) => esc(w.title)).join(", ")}</div>` : ""}
+      ${o.requested_items?.length ? `<div class="notice"><strong>Client's list${o.estimate_pence != null ? ` · estimate ${money(o.estimate_pence)}` : ""}:</strong>
+        <ul class="plain-list">${o.requested_items.map((l) => `<li>${l.qty} × ${esc(l.name)}${l.kind === "pack" ? ` <span class="small muted">pack: ${esc(l.detail)}</span>` : ""}${l.priced_later ? ` <span class="small muted">(quote)</span>` : ""}
+          ${itemsEditable && l.kind === "item" ? `<button class="link small" data-prefill="${l.id}" data-name="${esc(l.name)}">Add</button>` : ""}</li>`).join("")}</ul></div>` : ""}
       ${o.client_notes || o.requested_services.length ? `<div class="notice"><strong>From the client:</strong> ${esc(o.requested_services.map(human).join(", "))}${o.client_notes ? (o.requested_services.length ? " · " : "") + esc(o.client_notes) : ""}</div>` : ""}
       <div class="cols-3">
         <div class="stack">
@@ -323,6 +332,13 @@
         return;
       }
       act(() => api("POST", `/api/staff/orders/${id}/status`, { status: b.dataset.next }), STATUS_LABEL[b.dataset.next])();
+    }));
+    c.querySelectorAll("[data-prefill]").forEach((b) => b.addEventListener("click", () => {
+      const f = c.querySelector("#add-item");
+      f.description.value = b.dataset.name;
+      f.service_id.value = b.dataset.prefill;
+      f.scrollIntoView({ behavior: "smooth", block: "center" });
+      f.colour.focus();
     }));
     c.querySelector("#add-item")?.addEventListener("submit", act(async (e) => {
       e.preventDefault();
@@ -752,7 +768,7 @@
   async function viewWebsite(params) {
     const tab = params.get("tab") || "pages";
     const c = shell("website", "Website");
-    c.innerHTML = `<div class="row">${[["pages", "Pages & menus"], ["services", "Atelier services"], ["products", "Apothecary products"], ["images", "Images"]]
+    c.innerHTML = `<div class="row">${[["pages", "Pages & menus"], ["products", "Apothecary products"], ["images", "Images"]]
       .map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/website?tab=${k}">${l}</a>`).join("")}</div>
       ${me.role !== "admin" ? '<p class="notice">You can look around; only admins can save changes to the website.</p>' : ""}
       <div id="pane"><p class="loading">Loading…</p></div>`;
@@ -1001,13 +1017,299 @@
       return api("POST", `/api/staff/shop/products/${id}/variants`, { size: a.size.value, scent: a.scent.value, price_pence: toPence(a.price.value), stock: parseInt(a.stock.value, 10) || 0 }); }, "Option added"));
   }
 
+  /* Products: the private product repository (prices, costs, margins, packs) */
+
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const SALE_SHORT = { pack: "Packs only", single_or_pack: "Single or pack", single: "Single", quote: "Quote", per_m2: "Per m²", per_kg: "Per kg" };
+  let repoState = null;
+  const repoFilters = { q: "", cat: "", mode: "", svc: "", missing: false, low: false, hidden: false };
+
+  const marginPill = (m, min) => m == null ? `<span class="muted small">no cost</span>`
+    : `<span class="pill ${m >= min ? "ok" : m >= min - 10 ? "warn" : "err"}">${m}%</span>`;
+
+  async function viewProducts(params) {
+    const tab = params.get("tab") || "items";
+    const c = shell("products", "Products", `<a class="btn ghost sm" href="/atelier/prices/" target="_blank">Client view: prices</a><a class="btn ghost sm" href="/atelier/packs/" target="_blank">Client view: packs</a>`);
+    if (me.role !== "admin") { c.innerHTML = `<p class="notice">The product repository includes costs and margins, so only admins can open it.</p>`; return; }
+    c.innerHTML = `<div class="row">${[["items", "Items"], ["packs", "Packs"], ["import", "Import & export"], ["rules", "Pricing rules"]]
+      .map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/products?tab=${k}">${l}</a>`).join("")}</div><div id="pane"><p class="loading">Loading…</p></div>`;
+    repoState = await api("GET", "/api/staff/repository");
+    const pane = c.querySelector("#pane");
+    ({ items: () => repoItems(pane), packs: () => repoPacks(pane), import: () => repoImport(pane), rules: () => repoRules(pane) })[tab]();
+  }
+
+  function repoItems(pane) {
+    const R = repoState, min = R.rules.minimum_margin, st = R.stats;
+    pane.innerHTML = `
+      <div class="stat-tiles">
+        <div class="stat-tile"><strong>${st.items}</strong><span>Items</span></div>
+        <div class="stat-tile"><strong>${st.online}</strong><span>On the website</span></div>
+        <button class="stat-tile ${repoFilters.missing ? "on" : ""}" data-toggle="missing"><strong>${st.missing_cost}</strong><span>Missing cost</span></button>
+        <button class="stat-tile ${repoFilters.low ? "on" : ""}" data-toggle="low"><strong>${st.low_margin}</strong><span>Below ${min}% margin</span></button>
+        <div class="stat-tile"><strong>${st.quote}</strong><span>Quote only</span></div>
+        <a class="stat-tile" href="#/products?tab=packs"><strong>${st.packs}</strong><span>Packs</span></a>
+      </div>
+      <div class="repo-filters">
+        <input type="search" placeholder="Search items, notes, basis…" value="${esc(repoFilters.q)}" data-f="q" aria-label="Search">
+        <select data-f="cat" aria-label="Category"><option value="">All categories</option>${R.categories.map((x) => `<option ${x === repoFilters.cat ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
+        <select data-f="mode" aria-label="How sold"><option value="">Any way of selling</option>${Object.entries(SALE_SHORT).map(([k, l]) => `<option value="${k}" ${k === repoFilters.mode ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <select data-f="svc" aria-label="Service"><option value="">Any service</option>${R.service_types.map((x) => `<option ${x === repoFilters.svc ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
+        <label class="check-label"><input type="checkbox" data-f="hidden" ${repoFilters.hidden ? "checked" : ""}> Hidden or retired only</label>
+        <button class="btn primary" data-new>New item</button>
+      </div>
+      <div id="repo-table"></div>`;
+    const draw = () => {
+      const f = repoFilters, q = f.q.trim().toLowerCase();
+      const rows = R.items.filter((s) => (!q || (s.name + " " + s.internal_notes + " " + s.price_basis + " " + s.service_type).toLowerCase().includes(q))
+        && (!f.cat || s.product_category === f.cat) && (!f.mode || s.sale_mode === f.mode) && (!f.svc || s.service_type === f.svc)
+        && (!f.missing || s.cost_pence == null) && (!f.low || (s.margin != null && s.margin < min))
+        && (f.hidden ? (!s.active || !s.show_online) : s.active));
+      const groups = {};
+      rows.forEach((s) => { (groups[s.product_category] ||= []).push(s); });
+      pane.querySelector("#repo-table").innerHTML = rows.length ? Object.entries(groups).map(([g, list]) => `
+        <section class="repo-group"><h2>${esc(g)} <span class="muted small">${list.length}</span></h2>
+        <div class="table-wrap"><table class="repo-table"><thead><tr><th>Item</th><th>How sold</th><th class="num">Price</th><th class="num">Pack of 5</th><th class="num">Cost</th><th class="num">Margin</th><th>Website</th></tr></thead>
+        <tbody>${list.map((s) => `<tr class="click" data-item="${s.id}">
+          <td><strong>${esc(s.name)}</strong><br><span class="small muted">${esc(s.service_type)}${s.price_basis ? " · " + esc(s.price_basis) : ""}</span></td>
+          <td><span class="pill ${s.sale_mode === "quote" ? "warn" : s.sale_mode === "pack" ? "ink" : ""}">${SALE_SHORT[s.sale_mode]}</span></td>
+          <td class="num">${s.sale_mode === "quote" ? `<span class="small muted">from</span> ` : ""}${money(s.price_pence)}${s.sale_mode === "per_m2" ? "/m²" : s.sale_mode === "per_kg" ? "/kg" : ""}</td>
+          <td class="num">${s.pack_pence ? money(s.pack_pence) : ""}</td>
+          <td class="num">${s.cost_pence != null ? money(s.cost_pence) : `<span class="muted">–</span>`}</td>
+          <td class="num">${marginPill(s.margin, min)}</td>
+          <td>${!s.active ? `<span class="pill">Retired</span>` : s.show_online ? `<span class="pill ok">Shown</span>` : `<span class="pill">Hidden</span>`}</td></tr>`).join("")}</tbody></table></div></section>`).join("")
+        : `<p class="empty">No items match. Clear a filter or search for something else.</p>`;
+      pane.querySelectorAll("tr[data-item]").forEach((tr) => tr.addEventListener("click", () => repoEditItem(R.items.find((s) => String(s.id) === tr.dataset.item))));
+    };
+    pane.querySelectorAll("[data-f]").forEach((el) => el.addEventListener(el.type === "search" ? "input" : "change", () => {
+      repoFilters[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; draw();
+    }));
+    pane.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", () => {
+      repoFilters[b.dataset.toggle] = !repoFilters[b.dataset.toggle]; repoItems(pane);
+    }));
+    pane.querySelector("[data-new]").addEventListener("click", () => repoEditItem(null));
+    draw();
+  }
+
+  function repoEditItem(s) {
+    const R = repoState, isNew = !s;
+    s = s || { name: "", product_category: repoFilters.cat || R.categories[0], sale_mode: "single_or_pack", service_type: "Dry clean", price_pence: 0,
+      cost_pence: null, price_basis: "", internal_notes: "", summary: "", image: "", show_online: true, active: true, collections: [] };
+    const box = document.createElement("div");
+    box.className = "modal panel-right";
+    box.innerHTML = `<div class="modal-card side-card" role="dialog" aria-modal="true" aria-label="${isNew ? "New item" : "Edit item"}">
+      <div class="row between"><h2>${isNew ? "New item" : esc(s.name)}</h2><button class="btn ghost sm" data-close>Close</button></div>
+      <form class="stack" id="item-form">
+        <label>Item name<input name="name" value="${esc(s.name)}" required></label>
+        <div class="form-grid">
+          <label>Category<input name="product_category" list="cat-list" value="${esc(s.product_category)}" required>
+            <datalist id="cat-list">${R.categories.map((x) => `<option value="${esc(x)}">`).join("")}</datalist></label>
+          <label>How sold<select name="sale_mode">${Object.entries(SALE_SHORT).map(([k, l]) => `<option value="${k}" ${k === s.sale_mode ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+          <label>Service<input name="service_type" list="svc-list" value="${esc(s.service_type)}"><datalist id="svc-list">${R.service_types.map((x) => `<option value="${esc(x)}">`).join("")}</datalist></label>
+        </div>
+        <div class="form-grid">
+          <label>Price (£)<input name="price" value="${(s.price_pence / 100).toFixed(2)}" required inputmode="decimal"></label>
+          <label>LAVE cost (£)<input name="cost" value="${s.cost_pence != null ? (s.cost_pence / 100).toFixed(2) : ""}" placeholder="Not known yet" inputmode="decimal"></label>
+          <div class="margin-preview"><span class="small muted">Margin</span><span id="m-preview"></span><span class="small muted" id="p-preview"></span></div>
+        </div>
+        <label>Price basis<input name="price_basis" value="${esc(s.price_basis)}" placeholder="American Standard, Market reference ×1.67…"></label>
+        <label>Internal notes<textarea name="internal_notes" rows="3" placeholder="Only you see these">${esc(s.internal_notes)}</textarea></label>
+        <fieldset class="ed-list"><legend>Clients see</legend>
+          <label>Description (optional)<textarea name="summary" rows="2" placeholder="A line under the item name on the price list">${esc(s.summary)}</textarea></label>
+          <div class="ed-image"><label>Photo<input name="image" value="${esc(s.image)}"></label>${s.image ? `<img src="${esc(s.image.startsWith("http") || s.image.startsWith("/") ? s.image : "https://lavelondon.com/wp-content/uploads/" + s.image)}" alt="">` : "<span></span>"}<button type="button" class="btn sm" data-pick>Choose image</button></div>
+          <div class="row">${R.collections.map((k) => `<label class="check-label"><input type="checkbox" name="col" value="${k}" ${(s.collections || []).includes(k) ? "checked" : ""}> ${k[0].toUpperCase() + k.slice(1)}</label>`).join("")}</div>
+          <span class="small muted">Ticked pages list this item (Atelier → Clean). Every item shown on the website is also on the full price list.</span>
+          <label class="check-label"><input type="checkbox" name="show_online" ${s.show_online ? "checked" : ""}> Show on the website</label>
+        </fieldset>
+        ${isNew ? "" : `<label class="check-label"><input type="checkbox" name="active" ${s.active ? "checked" : ""}> Available (untick to retire: hidden everywhere, kept on past orders)</label>`}
+        <div class="row"><button class="btn primary" type="submit">${isNew ? "Create item" : "Save"}</button><button type="button" class="btn ghost" data-close>Cancel</button>
+          ${isNew ? "" : `<a class="small" href="/atelier/prices/#${esc(s.slug)}" target="_blank">See it on the price list</a>`}</div>
+      </form></div>`;
+    document.body.appendChild(box);
+    const f = box.querySelector("#item-form"), close = () => box.remove();
+    box.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
+    box.addEventListener("click", (e) => { if (e.target === box) close(); });
+    const preview = () => {
+      const p = toPence(f.price.value), cost = f.cost.value.trim() ? toPence(f.cost.value) : null;
+      const m = cost != null && p > 0 ? Math.round((p - cost) * 100 / p) : null;
+      box.querySelector("#m-preview").innerHTML = marginPill(m, R.rules.minimum_margin);
+      box.querySelector("#p-preview").textContent = ["pack", "single_or_pack"].includes(f.sale_mode.value) && p ? `Pack of 5: ${money(p * 5)}` : "";
+    };
+    ["input", "change"].forEach((ev) => f.addEventListener(ev, preview)); preview();
+    box.querySelector("[data-pick]").addEventListener("click", async () => { const u = await pickImage(); if (u) f.image.value = u; });
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = { name: f.name.value.trim(), product_category: f.product_category.value.trim(), sale_mode: f.sale_mode.value,
+        service_type: f.service_type.value.trim(), price_pence: toPence(f.price.value), cost_pence: f.cost.value.trim() ? toPence(f.cost.value) : null,
+        price_basis: f.price_basis.value, internal_notes: f.internal_notes.value, summary: f.summary.value, image: f.image.value,
+        show_online: f.show_online.checked, collections: [...f.querySelectorAll("input[name=col]:checked")].map((i) => i.value) };
+      if (!isNew) body.active = f.active.checked;
+      if (Number.isNaN(body.price_pence) || (body.cost_pence != null && Number.isNaN(body.cost_pence))) return toast("Check the price and cost.", true);
+      try { await api(isNew ? "POST" : "PATCH", isNew ? "/api/staff/repository/items" : `/api/staff/repository/items/${s.id}`, body);
+        close(); toast(isNew ? "Item created" : "Saved"); route(); }
+      catch (ex) { toast(ex.message, true); }
+    });
+    f.name.focus();
+  }
+
+  function repoPacks(pane) {
+    const R = repoState, min = R.rules.minimum_margin, month = new Date().getMonth() + 1;
+    pane.innerHTML = `<div class="row between"><p class="muted small">A pack's price is always the sum of its items, so it updates when item prices change. "In season" packs are featured on the website in their months.</p>
+        <button class="btn primary" data-new-pack>New pack</button></div>
+      <div class="pack-admin-grid">${R.packs.map((p) => `<button class="pack-admin ${p.active ? "" : "off"}" data-pack="${p.id}">
+        <span class="row between"><span class="pill ${p.kind === "starter" ? "ink" : ""}">${p.kind === "starter" ? "Everyday" : "Themed"}</span>
+          <span>${!p.active ? `<span class="pill">Off</span>` : !p.show_online ? `<span class="pill">Hidden</span>` : p.months.includes(month) ? `<span class="pill ok">In season</span>` : ""}${p.unavailable ? ` <span class="pill err">Has a retired item</span>` : ""}</span></span>
+        <strong>${esc(p.name)}</strong>
+        <span class="small muted">${esc(p.note)}</span>
+        <span class="small">${p.items.map((i) => `${i.qty} × ${esc(i.name)}`).join(", ")}</span>
+        <span class="row between"><strong>${money(p.price_pence)}</strong><span class="small">${p.count} items · ${marginPill(p.margin, min)}</span></span>
+        ${p.count < R.rules.pack_minimum ? `<span class="small warn-text">Below the ${R.rules.pack_minimum}-item minimum</span>` : ""}</button>`).join("")}</div>`;
+    pane.querySelector("[data-new-pack]").addEventListener("click", () => repoEditPack(null));
+    pane.querySelectorAll("[data-pack]").forEach((b) => b.addEventListener("click", () => repoEditPack(R.packs.find((p) => String(p.id) === b.dataset.pack))));
+  }
+
+  function repoEditPack(p) {
+    const R = repoState, isNew = !p, byId = Object.fromEntries(R.items.map((s) => [s.id, s]));
+    const pack = p ? JSON.parse(JSON.stringify(p)) : { name: "", kind: "themed", note: "", summary: "", months: [], image: "", active: true, show_online: true, items: [] };
+    const options = (sel) => {
+      const groups = {};
+      R.items.filter((s) => s.active || s.id === sel).forEach((s) => { (groups[s.product_category] ||= []).push(s); });
+      return `<option value="">Choose an item</option>` + Object.entries(groups).map(([g, list]) => `<optgroup label="${esc(g)}">${list.map((s) => `<option value="${s.id}" ${s.id === sel ? "selected" : ""}>${esc(s.name)} · ${money(s.price_pence)}</option>`).join("")}</optgroup>`).join("");
+    };
+    const box = document.createElement("div");
+    box.className = "modal panel-right";
+    const draw = () => {
+      const lines = pack.items.filter((l) => byId[l.service_id]);
+      const price = lines.reduce((t, l) => t + byId[l.service_id].price_pence * l.qty, 0);
+      const costKnown = lines.length && lines.every((l) => byId[l.service_id].cost_pence != null);
+      const cost = costKnown ? lines.reduce((t, l) => t + byId[l.service_id].cost_pence * l.qty, 0) : null;
+      const count = lines.reduce((t, l) => t + l.qty, 0);
+      box.innerHTML = `<div class="modal-card side-card" role="dialog" aria-modal="true" aria-label="Pack">
+        <div class="row between"><h2>${isNew ? "New pack" : esc(pack.name)}</h2><button class="btn ghost sm" data-close>Close</button></div>
+        <form class="stack" id="pack-form">
+          <div class="form-grid"><label style="grid-column:span 2">Pack name<input name="name" value="${esc(pack.name)}" required></label>
+            <label>Type<select name="kind"><option value="starter" ${pack.kind === "starter" ? "selected" : ""}>Everyday</option><option value="themed" ${pack.kind === "themed" ? "selected" : ""}>Themed</option></select></label></div>
+          <label>When / who it's for<input name="note" value="${esc(pack.note)}" placeholder="e.g. November–February; put-away in April"></label>
+          <label>Description for clients (optional)<textarea name="summary" rows="2">${esc(pack.summary)}</textarea></label>
+          <fieldset class="ed-list"><legend>Items</legend>
+            ${pack.items.map((l, i) => `<div class="pack-line"><select data-line="${i}" aria-label="Item">${options(l.service_id)}</select>
+              <input data-qty="${i}" type="number" min="1" max="50" value="${l.qty}" aria-label="Quantity">
+              <span class="small num">${byId[l.service_id] ? money(byId[l.service_id].price_pence * l.qty) : ""}</span>
+              <button type="button" class="link small danger-text" data-remove-line="${i}">Remove</button></div>`).join("")}
+            <button type="button" class="btn sm ghost" data-add-line>Add item</button>
+          </fieldset>
+          <div class="pack-sum"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${money(price)}</strong>${marginPill(cost != null && price ? Math.round((price - cost) * 100 / price) : null, R.rules.minimum_margin)}
+            ${count && count < R.rules.pack_minimum ? `<span class="small warn-text">Below the ${R.rules.pack_minimum}-item minimum</span>` : ""}</div>
+          <fieldset class="ed-list"><legend>In season (featured on the website these months; none = all year)</legend>
+            <div class="month-chips">${MONTH_NAMES.map((m, i) => `<label class="month-chip"><input type="checkbox" name="month" value="${i + 1}" ${pack.months.includes(i + 1) ? "checked" : ""}><span>${m}</span></label>`).join("")}</div></fieldset>
+          <div class="row"><label class="check-label"><input type="checkbox" name="active" ${pack.active ? "checked" : ""}> Available</label>
+            <label class="check-label"><input type="checkbox" name="show_online" ${pack.show_online ? "checked" : ""}> Show on the website</label></div>
+          <div class="row"><button class="btn primary" type="submit">${isNew ? "Create pack" : "Save"}</button><button type="button" class="btn ghost" data-close>Cancel</button>
+            ${isNew ? "" : `<span id="del-box"><button type="button" class="btn danger" data-delete>Delete pack</button></span>`}</div>
+        </form></div>`;
+      const f = box.querySelector("#pack-form");
+      const keep = () => { pack.name = f.name.value; pack.kind = f.kind.value; pack.note = f.note.value; pack.summary = f.summary.value;
+        pack.months = [...f.querySelectorAll("input[name=month]:checked")].map((i) => Number(i.value)); pack.active = f.active.checked; pack.show_online = f.show_online.checked; };
+      box.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => box.remove()));
+      f.querySelectorAll("[data-line]").forEach((s) => s.addEventListener("change", () => { keep(); pack.items[s.dataset.line].service_id = Number(s.value); draw(); }));
+      f.querySelectorAll("[data-qty]").forEach((q) => q.addEventListener("change", () => { keep(); pack.items[q.dataset.qty].qty = Math.max(1, Number(q.value) || 1); draw(); }));
+      f.querySelectorAll("[data-remove-line]").forEach((b) => b.addEventListener("click", () => { keep(); pack.items.splice(Number(b.dataset.removeLine), 1); draw(); }));
+      f.querySelector("[data-add-line]").addEventListener("click", () => { keep(); pack.items.push({ service_id: 0, qty: 1 }); draw(); });
+      f.querySelector("[data-delete]")?.addEventListener("click", () => {
+        const d = box.querySelector("#del-box");
+        d.innerHTML = `<span class="small">Delete ${esc(pack.name)}?</span> <button type="button" class="btn danger sm" data-yes>Delete</button>`;
+        d.querySelector("[data-yes]").addEventListener("click", async () => {
+          try { await api("DELETE", `/api/staff/repository/packs/${p.id}`); box.remove(); toast("Pack deleted"); route(); } catch (ex) { toast(ex.message, true); }
+        });
+      });
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault(); keep();
+        const items = pack.items.filter((l) => l.service_id);
+        if (!items.length) return toast("Add at least one item.", true);
+        try { await api(isNew ? "POST" : "PUT", isNew ? "/api/staff/repository/packs" : `/api/staff/repository/packs/${p.id}`, { ...pack, items });
+          box.remove(); toast(isNew ? "Pack created" : "Saved"); route(); }
+        catch (ex) { toast(ex.message, true); }
+      });
+    };
+    document.body.appendChild(box);
+    box.addEventListener("click", (e) => { if (e.target === box) box.remove(); });
+    draw();
+  }
+
+  function repoImport(pane) {
+    pane.innerHTML = `<section class="panel">
+        <h2>Download</h2>
+        <p class="small muted">The whole repository as a CSV, in the same columns as your pricing sheet plus Code, On website and Client description. Open it in Google Sheets or Excel.</p>
+        <div><a class="btn" href="/api/staff/repository/export.csv">Download CSV</a></div>
+      </section>
+      <section class="panel">
+        <h2>Upload from your pricing sheet</h2>
+        <p class="small muted">In Google Sheets choose File → Download → CSV (the item list tab), then upload it here. You'll see every change before anything is saved. Items are matched by Code (if the file has one) or by name. Margin % and Pack of 5 are worked out here, so those columns are ignored.</p>
+        <label class="btn">Choose CSV file<input type="file" accept=".csv,text/csv" hidden data-file></label>
+        <div id="preview"></div>
+      </section>`;
+    let file = null;
+    const sendFile = async (apply, retire) => {
+      const fd = new FormData(); fd.append("file", file); fd.append("apply", apply ? "true" : "false"); fd.append("retire_missing", retire ? "true" : "false");
+      const res = await fetch("/api/staff/repository/import", { method: "POST", body: fd, credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Import failed.");
+      return data;
+    };
+    const FIELD = { product_category: "Category", sale_mode: "How sold", service_type: "Service", price_pence: "Price", cost_pence: "Cost", price_basis: "Basis", internal_notes: "Notes", name: "Name", active: "Available" };
+    const show = (k, v) => v == null || v === "" ? "–" : (k === "price_pence" || k === "cost_pence") ? money(v) : k === "sale_mode" ? SALE_SHORT[v] : esc(String(v));
+    pane.querySelector("[data-file]").addEventListener("change", async (e) => {
+      file = e.target.files[0];
+      const out = pane.querySelector("#preview");
+      out.innerHTML = `<p class="loading">Reading ${esc(file.name)}…</p>`;
+      try {
+        const d = await sendFile(false, false);
+        out.innerHTML = `
+          ${d.problems.length ? `<div class="notice err-text"><strong>Fix these in the sheet first:</strong><ul>${d.problems.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></div>` : ""}
+          <div class="stat-tiles"><div class="stat-tile"><strong>${d.rows}</strong><span>Rows</span></div><div class="stat-tile"><strong>${d.new.length}</strong><span>New</span></div>
+            <div class="stat-tile"><strong>${d.changed.length}</strong><span>Changed</span></div><div class="stat-tile"><strong>${d.unchanged}</strong><span>Unchanged</span></div>
+            <div class="stat-tile"><strong>${d.missing.length}</strong><span>Not in the file</span></div></div>
+          ${d.new.length ? `<details open><summary><strong>New items (${d.new.length})</strong></summary><ul class="small">${d.new.map((n) => `<li>${esc(n.name)} <span class="muted">${esc(n.category)} · ${money(n.price_pence)}</span></li>`).join("")}</ul></details>` : ""}
+          ${d.changed.length ? `<details open><summary><strong>Changes (${d.changed.length})</strong></summary><div class="table-wrap"><table><thead><tr><th>Item</th><th>What changes</th></tr></thead><tbody>
+            ${d.changed.map((c) => `<tr><td>${esc(c.name)}</td><td class="small">${Object.entries(c.changes).map(([k, [a, b]]) => `${FIELD[k] || k}: <s>${show(k, a)}</s> → <strong>${show(k, b)}</strong>`).join("<br>")}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
+          ${d.missing.length ? `<details><summary><strong>In LAVE OS but not in the file (${d.missing.length})</strong></summary><ul class="small">${d.missing.map((m) => `<li>${esc(m.name)} <span class="muted">${esc(m.category)}</span></li>`).join("")}</ul></details>
+            <label class="check-label"><input type="checkbox" data-retire> Retire these ${d.missing.length} items (hidden everywhere, kept on past orders)</label>` : ""}
+          ${!d.problems.length && (d.new.length || d.changed.length || d.missing.length) ? `<div class="row"><button class="btn primary" data-apply>Apply ${d.new.length + d.changed.length} change${d.new.length + d.changed.length === 1 ? "" : "s"}</button></div>`
+            : !d.problems.length ? `<p class="ok small">Everything already matches the file.</p>` : ""}`;
+        out.querySelector("[data-apply]")?.addEventListener("click", async (ev) => {
+          ev.target.disabled = true;
+          try { const r = await sendFile(true, !!out.querySelector("[data-retire]")?.checked);
+            toast(`Imported: ${r.added} new, ${r.updated} updated${r.retired ? `, ${r.retired} retired` : ""}.`); location.hash = "#/products?tab=items"; }
+          catch (ex) { toast(ex.message, true); ev.target.disabled = false; }
+        });
+      } catch (ex) { out.innerHTML = `<p class="error">${esc(ex.message)}</p>`; }
+    });
+  }
+
+  function repoRules(pane) {
+    const r = repoState.rules;
+    pane.innerHTML = `<form class="panel stack" id="rules">
+        <h2>Pricing rules</h2>
+        <div class="form-grid">
+          <label>Pack minimum (items)<input name="pack_minimum" type="number" min="1" max="20" value="${r.pack_minimum}"></label>
+          <label>Free collection from (£)<input name="free" value="${(r.free_delivery_from_pence / 100).toFixed(2)}"></label>
+          <label>Minimum margin (%)<input name="minimum_margin" type="number" min="0" max="95" value="${r.minimum_margin}"></label>
+        </div>
+        <p class="small muted">The pack minimum and free-collection amount are shown to clients and used in their list. The minimum margin colours the Margin column here.</p>
+        <label>Rules and notes (private)<textarea name="text" rows="18">${esc(r.text)}</textarea></label>
+        <div><button class="btn primary">Save rules</button></div>
+      </form>`;
+    pane.querySelector("#rules").addEventListener("submit", act((e) => { e.preventDefault(); const f = e.target;
+      return api("PUT", "/api/staff/repository/rules", { pack_minimum: Number(f.pack_minimum.value), free_delivery_from_pence: toPence(f.free.value),
+        minimum_margin: Number(f.minimum_margin.value), text: f.text.value }); }, "Rules saved"));
+  }
+
   /* Settings */
 
   async function viewSettings(params) {
-    const tab = params.get("tab") || "services";
+    const tab = params.get("tab") || "slots";
     const isAdmin = me.role === "admin";
     const c = shell("settings", "Settings");
-    const tabs = [["services", "Price list"], ["slots", "Slots"], ["closures", "Closures"], ...(isAdmin ? [["team", "Team"], ["email", "Email"]] : [])];
+    const tabs = [["slots", "Slots"], ["closures", "Closures"], ...(isAdmin ? [["team", "Team"], ["email", "Email"]] : [])];
     c.innerHTML = `<div class="row">${tabs.map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/settings?tab=${k}">${l}</a>`).join("")}</div>
       ${isAdmin ? "" : `<p class="notice">Only admins can change settings.</p>`}<div id="pane"><p class="loading">Loading…</p></div>`;
     const pane = c.querySelector("#pane");
@@ -1128,6 +1430,7 @@
       else if (parts[0] === "website" && parts[1] === "services" && parts[2]) await viewServiceEdit(parts[2]);
       else if (parts[0] === "website" && parts[1] === "products" && parts[2]) await viewProductEdit(parts[2]);
       else if (parts[0] === "website") await viewWebsite(params);
+      else if (parts[0] === "products") await viewProducts(params);
       else if (parts[0] === "journal" && parts[1]) await viewPost(parts[1]);
       else if (parts[0] === "journal") await viewJournal(params);
       else if (parts[0] === "settings") await viewSettings(params);

@@ -6,6 +6,12 @@
   <h1>Book a collection</h1>
   <p class="muted">Signed in as {{ client.full_name }}. We'll itemise and price your pieces when they arrive, and show you the total before we charge.</p>
 </section>
+{% if planned and planned.lines %}
+<div class="list-preview">
+  <span><strong>Your list goes with this booking:</strong> {{ planned.count }} item(s), estimate {{ planned.estimate_pence|gbp }}{% if planned.lines|selectattr("priced_later")|list %} plus pieces quoted after inspection{% endif %}.</span>
+  <a class="link small" href="/atelier/list/">Review list</a>
+</div>
+{% endif %}
 <section class="embed-page">
   <lave-booking same-origin {% if mode %}mode="{{ mode }}"{% endif %} {% if items %}items="{{ items }}"{% endif %} api="" login-url="/account/login/?next=/book/" account-url="/account/"></lave-booking>
 </section>

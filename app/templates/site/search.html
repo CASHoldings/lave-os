@@ -18,16 +18,14 @@
   </section>
   {% endif %}
   {% if services %}
-  <section class="catalogue"><h2 class="catalogue-title">Services</h2>
-    <div class="products">
+  <section class="catalogue"><h2 class="catalogue-title">Prices</h2>
+    <ul class="price-list search-prices">
       {% for s in services %}
-      <a class="product" href="/atelier/services/{{ s.slug }}/">
-        <span class="product-img">{% if image_url(s) %}<img src="{{ image_url(s) }}" alt="" loading="lazy">{% endif %}</span>
-        <span class="product-name">{{ s.title }}</span>
-        <span class="product-price">£{{ "%.2f"|format(s.price_pence / 100) }}</span>
-      </a>
+      <li class="price-row"><div class="price-what"><a class="price-name" href="/atelier/prices/#{{ s.slug }}">{{ s.name }}</a>
+        <span class="price-meta">{{ s.product_category }} · {{ s.service_type }}</span></div>
+        <div class="price-amount"><span class="price-main">{% if s.sale_mode == "quote" %}<span class="price-from">from</span> {% endif %}{{ s.price_pence|gbp }}</span></div></li>
       {% endfor %}
-    </div>
+    </ul>
   </section>
   {% endif %}
 {% endif %}

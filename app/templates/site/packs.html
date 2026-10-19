@@ -1,0 +1,29 @@
+{% extends "site/base.html" %}
+{% from "site/_prices.html" import pack_card, list_bar %}
+{% block title %}Packs | LAVE Atelier, London{% endblock %}
+{% block description %}LAVE packs: curated sets of garments and home textiles cleaned together, from the work week to winter put-away.{% endblock %}
+{% block main %}
+<section class="welcome tight">
+  <p class="eyebrow">LAVE Atelier</p>
+  <h1>Packs</h1>
+  <p>Sets of pieces that belong together, cleaned on the same cycle. Each pack is simply the sum of its items, with nothing hidden, and it's an easy way to reach free collection.</p>
+  <div class="ctas"><a class="btn" href="/atelier/prices/">All prices</a><a class="btn dark" href="/book/">Book a collection</a></div>
+</section>
+
+{% if in_season %}
+<section class="pack-group in-season" id="in-season">
+  <header class="pack-group-head"><p class="eyebrow">In season · {{ month_name }}</p><h2>Ready for now</h2></header>
+  <div class="pack-grid">{% for card in in_season[:6] %}{{ pack_card(card, in_list, "/atelier/packs/#" ~ card.pack.slug) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+<nav class="price-depts center" aria-label="Pack groups">{% for g in groups %}<a href="#{{ g.key }}">{{ g.title }}</a>{% endfor %}</nav>
+
+{% for g in groups %}
+<section class="pack-group" id="{{ g.key }}">
+  <header class="pack-group-head"><h2>{{ g.title }}</h2><p>{{ g.blurb }}</p></header>
+  <div class="pack-grid">{% for card in g.cards %}{{ pack_card(card, in_list, "/atelier/packs/#" ~ card.pack.slug) }}{% endfor %}</div>
+</section>
+{% endfor %}
+{{ list_bar(summary) }}
+{% endblock %}

@@ -74,7 +74,8 @@ def booking(b: Booking, staff_view: bool = False) -> dict:
 def service(s: Service) -> dict:
     return {"id": s.id, "code": s.code, "name": s.name, "category": s.category.value, "unit": s.unit,
             "price_pence": s.price_pence, "active": s.active, "show_online": s.show_online, "slug": s.slug,
-            "image": s.image, "summary": s.summary, "collections": s.collections or [], "review_note": s.review_note}
+            "image": s.image, "summary": s.summary, "collections": s.collections or [], "review_note": s.review_note,
+            "product_category": s.product_category, "sale_mode": s.sale_mode, "service_type": s.service_type}
 
 
 def garment(g: Garment) -> dict:
@@ -93,6 +94,7 @@ def order(o: Order, staff_view: bool = False, detail: bool = False) -> dict:
         "items_total_pence": o.items_total_pence, "fees_pence": o.fees_pence, "discount_pence": o.discount_pence,
         "total_pence": o.total_pence, "payment_status": o.payment_status.value,
         "requested_services": o.requested_services or [], "client_notes": o.client_notes,
+        "requested_items": o.requested_items or [], "estimate_pence": o.estimate_pence,
         "bookings": [booking(b, staff_view) for b in o.bookings],
     }
     if detail:
