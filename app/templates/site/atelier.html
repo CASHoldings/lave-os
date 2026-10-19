@@ -22,12 +22,13 @@
   <h1>{{ page.heading }}</h1>
   <p class="lead">{{ page.lead }}</p>
   <p>{{ page.text }}</p>
-  <div class="ctas"><a class="btn" href="#clean">Explore Atelier</a><a class="btn" href="/book/">Reserve collection</a></div>
+  <div class="ctas"><a class="btn" href="#clean">Explore Atelier</a><a class="btn" href="/atelier/prices/">Prices</a><a class="btn" href="/atelier/packs/">Packs</a><a class="btn dark" href="/book/">Reserve collection</a></div>
 </section>
 
 <section class="group" id="clean">
   <header class="group-head"><p class="eyebrow">{{ page.clean.eyebrow }}</p><h2>{{ page.clean.heading }}</h2><p>{{ page.clean.text }}</p></header>
   {{ cards(page.clean, product=True) }}
+  <div class="ctas"><a class="btn" href="/atelier/prices/">See every price</a><a class="btn" href="/atelier/packs/">Browse packs</a></div>
 </section>
 
 {{ feature(page.booking, "/book/") }}

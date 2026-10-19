@@ -199,3 +199,8 @@ def test_import_from_the_pricing_sheet(api, staff_headers, db_session):
 @pytest.mark.parametrize("raw,expected", [("i12:3,p4:1", {"i12": 3, "p4": 1}), ("i1:0,x:3,i2:500", {}), ("", {})])
 def test_list_cookie_is_validated(raw, expected):
     assert repo.parse_list(raw) == expected
+
+
+def test_atelier_page_links_to_prices_and_packs(api):
+    page = api.get("/atelier/").text
+    assert 'href="/atelier/prices/"' in page and 'href="/atelier/packs/"' in page
