@@ -1,5 +1,5 @@
 {% extends "site/base.html" %}
-{% from "site/_prices.html" import price_row, list_bar %}
+{% from "site/_prices.html" import price_row, list_bar with context %}
 {% block title %}Prices | LAVE Atelier, London{% endblock %}
 {% block description %}Every LAVE Atelier price before you book: dry cleaning, laundry, home textiles, pressing, alterations and repairs in London.{% endblock %}
 {% block main %}
@@ -15,6 +15,12 @@
   <li><strong>Collection included</strong>Free collection and delivery on orders from {{ rules.free_delivery_from_pence|gbp }}. Members always included.</li>
   <li><strong>Quoted with care</strong>Specialist pieces show a "from" price. We quote after inspection, and nothing is charged until you approve.</li>
 </ul>
+
+<section class="cat-index" aria-label="Browse by category">
+  {% for d in departments %}{% for c in d.categories %}{% if c.image %}
+  <a href="#{{ c.slug }}"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><span>{{ c.name }}</span></a>
+  {% endif %}{% endfor %}{% endfor %}
+</section>
 
 <div class="price-tools" data-price-tools>
   <label class="price-search"><span class="sr">Search prices</span>
@@ -33,9 +39,10 @@
   </header>
   {% for c in d.categories %}
   <section class="price-cat" id="{{ c.slug }}" data-cat>
-    <h3>{{ c.name }}</h3>
+    {% if c.image %}<div class="price-cat-head"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><div><h3>{{ c.name }}</h3><p class="price-cat-count">{{ c["items"]|length }} item{{ "s" if c["items"]|length != 1 }}</p></div></div>
+    {% else %}<h3>{{ c.name }}</h3>{% endif %}
     <ul class="price-list">
-      {% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/prices/#" ~ s.slug) }}{% endfor %}
+      {% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/prices/#" ~ s.slug, c.thumbs) }}{% endfor %}
     </ul>
   </section>
   {% endfor %}

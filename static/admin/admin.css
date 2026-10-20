@@ -218,3 +218,10 @@ button.stat-tile:hover, a.stat-tile:hover { border-color: var(--ink); }
 .pack-line select { min-width: 0; text-overflow: ellipsis; }
 .pack-line input { width: 100%; }
 @media (max-width: 700px) { .pack-line { grid-template-columns: 1fr 60px; } .pack-line .num, .pack-line .link { grid-column: auto; } }
+.repo-group-head { display: flex; align-items: center; gap: 14px; }
+.repo-group-head img { width: 44px; height: 55px; object-fit: cover; background: var(--panel); }
+.repo-noimg { width: 44px; height: 55px; background: var(--panel); font-size: 9px; color: var(--muted); display: grid; place-items: center; text-align: center; line-height: 1.2; }
+.repo-group-head .link { margin-left: auto; }
+.repo-item { display: flex; gap: 12px; align-items: center; }
+.repo-item img, .repo-thumb-empty { width: 36px; height: 45px; object-fit: cover; background: var(--panel); flex: none; }
+.pack-admin-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--panel); }

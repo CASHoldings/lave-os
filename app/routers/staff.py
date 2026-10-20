@@ -987,6 +987,7 @@ def repository_overview(staff: StaffUser = Depends(admin_only), db: Session = De
         "sale_modes": repo.SALE_LABELS,
         "service_types": sorted({s.service_type for s in all_items if s.service_type}),
         "collections": repo.COLLECTION_PAGES,
+        "category_images": repo.category_images(db),
         "packs": [_repo_pack(p, by_id) for p in repo.packs(db)],
         "rules": rules,
         "stats": {"items": len(active), "online": sum(1 for s in active if s.show_online),
@@ -1075,6 +1076,18 @@ def repository_delete_pack(pack_id: int, staff: StaffUser = Depends(admin_only),
         raise HTTPException(404, "Pack not found.")
     db.delete(p)
     db.commit()
+
+
+@router.put("/repository/category-image")
+def repository_category_image(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    category, image = str(body.get("category", "")).strip(), str(body.get("image", "")).strip()[:400]
+    if not category or category not in {s.product_category for s in repo.items(db)}:
+        raise HTTPException(404, "Unknown category.")
+    if image and not image.startswith(("/", "https://")):
+        raise HTTPException(400, "Choose an image from the library.")
+    images = repo.set_category_image(db, category, image)
+    db.commit()
+    return images
 
 
 @router.put("/repository/rules")

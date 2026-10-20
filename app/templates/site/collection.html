@@ -1,5 +1,5 @@
 {% extends "site/base.html" %}
-{% from "site/_prices.html" import price_row, list_bar %}
+{% from "site/_prices.html" import price_row, list_bar with context %}
 {% block title %}{{ item }} | Laundry & Dry Cleaning | LAVE{% endblock %}
 {% block description %}{{ intro }}{% endblock %}
 {% block main %}
@@ -18,8 +18,9 @@
     <nav class="price-cats" aria-label="Categories">{% for c in d.categories %}<a href="#{{ c.slug }}">{{ c.name }}</a>{% endfor %}</nav>
     {% for c in d.categories %}
     <section class="price-cat" id="{{ c.slug }}">
-      <h3>{{ c.name }}</h3>
-      <ul class="price-list">{% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/clean/" ~ current ~ "/#" ~ s.slug) }}{% endfor %}</ul>
+      {% if c.image %}<div class="price-cat-head"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><div><h3>{{ c.name }}</h3><p class="price-cat-count">{{ c["items"]|length }} item{{ "s" if c["items"]|length != 1 }}</p></div></div>
+    {% else %}<h3>{{ c.name }}</h3>{% endif %}
+      <ul class="price-list">{% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/clean/" ~ current ~ "/#" ~ s.slug, c.thumbs) }}{% endfor %}</ul>
     </section>
     {% endfor %}
   </section>

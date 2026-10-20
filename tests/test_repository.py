@@ -204,3 +204,36 @@ def test_list_cookie_is_validated(raw, expected):
 def test_atelier_page_links_to_prices_and_packs(api):
     page = api.get("/atelier/").text
     assert 'href="/atelier/prices/"' in page and 'href="/atelier/packs/"' in page
+
+
+def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, staff_headers, tmp_path):
+    from app.models import Media
+    with db_session() as db:
+        chosen = db.scalar(select(Service).where(Service.name == "Coat, long"))
+        chosen.image = "/media/founder-picked.webp"  # picked in /admin before the photos arrived
+        db.commit()
+        result = repo.load_bundled_images(db, media_dir=tmp_path)
+        assert result["added"] == 454 and result["packs"] == 68 and result["categories"] == 26
+        assert result["items"] == 149  # all mapped items except the one already chosen
+        assert len(list(tmp_path.glob("*.webp"))) == 454
+        assert db.scalar(select(Service).where(Service.name == "Coat, long")).image == "/media/founder-picked.webp"
+        cashmere = db.scalar(select(Service).where(Service.name == "Coat, cashmere"))
+        assert cashmere.image == "/media/women-coat-cashmere.webp"
+        assert db.scalar(select(Media).where(Media.url == cashmere.image)).alt == "Women's coat, cashmere"
+        # The old WordPress photo carried onto Leather jacket gives way to the studio shot.
+        assert _item(db_session, "Leather jacket").image == "/media/men-jacket-leather.webp"
+        # A second deploy adds and changes nothing, even if the founder has since removed a photo.
+        cashmere.image = ""
+        db.commit()
+        assert repo.load_bundled_images(db, media_dir=tmp_path) == {"added": 0, "items": 0, "packs": 0, "categories": 0}
+        assert db.scalar(select(Service).where(Service.name == "Coat, cashmere")).image == ""
+
+    page = api.get("/atelier/prices/").text
+    assert 'class="cat-index"' in page and "/media/lave-lave166.webp" in page and 'class="price-thumb"' in page
+    assert "/media/lave-lave184.webp" in api.get("/atelier/packs/").text  # The Work Week flat-lay
+
+    r = api.put("/api/staff/repository/category-image", headers=staff_headers, json={"category": "Coats", "image": "/media/new-coats.webp"})
+    assert r.status_code == 200 and r.json()["Coats"] == "/media/new-coats.webp"
+    assert api.put("/api/staff/repository/category-image", headers=staff_headers, json={"category": "Nope", "image": ""}).status_code == 404
+    assert api.put("/api/staff/repository/category-image", headers=staff_headers,
+                   json={"category": "Coats", "image": "javascript:alert(1)"}).status_code == 400

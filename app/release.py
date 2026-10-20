@@ -56,6 +56,9 @@ def release() -> list[str]:
         if loaded := repository.load_repository(db):
             notes.append(f"Product repository loaded: {loaded['added']} items, {loaded['packs']} packs; "
                          f"{loaded['retired_old']} old price-list entries retired.")
+        if (photos := repository.load_bundled_images(db)) and (photos["added"] or photos["items"]):
+            notes.append(f"Photos: {photos['added']} added to the image library; placed on {photos['items']} items, "
+                         f"{photos['packs']} packs and {photos['categories']} categories.")
         if not db.scalar(select(func.count()).select_from(StaffUser)):
             email, password = settings.first_admin_email.strip().lower(), settings.first_admin_password
             if email and len(password) >= 12:

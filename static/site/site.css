@@ -613,3 +613,31 @@ html { font-size: 100%; }
   .list-bar-inner > span { font-size: 0.75rem; line-height: 1.4; }
   .list-bar .btn.dark { padding: 0 14px; min-height: 38px; white-space: nowrap; }
 }
+
+/* Photos on the price list and packs */
+.cat-index { max-width: 1180px; margin: 40px auto 0; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 18px 14px; }
+.cat-index a { display: grid; gap: 8px; text-decoration: none; align-content: start; }
+.cat-index img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--panel); transition: opacity .2s; }
+.cat-index a:hover img { opacity: .86; }
+.cat-index span { font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.4; }
+.price-cat-head { display: grid; grid-template-columns: 168px 1fr; gap: 22px; align-items: end; padding-bottom: 14px; border-bottom: 1px solid var(--ink); }
+.price-cat-head img { width: 168px; aspect-ratio: 4 / 5; object-fit: cover; background: var(--panel); }
+.price-cat-head h3 { padding: 0; border: 0; }
+.price-cat-count { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+.price-row.with-thumb { grid-template-columns: 68px 1fr auto auto; }
+.price-thumb { width: 68px; height: 85px; background: var(--panel); display: grid; place-items: center; overflow: hidden; }
+.price-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.price-thumb img.price-mark { width: 26px; height: auto; object-fit: contain; opacity: .22; }
+.pack-card.with-photo { padding-top: 0; }
+.pack-photo { margin: 0 -24px 4px; aspect-ratio: 1 / 1; background: var(--panel); overflow: hidden; }
+.pack-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.pack-card:hover .pack-photo img { transform: scale(1.03); }
+.in-season .pack-card .pack-photo { margin-top: 0; }
+@media (max-width: 560px) {
+  .cat-index { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; }
+  .price-cat-head { grid-template-columns: 92px 1fr; gap: 16px; }
+  .price-cat-head img { width: 92px; }
+  .price-row.with-thumb { grid-template-columns: 48px 1fr auto; }
+  .price-row.with-thumb .price-thumb { width: 48px; height: 60px; }
+  .price-row.with-thumb .add-form { grid-column: 2 / -1; }
+}

@@ -11,9 +11,10 @@
 </form>
 {% endmacro %}
 
-{% macro price_row(s, price_of, in_list, back) %}
+{% macro price_row(s, price_of, in_list, back, thumbs=False) %}
 {% set p = price_of(s) %}
-<li class="price-row" id="{{ s.slug }}" data-name="{{ (s.name ~ ' ' ~ s.service_type)|lower }}">
+<li class="price-row{% if thumbs %} with-thumb{% endif %}" id="{{ s.slug }}" data-name="{{ (s.name ~ ' ' ~ s.service_type)|lower }}">
+  {% if thumbs %}<span class="price-thumb">{% if s.image %}<img src="{{ image_url(s) }}" alt="" loading="lazy" decoding="async">{% else %}<img class="price-mark" src="{{ footer.anagram }}" alt="" loading="lazy">{% endif %}</span>{% endif %}
   <div class="price-what">
     <span class="price-name">{{ s.name }}</span>
     <span class="price-meta">{{ s.service_type }}{% if p.note %} · {{ p.note }}{% endif %}</span>
@@ -29,7 +30,8 @@
 
 {% macro pack_card(card, in_list, back) %}
 {% set p = card.pack %}
-<article class="pack-card" id="{{ p.slug }}">
+<article class="pack-card{% if p.image %} with-photo{% endif %}" id="{{ p.slug }}">
+  {% if p.image %}<div class="pack-photo"><img src="{{ p.image }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
   {% if p.note %}<p class="pack-when">{{ p.note }}</p>{% endif %}
   <h3>{{ p.name }}</h3>
   {% if p.summary %}<p class="pack-summary">{{ p.summary }}</p>{% endif %}

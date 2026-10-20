@@ -1067,10 +1067,12 @@
       const groups = {};
       rows.forEach((s) => { (groups[s.product_category] ||= []).push(s); });
       pane.querySelector("#repo-table").innerHTML = rows.length ? Object.entries(groups).map(([g, list]) => `
-        <section class="repo-group"><h2>${esc(g)} <span class="muted small">${list.length}</span></h2>
+        <section class="repo-group"><div class="repo-group-head">${R.category_images[g] ? `<img src="${esc(R.category_images[g])}" alt="">` : `<span class="repo-noimg">No photo</span>`}
+          <h2>${esc(g)} <span class="muted small">${list.length}</span></h2><button class="link small" data-cat-photo="${esc(g)}">${R.category_images[g] ? "Change photo" : "Add photo"}</button></div>
         <div class="table-wrap"><table class="repo-table"><thead><tr><th>Item</th><th>How sold</th><th class="num">Price</th><th class="num">Pack of 5</th><th class="num">Cost</th><th class="num">Margin</th><th>Website</th></tr></thead>
         <tbody>${list.map((s) => `<tr class="click" data-item="${s.id}">
-          <td><strong>${esc(s.name)}</strong><br><span class="small muted">${esc(s.service_type)}${s.price_basis ? " · " + esc(s.price_basis) : ""}</span></td>
+          <td><div class="repo-item">${s.image ? `<img src="${esc(s.image.startsWith("http") || s.image.startsWith("/") ? s.image : "https://lavelondon.com/wp-content/uploads/" + s.image)}" alt="" loading="lazy">` : `<span class="repo-thumb-empty"></span>`}
+            <span><strong>${esc(s.name)}</strong><br><span class="small muted">${esc(s.service_type)}${s.price_basis ? " · " + esc(s.price_basis) : ""}</span></span></div></td>
           <td><span class="pill ${s.sale_mode === "quote" ? "warn" : s.sale_mode === "pack" ? "ink" : ""}">${SALE_SHORT[s.sale_mode]}</span></td>
           <td class="num">${s.sale_mode === "quote" ? `<span class="small muted">from</span> ` : ""}${money(s.price_pence)}${s.sale_mode === "per_m2" ? "/m²" : s.sale_mode === "per_kg" ? "/kg" : ""}</td>
           <td class="num">${s.pack_pence ? money(s.pack_pence) : ""}</td>
@@ -1079,6 +1081,12 @@
           <td>${!s.active ? `<span class="pill">Retired</span>` : s.show_online ? `<span class="pill ok">Shown</span>` : `<span class="pill">Hidden</span>`}</td></tr>`).join("")}</tbody></table></div></section>`).join("")
         : `<p class="empty">No items match. Clear a filter or search for something else.</p>`;
       pane.querySelectorAll("tr[data-item]").forEach((tr) => tr.addEventListener("click", () => repoEditItem(R.items.find((s) => String(s.id) === tr.dataset.item))));
+      pane.querySelectorAll("[data-cat-photo]").forEach((b) => b.addEventListener("click", async () => {
+        const url = await pickImage();
+        if (!url) return;
+        try { R.category_images = await api("PUT", "/api/staff/repository/category-image", { category: b.dataset.catPhoto, image: url }); toast("Category photo saved"); draw(); }
+        catch (ex) { toast(ex.message, true); }
+      }));
     };
     pane.querySelectorAll("[data-f]").forEach((el) => el.addEventListener(el.type === "search" ? "input" : "change", () => {
       repoFilters[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; draw();
@@ -1156,6 +1164,7 @@
     pane.innerHTML = `<div class="row between"><p class="muted small">A pack's price is always the sum of its items, so it updates when item prices change. "In season" packs are featured on the website in their months.</p>
         <button class="btn primary" data-new-pack>New pack</button></div>
       <div class="pack-admin-grid">${R.packs.map((p) => `<button class="pack-admin ${p.active ? "" : "off"}" data-pack="${p.id}">
+        ${p.image ? `<img class="pack-admin-img" src="${esc(p.image)}" alt="" loading="lazy">` : ""}
         <span class="row between"><span class="pill ${p.kind === "starter" ? "ink" : ""}">${p.kind === "starter" ? "Everyday" : "Themed"}</span>
           <span>${!p.active ? `<span class="pill">Off</span>` : !p.show_online ? `<span class="pill">Hidden</span>` : p.months.includes(month) ? `<span class="pill ok">In season</span>` : ""}${p.unavailable ? ` <span class="pill err">Has a retired item</span>` : ""}</span></span>
         <strong>${esc(p.name)}</strong>
@@ -1190,6 +1199,7 @@
             <label>Type<select name="kind"><option value="starter" ${pack.kind === "starter" ? "selected" : ""}>Everyday</option><option value="themed" ${pack.kind === "themed" ? "selected" : ""}>Themed</option></select></label></div>
           <label>When / who it's for<input name="note" value="${esc(pack.note)}" placeholder="e.g. November–February; put-away in April"></label>
           <label>Description for clients (optional)<textarea name="summary" rows="2">${esc(pack.summary)}</textarea></label>
+          <div class="ed-image"><label>Photo<input name="image" value="${esc(pack.image || "")}"></label>${pack.image ? `<img src="${esc(pack.image)}" alt="">` : "<span></span>"}<button type="button" class="btn sm" data-pick-pack>Choose image</button></div>
           <fieldset class="ed-list"><legend>Items</legend>
             ${pack.items.map((l, i) => `<div class="pack-line"><select data-line="${i}" aria-label="Item">${options(l.service_id)}</select>
               <input data-qty="${i}" type="number" min="1" max="50" value="${l.qty}" aria-label="Quantity">
@@ -1207,13 +1217,14 @@
             ${isNew ? "" : `<span id="del-box"><button type="button" class="btn danger" data-delete>Delete pack</button></span>`}</div>
         </form></div>`;
       const f = box.querySelector("#pack-form");
-      const keep = () => { pack.name = f.name.value; pack.kind = f.kind.value; pack.note = f.note.value; pack.summary = f.summary.value;
+      const keep = () => { pack.name = f.name.value; pack.kind = f.kind.value; pack.note = f.note.value; pack.summary = f.summary.value; pack.image = f.image.value;
         pack.months = [...f.querySelectorAll("input[name=month]:checked")].map((i) => Number(i.value)); pack.active = f.active.checked; pack.show_online = f.show_online.checked; };
       box.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => box.remove()));
       f.querySelectorAll("[data-line]").forEach((s) => s.addEventListener("change", () => { keep(); pack.items[s.dataset.line].service_id = Number(s.value); draw(); }));
       f.querySelectorAll("[data-qty]").forEach((q) => q.addEventListener("change", () => { keep(); pack.items[q.dataset.qty].qty = Math.max(1, Number(q.value) || 1); draw(); }));
       f.querySelectorAll("[data-remove-line]").forEach((b) => b.addEventListener("click", () => { keep(); pack.items.splice(Number(b.dataset.removeLine), 1); draw(); }));
       f.querySelector("[data-add-line]").addEventListener("click", () => { keep(); pack.items.push({ service_id: 0, qty: 1 }); draw(); });
+      f.querySelector("[data-pick-pack]").addEventListener("click", async () => { keep(); const u = await pickImage(); if (u) { pack.image = u; draw(); } });
       f.querySelector("[data-delete]")?.addEventListener("click", () => {
         const d = box.querySelector("#del-box");
         d.innerHTML = `<span class="small">Delete ${esc(pack.name)}?</span> <button type="button" class="btn danger sm" data-yes>Delete</button>`;

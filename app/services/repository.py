@@ -466,8 +466,10 @@ def catalogue(db: Session, collection: str | None = None) -> list[dict]:
     for s in shown:
         cats.setdefault(s.product_category, []).append(s)
     out = []
+    photos = category_images(db)
     for key, title, blurb in DEPARTMENTS:
-        group = [{"name": c, "slug": slugify(c), "items": its} for c, its in cats.items() if department_of(c) == key]
+        group = [{"name": c, "slug": slugify(c), "items": its, "image": photos.get(c, ""), "thumbs": any(s.image for s in its)}
+                 for c, its in cats.items() if department_of(c) == key]
         if group:
             out.append({"key": key, "title": title, "blurb": blurb, "categories": group})
     return out
@@ -487,3 +489,83 @@ def search(db: Session, needle: str) -> list[Service]:
     needle = needle.lower()
     return [s for s in items(db, active_only=True) if s.show_online and
             (needle in s.name.lower() or needle in s.product_category.lower() or needle in (s.summary or "").lower())][:30]
+
+
+# Photos: category banners (a setting) and the bundled photo set (app/site/data/images, built by scripts/catalogue_images.py)
+
+IMAGES_DIR = DATA / "images"
+IMAGES_VERSION = "1"
+
+
+def category_images(db: Session) -> dict[str, str]:
+    try:
+        return json.loads(setting(db, "category_images", "{}")) or {}
+    except ValueError:
+        return {}
+
+
+def set_category_image(db: Session, category: str, url: str) -> dict[str, str]:
+    images = category_images(db)
+    if url:
+        images[category] = url
+    else:
+        images.pop(category, None)
+    set_setting(db, "category_images", json.dumps(images, ensure_ascii=False))
+    return images
+
+
+def load_bundled_images(db: Session, media_dir: Path | None = None) -> dict | None:
+    """Add the bundled photos to the image library, and (once) put them on items, packs and categories that have none.
+
+    Photos chosen in /admin are never replaced; photos carried over from the old WordPress listings are, because the
+    studio set is consistent.
+    """
+    import shutil
+
+    from app.config import get_settings
+    from app.models import Media
+
+    manifest_path = IMAGES_DIR / "manifest.json"
+    if not manifest_path.exists():
+        return None
+    manifest = json.loads(manifest_path.read_text())
+    folder = media_dir or get_settings().media_path
+    folder.mkdir(parents=True, exist_ok=True)
+    have = {m.source_url: m for m in db.scalars(select(Media).where(Media.source_url.like("bundle:%")))}
+    added = 0
+    urls = {}
+    for entry in manifest:
+        key = "bundle:" + entry["file"]
+        m = have.get(key)
+        target = folder / entry["file"]
+        if not target.exists():
+            shutil.copyfile(IMAGES_DIR / entry["file"], target)
+        if not m:
+            m = Media(url=f"/media/{entry['file']}", filename=entry["source"][:200], alt=entry["alt"][:300], source_url=key,
+                      size_bytes=target.stat().st_size)
+            db.add(m)
+            added += 1
+        urls[entry["file"]] = m.url
+    assigned = {"items": 0, "packs": 0, "categories": 0}
+    if setting(db, "images_applied", "") != IMAGES_VERSION:
+        legacy = {s.image for s in db.scalars(select(Service).where(Service.product_category == "", Service.image != ""))}
+        by_name = {s.name: s for s in items(db)}
+        pack_by_name = {p.name: p for p in packs(db)}
+        cats = category_images(db)
+        for entry in manifest:
+            url = urls[entry["file"]]
+            for name in entry["items"]:
+                s = by_name.get(name)
+                if s and (not s.image or s.image in legacy):
+                    s.image, assigned["items"] = url, assigned["items"] + 1
+            for name in entry["packs"]:
+                p = pack_by_name.get(name)
+                if p and not p.image:
+                    p.image, assigned["packs"] = url, assigned["packs"] + 1
+            for cat in entry["categories"]:
+                if cat not in cats:
+                    cats[cat], assigned["categories"] = url, assigned["categories"] + 1
+        set_setting(db, "category_images", json.dumps(cats, ensure_ascii=False))
+        set_setting(db, "images_applied", IMAGES_VERSION)
+    db.commit()
+    return {"added": added, **assigned}
