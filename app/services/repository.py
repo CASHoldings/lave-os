@@ -494,7 +494,7 @@ def search(db: Session, needle: str) -> list[Service]:
 # Photos: category banners (a setting) and the bundled photo set (app/site/data/images, built by scripts/catalogue_images.py)
 
 IMAGES_DIR = DATA / "images"
-IMAGES_VERSION = "2"
+IMAGES_VERSION = "4"
 
 
 def category_images(db: Session) -> dict[str, str]:
@@ -538,8 +538,12 @@ def load_bundled_images(db: Session, media_dir: Path | None = None) -> dict | No
         key = "bundle:" + entry["file"]
         m = have.get(key)
         target = folder / entry["file"]
-        if not target.exists():
-            shutil.copyfile(IMAGES_DIR / entry["file"], target)
+        source = IMAGES_DIR / entry["file"]
+        # Copy new photos, and refresh ones whose bundled version has improved since (these files are ours).
+        if not target.exists() or target.stat().st_size != source.stat().st_size or target.read_bytes() != source.read_bytes():
+            shutil.copyfile(source, target)
+            if m:
+                m.size_bytes = target.stat().st_size
         if not m:
             m = Media(url=f"/media/{entry['file']}", filename=entry["source"][:200], alt=entry["alt"][:300], source_url=key,
                       size_bytes=target.stat().st_size)

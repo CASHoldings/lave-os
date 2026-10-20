@@ -502,10 +502,8 @@
  {
   "file": "lave-3-copy.webp",
   "source": "LAVE3 copy.png",
-  "alt": "Mattress protector, king",
-  "items": [
-   "Mattress protector, king"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -812,10 +810,8 @@
  {
   "file": "lave-9-copy-2.webp",
   "source": "LAVE9 copy 2.png",
-  "alt": "Mattress topper, fibre",
-  "items": [
-   "Mattress topper, fibre"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -1250,10 +1246,8 @@
  {
   "file": "lave-lave164.webp",
   "source": "LAVELAVE164.png",
-  "alt": "Pillowcase",
-  "items": [
-   "Pillowcase"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -1268,11 +1262,11 @@
  {
   "file": "lave-lave166.webp",
   "source": "LAVELAVE166.png",
-  "alt": "Shirts & tops (wash & press)",
+  "alt": "Pressing only",
   "items": [],
   "packs": [],
   "categories": [
-   "Shirts & tops (wash & press)"
+   "Pressing only"
   ]
  },
  {
@@ -1286,24 +1280,18 @@
  {
   "file": "lave-lave170.webp",
   "source": "LAVELAVE170.png",
-  "alt": "Alterations",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Alterations"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave171.webp",
   "source": "LAVELAVE171.png",
-  "alt": "Pressing only",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Linen & Dark Shirts"
-  ],
-  "categories": [
-   "Pressing only"
-  ]
+  "packs": [],
+  "categories": []
  },
  {
   "file": "lave-lave172.webp",
@@ -1434,10 +1422,8 @@
  {
   "file": "lave-lave54.webp",
   "source": "LAVELAVE54.png",
-  "alt": "Bath sheet",
-  "items": [
-   "Bath sheet"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -1500,10 +1486,8 @@
  {
   "file": "lave-lave62.webp",
   "source": "LAVELAVE62.png",
-  "alt": "Bath robe",
-  "items": [
-   "Bath robe"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -1617,7 +1601,9 @@
   "alt": "Men's 3 shirts, cotton",
   "items": [],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Shirts & tops (wash & press)"
+  ]
  },
  {
   "file": "men-3-suits-6-pieces.webp",
@@ -2502,11 +2488,9 @@
  {
   "file": "lave-ngsfi2026135.webp",
   "source": "LAVENGSFI2026135.png",
-  "alt": "Little Ones",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Little Ones"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -2540,14 +2524,10 @@
  {
   "file": "lave-ngsfi2026139.webp",
   "source": "LAVENGSFI2026139.png",
-  "alt": "Bed linen",
-  "items": [
-   "Pillow, feather"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
-  "categories": [
-   "Bed linen"
-  ]
+  "categories": []
  },
  {
   "file": "lave-ngsfi2026140.webp",
@@ -2576,20 +2556,16 @@
  {
   "file": "lave-ngsfi2026143.webp",
   "source": "LAVENGSFI2026143.png",
-  "alt": "Duvet, feather double",
-  "items": [
-   "Duvet, feather double"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-ngsfi2026144.webp",
   "source": "LAVENGSFI2026144.png",
-  "alt": "Duvet, non-feather double",
-  "items": [
-   "Duvet, non-feather double"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -4048,12 +4024,32 @@
   "categories": []
  },
  {
+  "file": "pack-linen-dark-shirts.webp",
+  "source": "flat-lay",
+  "alt": "Linen & Dark Shirts pack",
+  "items": [],
+  "packs": [
+   "Linen & Dark Shirts"
+  ],
+  "categories": []
+ },
+ {
   "file": "pack-knitwear-drawer.webp",
   "source": "flat-lay",
   "alt": "Knitwear Drawer pack",
   "items": [],
   "packs": [
    "Knitwear Drawer"
+  ],
+  "categories": []
+ },
+ {
+  "file": "pack-little-ones.webp",
+  "source": "flat-lay",
+  "alt": "Little Ones pack",
+  "items": [],
+  "packs": [
+   "Little Ones"
   ],
   "categories": []
  },

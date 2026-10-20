@@ -137,23 +137,15 @@ ITEMS = {
     "WOMEN, PYJAMAS, SILK-SATIN": "Pyjama, pair",
     "WOMEN, BRA AND BRIEF SET": "Bra",
     "MEN, UNDERWEAR, BOXER SHORTS, COTTON": "Underwear",
-    "LAVE62": "Bath robe",
     "NGSFI2026138": "Bath towel",
-    "LAVE54": "Bath sheet",
-    "NGSFI2026144": "Duvet, non-feather double",
     "71 2": "Medium bag (up to 6 kg)",
     "BOY, T-SHIRT, COTTON (3)": "Child's item, age 0-3",
-    "LAVE164": "Pillowcase",
     "LAVE163": "Pillow, non-feather",
-    "NGSFI2026139": "Pillow, feather",
-    "NGSFI2026143": "Duvet, feather double",
-    "3 copy": "Mattress protector, king",
-    "9 copy 2": "Mattress topper, fibre",
 }
 
 # Lifestyle shots → category banner.
 CATEGORIES = {
-    "Shirts & tops (wash & press)": "LAVE166",
+    "Shirts & tops (wash & press)": "MEN,  3 SHIRTS, COTTON",
     "Tops & shirts (dry clean)": "WOMEN, SLEEVELESS BLOUSE, SILK",
     "Suits & formal": "MEN, 3 PIECE SUIT",
     "Jackets": "WOMEN, DOUBLE BREASTED BLAZER, WOOL",
@@ -167,13 +159,11 @@ CATEGORIES = {
     "Children's": "BOY, CARDIGAN, COTTON",
     "Sportswear, workwear & uniforms": "31 copy 2",
     "Leather, suede, wax & fur": "MEN, JACKET, BIKER",
-    "Bed linen": "NGSFI2026139",
     "Duvets, pillows & home": "LAVE163",
     "Laundry items": "NGSFI2026138",
     "Wash & fold bags": "71 2",
-    "Pressing only": "LAVE171",
+    "Pressing only": "LAVE166",
     "Ski wear": "WOMEN, QUILTED SKI-JACKET",
-    "Alterations": "LAVE170",
 }
 
 # Pack photos.
@@ -183,7 +173,7 @@ PACKS = {
     "Suit + 5 Shirts": "MEN,  2 SUITS (4 PIECES) (3)", "Black Tie": "MEN, 3 BOW-TIE, VELVET", "Kids' Pack": "BOY, T-SHIRT, COTTON (2)",
     "Handkerchief 5": "MEN, 3 TIE COMBO, SILK", "Summer Linen": "MEN, OVERSHIRT, LINEN", "Back to School": "BOY, SHIRT, COTTON",
     "Autumn Bring-Out": "WOMEN, COAT, WOOL-CREPE, DOUBLE-BREASTED,", "Ski Pack": "MEN, SKI, SALOPETTES",
-    "Linen & Dark Shirts": "LAVE171", "Her Everyday Layers": "WOMEN, 3 SLEEVELESS BLOUSES",
+    "Her Everyday Layers": "WOMEN, 3 SLEEVELESS BLOUSES",
     "Silk Care": "WOMEN, 3 SHIRT, SILK", "Dry-Clean Tops": "WOMEN, TOP, SATIN",
     "Two Suits + Ties": "MEN,  2 SUITS (4 PIECES) (4)", "Her Suit Week": "WOMEN, SUIT COMBO - 2 PIECE SUITS X2  (4 PIECES IN TOTAL)",
     "Wedding Guest": "WOMEN, 3 PIECE SUIT AND SHIRT", "Dinner Jacket Set": "MEN,  BLAZER PONTE",
@@ -195,7 +185,7 @@ PACKS = {
     "Coat Season": "WOMEN, COAT, TRENCH, SATIN", "Winter Warmers": "MEN, COAT, VIRGIN WOOL",
     "Cashmere Care": "WOMEN, TWINSET CARDIGAN & VEST, CASHMERE",
     "Wraps & Gloves": "MEN, ACCESSORIES, SCARF, CASHMERE", "Accessories Pack": "MEN, 5 TIE COMBO, SILK",
-    "Little Ones": "NGSFI2026135", "Kids' Occasion": "GIRL, DRESS, COTTON", "Sports & Swim": "MEN, 3 TANKS, COTTON",
+    "Kids' Occasion": "GIRL, DRESS, COTTON", "Sports & Swim": "MEN, 3 TANKS, COTTON",
     "Super King Reset": "7 copy",
     "Outdoor & Wellness": "28 copy", "Lingerie & Lounge": "WOMEN, BRA AND BRIEF SET, STRETCH JERSEY",
     "Family Ski": "WOMEN, SKI-JACKET",
@@ -207,7 +197,7 @@ PEOPLE = {"WOMEN": "Women's", "MEN": "Men's", "BOY": "Boy's", "GIRL": "Girl's"}
 STUDIO = (249, 249, 249)
 NORMALISE = {"21 copy", "433", "LAVE163", "NGSFI2026138", "71 2"}
 # Strong studio shots that read well in a pack flat-lay (white-on-white photos wash out there).
-FLAT_LAY_EXTRA = {"NGSFI2026138", "LAVE62", "LAVE163", "71 2"}
+FLAT_LAY_EXTRA = {"NGSFI2026138", "LAVE163", "71 2"}
 PACK_DATA = Path(__file__).resolve().parent.parent / "app" / "site" / "data" / "repository_packs.json"
 
 
@@ -226,6 +216,24 @@ def studio_background(img: Image.Image, tolerance: int = 16) -> Image.Image:
     mask.putdata([255 if p == marker else 0 for p in work.getdata()])
     mask = mask.filter(ImageFilter.GaussianBlur(1.2))
     return Image.composite(Image.new("RGB", (w, h), STUDIO), img, mask)
+
+
+def edge_purity(img: Image.Image) -> float:
+    """Share of edge pixels that are exactly (±2) the studio grey."""
+    w, h = img.size
+    pts = [(x, y) for x in range(0, w, 4) for y in (0, 1, h - 2, h - 1)] + [(x, y) for y in range(0, h, 4) for x in (0, 1, w - 2, w - 1)]
+    return sum(1 for p in pts if max(abs(c - 249) for c in img.getpixel(p)) <= 2) / len(pts)
+
+
+def finish(img: Image.Image) -> Image.Image:
+    """Make a photo's backdrop exactly the studio grey: pure white backdrops with a tight tolerance (garments are
+    untouched), light-grey ones a little looser."""
+    if edge_purity(img) >= 0.97:
+        return img
+    w, h = img.size
+    edge = [img.getpixel((x, 0)) for x in range(0, w, 6)] + [img.getpixel((x, h - 1)) for x in range(0, w, 6)]
+    white = sum(1 for p in edge if min(p) >= 250) / len(edge)
+    return studio_background(img, tolerance=5 if white > 0.8 else 10)
 
 
 def trim(img: Image.Image, margin: int = 10) -> Image.Image:
@@ -308,6 +316,8 @@ def main(src: Path) -> None:
             img = bg
         if s in NORMALISE:
             img = studio_background(img)
+        elif u["items"] or u["packs"] or u["categories"]:
+            img = finish(img)
         img.thumbnail((1400, 1400))
         img.save(OUT / f"{name}.webp", "WEBP", quality=80, method=6)
         manifest.append({"file": f"{name}.webp", "source": path.name, "alt": alt_text(s, fallback), **u})
@@ -330,6 +340,10 @@ def main(src: Path) -> None:
         manifest.append({"file": f"{name}.webp", "source": "flat-lay", "alt": f"{pack['name']} pack", "items": [], "packs": [pack["name"]],
                          "categories": []})
         built += 1
+    # Report anything in use whose backdrop still isn't the studio grey.
+    for e in manifest:
+        if (e["items"] or e["packs"] or e["categories"]) and edge_purity(Image.open(OUT / e["file"]).convert("RGB")) < 0.95:
+            print("  not uniform:", e["source"], (e["categories"] + e["packs"] + e["items"])[:2])
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False))
     total = sum((OUT / m["file"]).stat().st_size for m in manifest)
     print(f"{len(manifest)} images, {total / 1e6:.1f} MB; {len(ITEMS)} items, {len(PACKS)} pack photos + {built} flat-lays, "

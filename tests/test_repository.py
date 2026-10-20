@@ -213,9 +213,9 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
         chosen.image = "/media/founder-picked.webp"  # picked in /admin before the photos arrived
         db.commit()
         result = repo.load_bundled_images(db, media_dir=tmp_path)
-        assert result["added"] == 459 and result["packs"] == 50 and result["categories"] == 21
-        assert result["items"] == 131  # all mapped items except the one already chosen
-        assert len(list(tmp_path.glob("*.webp"))) == 459
+        assert result["added"] == 461 and result["packs"] == 50 and result["categories"] == 19
+        assert result["items"] == 123  # all mapped items except the one already chosen
+        assert len(list(tmp_path.glob("*.webp"))) == 461
         assert db.scalar(select(Service).where(Service.name == "Coat, long")).image == "/media/founder-picked.webp"
         cashmere = db.scalar(select(Service).where(Service.name == "Coat, cashmere"))
         assert cashmere.image == "/media/women-coat-cashmere.webp"
@@ -251,3 +251,12 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
     assert api.put("/api/staff/repository/category-image", headers=staff_headers, json={"category": "Nope", "image": ""}).status_code == 404
     assert api.put("/api/staff/repository/category-image", headers=staff_headers,
                    json={"category": "Coats", "image": "javascript:alert(1)"}).status_code == 400
+
+
+def test_improved_bundled_photos_replace_older_copies(db_session, tmp_path):
+    from app.services.repository import IMAGES_DIR
+    first = sorted(IMAGES_DIR.glob("*.webp"))[0]
+    (tmp_path / first.name).write_bytes(b"an older version")
+    with db_session() as db:
+        repo.load_bundled_images(db, media_dir=tmp_path)
+    assert (tmp_path / first.name).read_bytes() == first.read_bytes()
