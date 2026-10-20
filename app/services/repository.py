@@ -494,7 +494,7 @@ def search(db: Session, needle: str) -> list[Service]:
 # Photos: category banners (a setting) and the bundled photo set (app/site/data/images, built by scripts/catalogue_images.py)
 
 IMAGES_DIR = DATA / "images"
-IMAGES_VERSION = "1"
+IMAGES_VERSION = "2"
 
 
 def category_images(db: Session) -> dict[str, str]:
@@ -548,24 +548,53 @@ def load_bundled_images(db: Session, media_dir: Path | None = None) -> dict | No
         urls[entry["file"]] = m.url
     assigned = {"items": 0, "packs": 0, "categories": 0}
     if setting(db, "images_applied", "") != IMAGES_VERSION:
+        # Photos placed by an earlier bundle are refreshed; photos chosen in /admin are left alone.
+        try:
+            before = json.loads(setting(db, "images_assigned", "{}"))
+        except ValueError:
+            before = {}
+        bundle_urls = set(urls.values()) | {m.url for m in have.values()}
         legacy = {s.image for s in db.scalars(select(Service).where(Service.product_category == "", Service.image != ""))}
-        by_name = {s.name: s for s in items(db)}
-        pack_by_name = {p.name: p for p in packs(db)}
-        cats = category_images(db)
+        want = {"items": {}, "packs": {}, "categories": {}}
         for entry in manifest:
-            url = urls[entry["file"]]
-            for name in entry["items"]:
-                s = by_name.get(name)
-                if s and (not s.image or s.image in legacy):
-                    s.image, assigned["items"] = url, assigned["items"] + 1
-            for name in entry["packs"]:
-                p = pack_by_name.get(name)
-                if p and not p.image:
-                    p.image, assigned["packs"] = url, assigned["packs"] + 1
-            for cat in entry["categories"]:
-                if cat not in cats:
-                    cats[cat], assigned["categories"] = url, assigned["categories"] + 1
+            for kind in want:
+                for name in entry[kind]:
+                    want[kind][name] = urls[entry["file"]]
+
+        def ours(kind: str, name: str, current: str) -> bool:
+            if not current or current in legacy:
+                return True
+            if kind in before:
+                return before[kind].get(name) == current
+            return current in bundle_urls  # first refresh before records were kept
+
+        record = {"items": {}, "packs": {}, "categories": {}}
+        for s in items(db):
+            if ours("items", s.name, s.image or ""):
+                new = want["items"].get(s.name, "")
+                if (s.image or "") != new:
+                    s.image, assigned["items"] = new, assigned["items"] + bool(new)
+                if new:
+                    record["items"][s.name] = new
+        for p in packs(db):
+            if ours("packs", p.name, p.image or ""):
+                new = want["packs"].get(p.name, "")
+                if (p.image or "") != new:
+                    p.image, assigned["packs"] = new, assigned["packs"] + bool(new)
+                if new:
+                    record["packs"][p.name] = new
+        cats = category_images(db)
+        for cat in {s.product_category for s in items(db)}:
+            if ours("categories", cat, cats.get(cat, "")):
+                new = want["categories"].get(cat, "")
+                if cats.get(cat, "") != new:
+                    assigned["categories"] += bool(new)
+                if new:
+                    cats[cat] = record["categories"][cat] = new
+                else:
+                    cats.pop(cat, None)
         set_setting(db, "category_images", json.dumps(cats, ensure_ascii=False))
+        set_setting(db, "images_assigned", json.dumps(record, ensure_ascii=False))
         set_setting(db, "images_applied", IMAGES_VERSION)
     db.commit()
     return {"added": added, **assigned}

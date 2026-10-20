@@ -225,3 +225,4 @@ button.stat-tile:hover, a.stat-tile:hover { border-color: var(--ink); }
 .repo-item { display: flex; gap: 12px; align-items: center; }
 .repo-item img, .repo-thumb-empty { width: 36px; height: 45px; object-fit: cover; background: var(--panel); flex: none; }
 .pack-admin-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--panel); }
+.repo-group-head img, .repo-item img, .pack-admin-img { object-fit: contain; background: rgb(249, 249, 249); }

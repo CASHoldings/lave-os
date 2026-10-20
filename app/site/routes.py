@@ -34,7 +34,7 @@ def _bold(text: str):
 
 TEMPLATES.env.filters["bold"] = _bold
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "39"
+ASSET_VERSION = "41"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]

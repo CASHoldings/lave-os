@@ -641,3 +641,14 @@ html { font-size: 100%; }
   .price-row.with-thumb .price-thumb { width: 48px; height: 60px; }
   .price-row.with-thumb .add-form { grid-column: 2 / -1; }
 }
+
+/* Whole photos, never cropped: contained on the studio grey of the garment shots. */
+:root { --studio: rgb(249, 249, 249); }
+.cat-index img, .price-cat-head img, .price-thumb, .pack-photo { background: var(--studio); }
+.cat-index img, .price-cat-head img, .price-thumb img, .pack-photo img { object-fit: contain; }
+.price-thumb img { padding: 3px; }
+.pack-photo { aspect-ratio: 4 / 5; }
+.pack-photo img { padding: 6%; }
+.pack-card:hover .pack-photo img { transform: none; }
+.pack-photo.empty { display: grid; place-items: center; }
+.pack-photo.empty img.price-mark { width: 64px; height: auto; padding: 0; opacity: .16; }

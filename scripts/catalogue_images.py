@@ -112,7 +112,6 @@ ITEMS = {
     "MEN, ACCESSORIES, POCKET SQUARE, SILK": "Handkerchief, silk",
     "MEN, ACCESSORIES, GLOVES,CASHMERE": "Gloves, fabric",
     "WOMEN, CAMISOLE": "Petticoat / slip",
-    "NGSFI2026134": "Child's item, age 0-3",
     "GIRL, TOP COTTON": "Child's item, age 3-6",
     "GIRL, DRESS, SATIN": "Child's dress (dry clean)",
     "BOY, WATERPROOF COAT, COTTON": "Child's coat (dry clean)",
@@ -120,7 +119,6 @@ ITEMS = {
     "BOY, SWEATER, WOOL": "Child's knitwear",
     "GIRL, TROUSERS, JEANS": "Child's trousers",
     "MEN, SWEATPANTS, CASHMERE-BLEND": "Tracksuit (top + bottoms)",
-    "27 copy": "Lab coat",
     "MEN, JACKET, LEATHER": "Leather jacket",
     "WOMEN, MIDI SKIRT, LEATHER": "Leather skirt",
     "WOMEN, TRENCH COAT, LEATHER, DOUBLE-BREASTED": "Leather coat, 3/4",
@@ -132,8 +130,6 @@ ITEMS = {
     "MEN, ACCESSORIES, GLOVES, LEATHER, SUEDE, SHEARLING": "Gloves, leather (pair)",
     "MEN, BOMBER JACKET, LEATHER, SHEARLING-TRIMMED,": "Item with leather / fur / suede trim",
     "WOMEN, BLAZER, LEATHER": "Leather waistcoat",
-    "13 copy 2": "Shoe shine",
-    "96": "Handbag, leather",
     "MEN, SKI, GLOVES, LEATHER": "Gloves",
     "MEN, SKI, JACKET": "Ski jacket",
     "WOMEN, SKI-SUIT,": "Ski suit",
@@ -142,74 +138,52 @@ ITEMS = {
     "WOMEN, BRA AND BRIEF SET": "Bra",
     "MEN, UNDERWEAR, BOXER SHORTS, COTTON": "Underwear",
     "LAVE62": "Bath robe",
-    "NGSFI2026137": "Bath towel",
-    "NGSFI2026138": "Bath sheet",
-    "LAVE54": "Hand towel",
-    "LAVE48": "Bath mat",
+    "NGSFI2026138": "Bath towel",
+    "LAVE54": "Bath sheet",
+    "NGSFI2026144": "Duvet, non-feather double",
+    "71 2": "Medium bag (up to 6 kg)",
+    "BOY, T-SHIRT, COTTON (3)": "Child's item, age 0-3",
     "LAVE164": "Pillowcase",
-    "4 copy": "Blanket, double",
-    "LAVE143": "Throw",
-    "LAVE156": "Blanket, small",
-    "LAVE161": "Cushion cover, medium",
     "LAVE163": "Pillow, non-feather",
     "NGSFI2026139": "Pillow, feather",
-    "LAVE47": "Duvet, non-feather double",
     "NGSFI2026143": "Duvet, feather double",
     "3 copy": "Mattress protector, king",
     "9 copy 2": "Mattress topper, fibre",
-    "LAVE159": "Chair cover, single",
-    "15 copy 2": "Sofa cover, 3-settee",
-    "8 copy 2": "Dog cushion/bed",
-    "NGSFI2026133": "Duvet cover, double",
-    "LAVE158": "Curtains, lined (per m²)",
-    "LAVE52": "Curtains, unlined (per m²)",
-    "LAVE157": "Curtains, heavy (per m²)",
-    "81 2": "Rug, medium (1.5 x 2 m)",
-    "36": "Medium bag (up to 6 kg)",
-    "LAVE94": "Ironing (per kg, on hangers)",
 }
 
 # Lifestyle shots → category banner.
 CATEGORIES = {
     "Shirts & tops (wash & press)": "LAVE166",
-    "Tops & shirts (dry clean)": "LAVE178",
+    "Tops & shirts (dry clean)": "WOMEN, SLEEVELESS BLOUSE, SILK",
     "Suits & formal": "MEN, 3 PIECE SUIT",
     "Jackets": "WOMEN, DOUBLE BREASTED BLAZER, WOOL",
-    "Trousers": "LAVE173",
+    "Trousers": "WOMEN, TROUSERS, JEANS, COTTON",
     "Skirts": "WOMEN, MIDI WRAP SKIRT, SATIN",
     "Dresses": "WOMEN, MIDI-DRESS, STRETCH WOOL",
-    "Bridal & occasion": "1 copy",
+    "Bridal & occasion": "433",
     "Coats": "WOMEN, TRENCH COAT, WOOL, DOUBLE BREASTED",
-    "Knitwear & accessories": "LAVE58",
-    "Traditional & cultural wear": "144 2",
+    "Knitwear & accessories": "WOMEN, CROP SWEATER, CABLE-KNIT, MERINO WOOL",
+    "Traditional & cultural wear": "WOMEN, COAT, EMBROIDERED",
     "Children's": "BOY, CARDIGAN, COTTON",
     "Sportswear, workwear & uniforms": "31 copy 2",
     "Leather, suede, wax & fur": "MEN, JACKET, BIKER",
-    "Shoes, trainers & bags": "111",
-    "Bed linen": "15 copy",
-    "Duvets, pillows & home": "NGSFI2026144",
-    "Table & kitchen linen": "4 copy 2",
-    "Curtains & blinds": "LAVE50",
-    "Rugs": "80 2",
-    "Laundry items": "LAVE61",
-    "Wash & fold bags": "16",
-    "Pressing only": "6 copy 2",
+    "Bed linen": "NGSFI2026139",
+    "Duvets, pillows & home": "LAVE163",
+    "Laundry items": "NGSFI2026138",
+    "Wash & fold bags": "71 2",
+    "Pressing only": "LAVE171",
     "Ski wear": "WOMEN, QUILTED SKI-JACKET",
     "Alterations": "LAVE170",
-    "Repairs": "LAVE153",
 }
 
 # Pack photos.
 PACKS = {
     "The Work Week": "LAVE184", "The Full Week": "MEN,  5 SHIRTS, COTTON", "The Fortnight": "LAVE180",
-    "Her Week": "WOMEN, 3 SHIRTS, COTTON", "Smart Casual": "LAVE181", "The Weekend": "LAVE177",
-    "Gym & Lounge": "MEN, SWEATPANTS, CASHMERE", "Essentials": "MEN, UNDERWEAR, 5 BOXER SHORTS, COTTON",
-    "Suit + 5 Shirts": "MEN,  2 SUITS (4 PIECES) (3)", "Bathroom Set": "LAVE172",
-    "Black Tie": "MEN, 3 BOW-TIE, VELVET", "Kids' Pack": "BOY, T-SHIRT, COTTON (2)",
-    "Handkerchief 5": "MEN, 3 TIE COMBO, SILK", "New Year Bedroom Reset": "LAVE168",
-    "Winter Put-Away": "LAVE57", "Summer Linen": "MEN, OVERSHIRT, LINEN", "Back to School": "BOY, SHIRT, COTTON",
+    "Her Week": "WOMEN, 3 SHIRTS, COTTON", "Smart Casual": "LAVE181", "Gym & Lounge": "MEN, SWEATPANTS, CASHMERE", "Essentials": "MEN, UNDERWEAR, 5 BOXER SHORTS, COTTON",
+    "Suit + 5 Shirts": "MEN,  2 SUITS (4 PIECES) (3)", "Black Tie": "MEN, 3 BOW-TIE, VELVET", "Kids' Pack": "BOY, T-SHIRT, COTTON (2)",
+    "Handkerchief 5": "MEN, 3 TIE COMBO, SILK", "Summer Linen": "MEN, OVERSHIRT, LINEN", "Back to School": "BOY, SHIRT, COTTON",
     "Autumn Bring-Out": "WOMEN, COAT, WOOL-CREPE, DOUBLE-BREASTED,", "Ski Pack": "MEN, SKI, SALOPETTES",
-    "Living Room Refresh": "LAVE160", "Linen & Dark Shirts": "LAVE171", "Her Everyday Layers": "WOMEN, 3 SLEEVELESS BLOUSES",
+    "Linen & Dark Shirts": "LAVE171", "Her Everyday Layers": "WOMEN, 3 SLEEVELESS BLOUSES",
     "Silk Care": "WOMEN, 3 SHIRT, SILK", "Dry-Clean Tops": "WOMEN, TOP, SATIN",
     "Two Suits + Ties": "MEN,  2 SUITS (4 PIECES) (4)", "Her Suit Week": "WOMEN, SUIT COMBO - 2 PIECE SUITS X2  (4 PIECES IN TOTAL)",
     "Wedding Guest": "WOMEN, 3 PIECE SUIT AND SHIRT", "Dinner Jacket Set": "MEN,  BLAZER PONTE",
@@ -219,20 +193,71 @@ PACKS = {
     "Pleats & Kilt": "GIRL, SKIRT, COTTON", "Dress Week": "WOMEN, MIDI-DRESS, STRETCH JERSEY",
     "Silk Dresses": "WOMEN, MIDI-DRESS, STRETCH LACE (2)", "Nightwear": "WOMEN, ROBE, SILK-SATIN",
     "Coat Season": "WOMEN, COAT, TRENCH, SATIN", "Winter Warmers": "MEN, COAT, VIRGIN WOOL",
-    "Knitwear Drawer": "LAVE60", "Cashmere Care": "WOMEN, TWINSET CARDIGAN & VEST, CASHMERE",
+    "Cashmere Care": "WOMEN, TWINSET CARDIGAN & VEST, CASHMERE",
     "Wraps & Gloves": "MEN, ACCESSORIES, SCARF, CASHMERE", "Accessories Pack": "MEN, 5 TIE COMBO, SILK",
     "Little Ones": "NGSFI2026135", "Kids' Occasion": "GIRL, DRESS, COTTON", "Sports & Swim": "MEN, 3 TANKS, COTTON",
-    "Workwear": "26 copy", "Single Bed Change": "LAVE55", "Double Bed Change": "16 copy",
-    "King Bed Change": "6 copy", "Super King Luxe": "4 copy", "Guest Room Ready": "17 copy 2",
-    "Winter Duvets": "29 copy 2", "King Duvet Reset": "30 copy 2", "Super King Reset": "7 copy",
-    "Kids' Rooms Reset": "37", "Blankets & Throws": "LAVE59", "Bed Spreads": "LAVE56",
-    "Mattress Care": "NGSFI2026142", "Sofa Refresh": "40", "Armchair Refresh": "112",
-    "Cushion Swap": "LAVE162", "Outdoor & Wellness": "28 copy", "Pet Pack": "76 2",
-    "Spa Towels": "LAVE64", "Lingerie & Lounge": "WOMEN, BRA AND BRIEF SET, STRETCH JERSEY",
+    "Super King Reset": "7 copy",
+    "Outdoor & Wellness": "28 copy", "Lingerie & Lounge": "WOMEN, BRA AND BRIEF SET, STRETCH JERSEY",
     "Family Ski": "WOMEN, SKI-JACKET",
 }
 
 PEOPLE = {"WOMEN": "Women's", "MEN": "Men's", "BOY": "Boy's", "GIRL": "Girl's"}
+
+# The studio backdrop of the garment shots. Photos of products on a plain light background get theirs repainted to match.
+STUDIO = (249, 249, 249)
+NORMALISE = {"21 copy", "433", "LAVE163", "NGSFI2026138", "71 2"}
+# Strong studio shots that read well in a pack flat-lay (white-on-white photos wash out there).
+FLAT_LAY_EXTRA = {"NGSFI2026138", "LAVE62", "LAVE163", "71 2"}
+PACK_DATA = Path(__file__).resolve().parent.parent / "app" / "site" / "data" / "repository_packs.json"
+
+
+def studio_background(img: Image.Image, tolerance: int = 16) -> Image.Image:
+    """Repaint the plain background (everything light that touches the edge) in the studio grey, with a soft edge."""
+    from PIL import ImageDraw, ImageFilter
+    work = img.copy()
+    w, h = work.size
+    marker = (255, 0, 255)
+    seeds = [(x, y) for x in range(0, w, 8) for y in (0, h - 1)] + [(x, y) for y in range(0, h, 8) for x in (0, w - 1)]
+    for seed in seeds:
+        px = work.getpixel(seed)
+        if px != marker and sum(px) / 3 >= 175:
+            ImageDraw.floodfill(work, seed, marker, thresh=tolerance)
+    mask = Image.new("L", (w, h), 0)
+    mask.putdata([255 if p == marker else 0 for p in work.getdata()])
+    mask = mask.filter(ImageFilter.GaussianBlur(1.2))
+    return Image.composite(Image.new("RGB", (w, h), STUDIO), img, mask)
+
+
+def trim(img: Image.Image, margin: int = 10) -> Image.Image:
+    """Crop away the empty studio backdrop around the garment."""
+    from PIL import ImageChops
+    diff = ImageChops.difference(img, Image.new("RGB", img.size, STUDIO)).convert("L").point(lambda v: 255 if v > 10 else 0)
+    box = diff.getbbox()
+    if not box:
+        return img
+    l, t, r, b = box
+    return img.crop((max(0, l - margin), max(0, t - margin), min(img.width, r + margin), min(img.height, b + margin)))
+
+
+def flat_lay(photos: list[Image.Image], size: int = 720) -> Image.Image:
+    """A pack image: its items' studio shots side by side (one row of up to 3, or a 2×2 grid for 4)."""
+    canvas = Image.new("RGB", (size, size), STUDIO)
+    n = len(photos)
+    cols, rows = (n, 1) if n <= 3 else (2, 2)
+    cw, ch = size // cols, (size if rows == 1 else size // 2)
+    pad = 40 if n == 1 else 18
+    for i, ph in enumerate(photos):
+        corner = ph.getpixel((1, 1))
+        if max(abs(c - 249) for c in corner) > 3:  # a different backdrop: match the studio grey
+            ph = studio_background(ph, tolerance=12)
+        ph = trim(ph)
+        box_w, box_h = cw - 2 * pad, (ch if rows == 2 else int(size * 0.9)) - 2 * pad
+        scale = min(box_w / ph.width, box_h / ph.height)  # fill the cell (scaling up if needed)
+        ph = ph.resize((max(1, int(ph.width * scale)), max(1, int(ph.height * scale))), Image.LANCZOS)
+        x = (i % cols) * cw + (cw - ph.width) // 2
+        y = (i // cols) * ch + (ch - ph.height) // 2
+        canvas.paste(ph, (x, y))
+    return canvas
 
 
 def stem(path: Path) -> str:
@@ -267,7 +292,7 @@ def main(src: Path) -> None:
         uses.setdefault(s, {"items": [], "packs": [], "categories": []})["categories"].append(cat)
     for pack, s in PACKS.items():
         uses.setdefault(s, {"items": [], "packs": [], "categories": []})["packs"].append(pack)
-    manifest, seen = [], set()
+    manifest, seen, loaded = [], set(), {}
     for s, path in files.items():
         name = slug(s if re.match(r"^(WOMEN|MEN|BOY|GIRL|MAXI)", s) else "lave-" + s) or "lave"
         while name in seen:
@@ -281,12 +306,34 @@ def main(src: Path) -> None:
             bg = Image.new("RGB", img.size, (247, 247, 247))
             bg.paste(img, mask=img.split()[3])
             img = bg
+        if s in NORMALISE:
+            img = studio_background(img)
         img.thumbnail((1400, 1400))
         img.save(OUT / f"{name}.webp", "WEBP", quality=80, method=6)
         manifest.append({"file": f"{name}.webp", "source": path.name, "alt": alt_text(s, fallback), **u})
+        loaded[s] = img
+
+    # Packs without a clean photo of their own: a flat-lay of their items' studio shots.
+    photo_of = {item: s for s, item in ITEMS.items()}
+    built, single_used = 0, set()
+    for pack in json.loads(PACK_DATA.read_text()):
+        if pack["name"] in PACKS:
+            continue
+        stems = [x for x in dict.fromkeys(photo_of[i["item"]] for i in pack["items"] if i["item"] in photo_of)
+                 if re.match(r"^(WOMEN|MEN|BOY|GIRL|MAXI)", x) or x in FLAT_LAY_EXTRA][:4]
+        if not stems or (len(stems) == 1 and stems[0] in single_used):
+            continue  # nothing strong to show, or the same single photo already stands for another pack
+        if len(stems) == 1:
+            single_used.add(stems[0])
+        name = "pack-" + slug(pack["name"])
+        flat_lay([loaded[x] for x in stems]).save(OUT / f"{name}.webp", "WEBP", quality=80, method=6)
+        manifest.append({"file": f"{name}.webp", "source": "flat-lay", "alt": f"{pack['name']} pack", "items": [], "packs": [pack["name"]],
+                         "categories": []})
+        built += 1
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False))
     total = sum((OUT / m["file"]).stat().st_size for m in manifest)
-    print(f"{len(manifest)} images, {total / 1e6:.1f} MB; {len(ITEMS)} items, {len(PACKS)} packs, {len(CATEGORIES)} categories assigned")
+    print(f"{len(manifest)} images, {total / 1e6:.1f} MB; {len(ITEMS)} items, {len(PACKS)} pack photos + {built} flat-lays, "
+          f"{len(CATEGORIES)} categories")
 
 
 if __name__ == "__main__":

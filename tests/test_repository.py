@@ -5,7 +5,7 @@ import io
 import pytest
 from sqlalchemy import select
 
-from app.models import Order, Pack, Service
+from app.models import Order, Pack, Service, SiteSetting
 from app.services import repository as repo
 
 
@@ -213,9 +213,9 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
         chosen.image = "/media/founder-picked.webp"  # picked in /admin before the photos arrived
         db.commit()
         result = repo.load_bundled_images(db, media_dir=tmp_path)
-        assert result["added"] == 454 and result["packs"] == 68 and result["categories"] == 26
-        assert result["items"] == 149  # all mapped items except the one already chosen
-        assert len(list(tmp_path.glob("*.webp"))) == 454
+        assert result["added"] == 459 and result["packs"] == 50 and result["categories"] == 21
+        assert result["items"] == 131  # all mapped items except the one already chosen
+        assert len(list(tmp_path.glob("*.webp"))) == 459
         assert db.scalar(select(Service).where(Service.name == "Coat, long")).image == "/media/founder-picked.webp"
         cashmere = db.scalar(select(Service).where(Service.name == "Coat, cashmere"))
         assert cashmere.image == "/media/women-coat-cashmere.webp"
@@ -228,9 +228,23 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
         assert repo.load_bundled_images(db, media_dir=tmp_path) == {"added": 0, "items": 0, "packs": 0, "categories": 0}
         assert db.scalar(select(Service).where(Service.name == "Coat, cashmere")).image == ""
 
+        # A newer photo set refreshes photos the bundle placed (here: a scene photo that has since been dropped),
+        # but never the founder's own choice.
+        throw = db.scalar(select(Service).where(Service.name == "Throw"))
+        throw.image = "/media/lave-lave143.webp"
+        repo.set_setting(db, "images_applied", "0")
+        db.query(SiteSetting).filter(SiteSetting.key == "repository.images_assigned").delete()
+        db.commit()
+        repo.load_bundled_images(db, media_dir=tmp_path)
+        assert db.scalar(select(Service).where(Service.name == "Throw")).image == ""
+        assert db.scalar(select(Service).where(Service.name == "Coat, long")).image == "/media/founder-picked.webp"
+        assert "Curtains & blinds" not in repo.category_images(db)  # no clean photo, so no banner
+
     page = api.get("/atelier/prices/").text
     assert 'class="cat-index"' in page and "/media/lave-lave166.webp" in page and 'class="price-thumb"' in page
-    assert "/media/lave-lave184.webp" in api.get("/atelier/packs/").text  # The Work Week flat-lay
+    packs_page = api.get("/atelier/packs/").text
+    assert "/media/lave-lave184.webp" in packs_page  # The Work Week flat-lay
+    assert "/media/pack-the-weekend.webp" in packs_page  # built from its items' studio shots
 
     r = api.put("/api/staff/repository/category-image", headers=staff_headers, json={"category": "Coats", "image": "/media/new-coats.webp"})
     assert r.status_code == 200 and r.json()["Coats"] == "/media/new-coats.webp"

@@ -10,12 +10,10 @@
  {
   "file": "lave-1-copy.webp",
   "source": "LAVE1 copy.png",
-  "alt": "Bridal & occasion",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Bridal & occasion"
-  ]
+  "categories": []
  },
  {
   "file": "lave-10-copy.webp",
@@ -84,21 +82,17 @@
  {
   "file": "lave-111.webp",
   "source": "LAVE111.png",
-  "alt": "Shoes, trainers & bags",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Shoes, trainers & bags"
-  ]
+  "categories": []
  },
  {
   "file": "lave-112.webp",
   "source": "LAVE112.png",
-  "alt": "Armchair Refresh",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Armchair Refresh"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -160,10 +154,8 @@
  {
   "file": "lave-13-copy-2.webp",
   "source": "LAVE13 copy 2.png",
-  "alt": "Shoe shine",
-  "items": [
-   "Shoe shine"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -226,12 +218,10 @@
  {
   "file": "lave-144-2.webp",
   "source": "LAVE144 2.png",
-  "alt": "Traditional & cultural wear",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Traditional & cultural wear"
-  ]
+  "categories": []
  },
  {
   "file": "lave-148-2.webp",
@@ -244,22 +234,18 @@
  {
   "file": "lave-15-copy-2.webp",
   "source": "LAVE15 copy 2.png",
-  "alt": "Sofa cover, 3-settee",
-  "items": [
-   "Sofa cover, 3-settee"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-15-copy.webp",
   "source": "LAVE15 copy.png",
-  "alt": "Bed linen",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Bed linen"
-  ]
+  "categories": []
  },
  {
   "file": "lave-156-2.webp",
@@ -280,22 +266,18 @@
  {
   "file": "lave-16-copy.webp",
   "source": "LAVE16 copy.png",
-  "alt": "Double Bed Change",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Double Bed Change"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-16.webp",
   "source": "LAVE16.png",
-  "alt": "Wash & fold bags",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Wash & fold bags"
-  ]
+  "categories": []
  },
  {
   "file": "lave-160-2.webp",
@@ -332,11 +314,9 @@
  {
   "file": "lave-17-copy-2.webp",
   "source": "LAVE17 copy 2.png",
-  "alt": "Guest Room Ready",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Guest Room Ready"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -480,20 +460,16 @@
  {
   "file": "lave-26-copy.webp",
   "source": "LAVE26 copy.png",
-  "alt": "Workwear",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Workwear"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-27-copy.webp",
   "source": "LAVE27 copy.png",
-  "alt": "Lab coat",
-  "items": [
-   "Lab coat"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -510,11 +486,9 @@
  {
   "file": "lave-29-copy-2.webp",
   "source": "LAVE29 copy 2.png",
-  "alt": "Winter Duvets",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Winter Duvets"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -546,11 +520,9 @@
  {
   "file": "lave-30-copy-2.webp",
   "source": "LAVE30 copy 2.png",
-  "alt": "King Duvet Reset",
+  "alt": "",
   "items": [],
-  "packs": [
-   "King Duvet Reset"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -574,43 +546,33 @@
  {
   "file": "lave-36.webp",
   "source": "LAVE36.png",
-  "alt": "Medium bag (up to 6 kg)",
-  "items": [
-   "Medium bag (up to 6 kg)"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-37.webp",
   "source": "LAVE37.png",
-  "alt": "Kids' Rooms Reset",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Kids' Rooms Reset"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-4-copy-2.webp",
   "source": "LAVE4 copy 2.png",
-  "alt": "Table & kitchen linen",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Table & kitchen linen"
-  ]
+  "categories": []
  },
  {
   "file": "lave-4-copy.webp",
   "source": "LAVE4 copy.png",
-  "alt": "Super King Luxe",
-  "items": [
-   "Blanket, double"
-  ],
-  "packs": [
-   "Super King Luxe"
-  ],
+  "alt": "",
+  "items": [],
+  "packs": [],
   "categories": []
  },
  {
@@ -624,11 +586,9 @@
  {
   "file": "lave-40.webp",
   "source": "LAVE40.png",
-  "alt": "Sofa Refresh",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Sofa Refresh"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -642,12 +602,14 @@
  {
   "file": "lave-433.webp",
   "source": "LAVE433.png",
-  "alt": "Wedding dress (clean + boxed)",
+  "alt": "Bridal & occasion",
   "items": [
    "Wedding dress (clean + boxed)"
   ],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Bridal & occasion"
+  ]
  },
  {
   "file": "lave-44.webp",
@@ -724,21 +686,17 @@
  {
   "file": "lave-6-copy-2.webp",
   "source": "LAVE6 copy 2.png",
-  "alt": "Pressing only",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Pressing only"
-  ]
+  "categories": []
  },
  {
   "file": "lave-6-copy.webp",
   "source": "LAVE6 copy.png",
-  "alt": "King Bed Change",
+  "alt": "",
   "items": [],
-  "packs": [
-   "King Bed Change"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -802,28 +760,28 @@
  {
   "file": "lave-71-2.webp",
   "source": "LAVE71 2.png",
+  "alt": "Wash & fold bags",
+  "items": [
+   "Medium bag (up to 6 kg)"
+  ],
+  "packs": [],
+  "categories": [
+   "Wash & fold bags"
+  ]
+ },
+ {
+  "file": "lave-76-2.webp",
+  "source": "LAVE76 2.png",
   "alt": "",
   "items": [],
   "packs": [],
   "categories": []
  },
  {
-  "file": "lave-76-2.webp",
-  "source": "LAVE76 2.png",
-  "alt": "Pet Pack",
-  "items": [],
-  "packs": [
-   "Pet Pack"
-  ],
-  "categories": []
- },
- {
   "file": "lave-8-copy-2.webp",
   "source": "LAVE8 copy 2.png",
-  "alt": "Dog cushion/bed",
-  "items": [
-   "Dog cushion/bed"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -838,20 +796,16 @@
  {
   "file": "lave-80-2.webp",
   "source": "LAVE80 2.png",
-  "alt": "Rugs",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Rugs"
-  ]
+  "categories": []
  },
  {
   "file": "lave-81-2.webp",
   "source": "LAVE81 2.png",
-  "alt": "Rug, medium (1.5 x 2 m)",
-  "items": [
-   "Rug, medium (1.5 x 2 m)"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -868,10 +822,8 @@
  {
   "file": "lave-96.webp",
   "source": "LAVE96.png",
-  "alt": "Handbag, leather",
-  "items": [
-   "Handbag, leather"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -945,7 +897,9 @@
   "file": "boy-t-shirt-cotton-3.webp",
   "source": "LAVEBOY, T-SHIRT, COTTON (3).png",
   "alt": "Boy's t-shirt, cotton",
-  "items": [],
+  "items": [
+   "Child's item, age 0-3"
+  ],
   "packs": [],
   "categories": []
  },
@@ -1172,10 +1126,8 @@
  {
   "file": "lave-lave143.webp",
   "source": "LAVELAVE143.png",
-  "alt": "Throw",
-  "items": [
-   "Throw"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -1222,92 +1174,78 @@
  {
   "file": "lave-lave153.webp",
   "source": "LAVELAVE153.png",
-  "alt": "Repairs",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Repairs"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave156.webp",
   "source": "LAVELAVE156.png",
-  "alt": "Blanket, small",
-  "items": [
-   "Blanket, small"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave157.webp",
   "source": "LAVELAVE157.png",
-  "alt": "Curtains, heavy (per m²)",
-  "items": [
-   "Curtains, heavy (per m²)"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave158.webp",
   "source": "LAVELAVE158.png",
-  "alt": "Curtains, lined (per m²)",
-  "items": [
-   "Curtains, lined (per m²)"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave159.webp",
   "source": "LAVELAVE159.png",
-  "alt": "Chair cover, single",
-  "items": [
-   "Chair cover, single"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave160.webp",
   "source": "LAVELAVE160.png",
-  "alt": "Living Room Refresh",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Living Room Refresh"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave161.webp",
   "source": "LAVELAVE161.png",
-  "alt": "Cushion cover, medium",
-  "items": [
-   "Cushion cover, medium"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave162.webp",
   "source": "LAVELAVE162.png",
-  "alt": "Cushion Swap",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Cushion Swap"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave163.webp",
   "source": "LAVELAVE163.png",
-  "alt": "Pillow, non-feather",
+  "alt": "Duvets, pillows & home",
   "items": [
    "Pillow, non-feather"
   ],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Duvets, pillows & home"
+  ]
  },
  {
   "file": "lave-lave164.webp",
@@ -1340,11 +1278,9 @@
  {
   "file": "lave-lave168.webp",
   "source": "LAVELAVE168.png",
-  "alt": "New Year Bedroom Reset",
+  "alt": "",
   "items": [],
-  "packs": [
-   "New Year Bedroom Reset"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -1360,52 +1296,46 @@
  {
   "file": "lave-lave171.webp",
   "source": "LAVELAVE171.png",
-  "alt": "Linen & Dark Shirts",
+  "alt": "Pressing only",
   "items": [],
   "packs": [
    "Linen & Dark Shirts"
   ],
-  "categories": []
+  "categories": [
+   "Pressing only"
+  ]
  },
  {
   "file": "lave-lave172.webp",
   "source": "LAVELAVE172.png",
-  "alt": "Bathroom Set",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Bathroom Set"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave173.webp",
   "source": "LAVELAVE173.png",
-  "alt": "Trousers",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Trousers"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave177.webp",
   "source": "LAVELAVE177.png",
-  "alt": "The Weekend",
+  "alt": "",
   "items": [],
-  "packs": [
-   "The Weekend"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave178.webp",
   "source": "LAVELAVE178.png",
-  "alt": "Tops & shirts (dry clean)",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Tops & shirts (dry clean)"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave179.webp",
@@ -1472,49 +1402,41 @@
  {
   "file": "lave-lave47.webp",
   "source": "LAVELAVE47.png",
-  "alt": "Duvet, non-feather double",
-  "items": [
-   "Duvet, non-feather double"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave48.webp",
   "source": "LAVELAVE48.png",
-  "alt": "Bath mat",
-  "items": [
-   "Bath mat"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave50.webp",
   "source": "LAVELAVE50.png",
-  "alt": "Curtains & blinds",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Curtains & blinds"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave52.webp",
   "source": "LAVELAVE52.png",
-  "alt": "Curtains, unlined (per m²)",
-  "items": [
-   "Curtains, unlined (per m²)"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave54.webp",
   "source": "LAVELAVE54.png",
-  "alt": "Hand towel",
+  "alt": "Bath sheet",
   "items": [
-   "Hand towel"
+   "Bath sheet"
   ],
   "packs": [],
   "categories": []
@@ -1522,72 +1444,58 @@
  {
   "file": "lave-lave55.webp",
   "source": "LAVELAVE55.png",
-  "alt": "Single Bed Change",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Single Bed Change"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave56.webp",
   "source": "LAVELAVE56.png",
-  "alt": "Bed Spreads",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Bed Spreads"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave57.webp",
   "source": "LAVELAVE57.png",
-  "alt": "Winter Put-Away",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Winter Put-Away"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave58.webp",
   "source": "LAVELAVE58.png",
-  "alt": "Knitwear & accessories",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Knitwear & accessories"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave59.webp",
   "source": "LAVELAVE59.png",
-  "alt": "Blankets & Throws",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Blankets & Throws"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave60.webp",
   "source": "LAVELAVE60.png",
-  "alt": "Knitwear Drawer",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Knitwear Drawer"
-  ],
+  "packs": [],
   "categories": []
  },
  {
   "file": "lave-lave61.webp",
   "source": "LAVELAVE61.png",
-  "alt": "Laundry items",
+  "alt": "",
   "items": [],
   "packs": [],
-  "categories": [
-   "Laundry items"
-  ]
+  "categories": []
  },
  {
   "file": "lave-lave62.webp",
@@ -1610,11 +1518,9 @@
  {
   "file": "lave-lave64.webp",
   "source": "LAVELAVE64.png",
-  "alt": "Spa Towels",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Spa Towels"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -1652,10 +1558,8 @@
  {
   "file": "lave-lave94.webp",
   "source": "LAVELAVE94.png",
-  "alt": "Ironing (per kg, on hangers)",
-  "items": [
-   "Ironing (per kg, on hangers)"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -2582,20 +2486,16 @@
  {
   "file": "lave-ngsfi2026133.webp",
   "source": "LAVENGSFI2026133.png",
-  "alt": "Duvet cover, double",
-  "items": [
-   "Duvet cover, double"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-ngsfi2026134.webp",
   "source": "LAVENGSFI2026134.png",
-  "alt": "Child's item, age 0-3",
-  "items": [
-   "Child's item, age 0-3"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
@@ -2620,32 +2520,34 @@
  {
   "file": "lave-ngsfi2026137.webp",
   "source": "LAVENGSFI2026137.png",
-  "alt": "Bath towel",
-  "items": [
-   "Bath towel"
-  ],
+  "alt": "",
+  "items": [],
   "packs": [],
   "categories": []
  },
  {
   "file": "lave-ngsfi2026138.webp",
   "source": "LAVENGSFI2026138.png",
-  "alt": "Bath sheet",
+  "alt": "Laundry items",
   "items": [
-   "Bath sheet"
+   "Bath towel"
   ],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Laundry items"
+  ]
  },
  {
   "file": "lave-ngsfi2026139.webp",
   "source": "LAVENGSFI2026139.png",
-  "alt": "Pillow, feather",
+  "alt": "Bed linen",
   "items": [
    "Pillow, feather"
   ],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Bed linen"
+  ]
  },
  {
   "file": "lave-ngsfi2026140.webp",
@@ -2666,11 +2568,9 @@
  {
   "file": "lave-ngsfi2026142.webp",
   "source": "LAVENGSFI2026142.png",
-  "alt": "Mattress Care",
+  "alt": "",
   "items": [],
-  "packs": [
-   "Mattress Care"
-  ],
+  "packs": [],
   "categories": []
  },
  {
@@ -2686,12 +2586,12 @@
  {
   "file": "lave-ngsfi2026144.webp",
   "source": "LAVENGSFI2026144.png",
-  "alt": "Duvets, pillows & home",
-  "items": [],
+  "alt": "Duvet, non-feather double",
+  "items": [
+   "Duvet, non-feather double"
+  ],
   "packs": [],
-  "categories": [
-   "Duvets, pillows & home"
-  ]
+  "categories": []
  },
  {
   "file": "lave-ngsfi2026145.webp",
@@ -3053,7 +2953,9 @@
   "alt": "Women's coat, embroidered",
   "items": [],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Traditional & cultural wear"
+  ]
  },
  {
   "file": "women-coat-mixed-style-fabric-combo.webp",
@@ -3163,7 +3065,9 @@
   "alt": "Women's crop sweater, cable-knit, merino wool",
   "items": [],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Knitwear & accessories"
+  ]
  },
  {
   "file": "women-double-breasted-blazer-wool-grain-de-poudre-satin-trimmed.webp",
@@ -3795,7 +3699,9 @@
   "alt": "Women's sleeveless blouse, silk",
   "items": [],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Tops & shirts (dry clean)"
+  ]
  },
  {
   "file": "women-sleeveless-blouses.webp",
@@ -4031,7 +3937,9 @@
   "alt": "Women's trousers, jeans, cotton",
   "items": [],
   "packs": [],
-  "categories": []
+  "categories": [
+   "Trousers"
+  ]
  },
  {
   "file": "women-trousers-jeans-metallic-coated-cotton.webp",
@@ -4117,6 +4025,56 @@
   "alt": "Women's round-neck bodysuit",
   "items": [],
   "packs": [],
+  "categories": []
+ },
+ {
+  "file": "pack-the-weekend.webp",
+  "source": "flat-lay",
+  "alt": "The Weekend pack",
+  "items": [],
+  "packs": [
+   "The Weekend"
+  ],
+  "categories": []
+ },
+ {
+  "file": "pack-winter-put-away.webp",
+  "source": "flat-lay",
+  "alt": "Winter Put-Away pack",
+  "items": [],
+  "packs": [
+   "Winter Put-Away"
+  ],
+  "categories": []
+ },
+ {
+  "file": "pack-knitwear-drawer.webp",
+  "source": "flat-lay",
+  "alt": "Knitwear Drawer pack",
+  "items": [],
+  "packs": [
+   "Knitwear Drawer"
+  ],
+  "categories": []
+ },
+ {
+  "file": "pack-winter-duvets.webp",
+  "source": "flat-lay",
+  "alt": "Winter Duvets pack",
+  "items": [],
+  "packs": [
+   "Winter Duvets"
+  ],
+  "categories": []
+ },
+ {
+  "file": "pack-spa-towels.webp",
+  "source": "flat-lay",
+  "alt": "Spa Towels pack",
+  "items": [],
+  "packs": [
+   "Spa Towels"
+  ],
   "categories": []
  }
 ]
