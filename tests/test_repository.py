@@ -260,3 +260,12 @@ def test_improved_bundled_photos_replace_older_copies(db_session, tmp_path):
     with db_session() as db:
         repo.load_bundled_images(db, media_dir=tmp_path)
     assert (tmp_path / first.name).read_bytes() == first.read_bytes()
+
+
+def test_bundled_photos_are_copied_at_startup(tmp_path):
+    from app.services.repository import IMAGES_DIR, sync_bundle_files
+    total = len(list(IMAGES_DIR.glob("*.webp")))
+    assert sync_bundle_files(tmp_path) == total
+    assert sync_bundle_files(tmp_path) == 0  # nothing to do the second time
+    (tmp_path / "men-3-shirts-cotton.webp").unlink()
+    assert sync_bundle_files(tmp_path) == 1

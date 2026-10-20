@@ -602,3 +602,19 @@ def load_bundled_images(db: Session, media_dir: Path | None = None) -> dict | No
         set_setting(db, "images_applied", IMAGES_VERSION)
     db.commit()
     return {"added": added, **assigned}
+
+
+def sync_bundle_files(media_dir: Path) -> int:
+    """Copy the bundled photos onto the image disk. Runs when the website starts: on Render the disk isn't attached
+    during the pre-deploy step, so files written there are lost."""
+    import shutil
+    if not IMAGES_DIR.exists():
+        return 0
+    media_dir.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for source in IMAGES_DIR.glob("*.webp"):
+        target = media_dir / source.name
+        if not target.exists() or target.stat().st_size != source.stat().st_size or target.read_bytes() != source.read_bytes():
+            shutil.copyfile(source, target)
+            copied += 1
+    return copied

@@ -65,6 +65,12 @@ def create_app() -> FastAPI:
     app.mount("/static/site", StaticFiles(directory=STATIC / "site"), name="site-assets")
     # Images uploaded from /admin (journal covers, page images).
     settings.media_path.mkdir(parents=True, exist_ok=True)
+
+    # The price-list photos ship with the code. Put them on the image disk here, as the website starts: on Render the
+    # disk isn't attached during the pre-deploy step.
+    if settings.env != "test":
+        from app.services.repository import sync_bundle_files
+        sync_bundle_files(settings.media_path)
     app.mount("/media", StaticFiles(directory=settings.media_path), name="media")
 
     if settings.is_dev:
