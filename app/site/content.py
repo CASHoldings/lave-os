@@ -10,6 +10,11 @@ from dataclasses import dataclass, field
 
 WP = "https://lavelondon.com/wp-content/uploads/"
 
+# LAVE's brand lines.
+SLOGAN = "Care Better"
+TAGLINE = "Preserve what you treasure"
+SERVICE_MESSAGE = "Intentional care for the people and textiles you love"
+
 
 def slugify(text: str) -> str:
     ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()

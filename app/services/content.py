@@ -1,14 +1,15 @@
 """Journal posts and LAVEWorld pages: Markdown rendering, queries and starter content."""
 import html
+import json
 import re
 
 import markdown
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import PageContent, Post, PostStatus
+from app.models import PageContent, Post, PostStatus, SiteContent
 from app.services.clock import local_now
-from app.site.content import WP, slugify
+from app.site.content import SERVICE_MESSAGE, SLOGAN, TAGLINE, WP, slugify
 
 KINDS = {"thread": "THREAD by LAVE", "event": "Events", "press": "Press"}
 SAFE_URL = re.compile(r'(href|src)="(?!https?://|/|#|mailto:)[^"]*"', re.I)
@@ -64,12 +65,11 @@ def image(url: str) -> str:
 # Starter content. Pages are published only where the copy comes from LAVE's own words; the rest wait as drafts.
 STARTER_PAGES = [
     ("/laveworld/impact/people/", "People", "Intentional care for the people who wear, use and look after textiles.",
-     "Our values guide every choice: intentional care for **people**, planet, and the textiles you treasure.", True),
+     "Intentional care for the **people** and textiles you love.", True),
     ("/laveworld/impact/planet/", "Planet", "Extending the life of what you own is the most sustainable choice.",
      "We extend the life of what you treasure, from heirloom silks to everyday essentials, with expert cleaning, "
      "bespoke formulations, restoration and climate-conscious storage.", True),
-    ("/laveworld/impact/principles/", "Principles", "Care better. Preserve what you treasure.",
-     "Our values guide every choice: intentional care for people, planet, and the textiles you treasure.", True),
+    ("/laveworld/impact/principles/", "Principles", f"{SLOGAN}. {TAGLINE}.", f"{SERVICE_MESSAGE}.", True),
     ("/laveworld/story/purpose/", "Purpose", "LAVE cares for, manages and extends the life of wardrobes, home and business textiles.",
      "LAVE is a technology-enabled Textile Care Atelier that cares for, manages and extends the life of wardrobes, "
      "home and business textiles.", True),
@@ -86,6 +86,45 @@ STARTER_POST = {
             "## Or let us keep it\n\nThe [LAVE Vault](/atelier/vault/) cleans and stores your knitwear in climate-conscious conditions until you need it.",
     "cover_image": "2024/07/LAVE-Atelier-Store-Couture.avif",
 }
+
+
+# Earlier wording of the brand lines. Each deploy swaps it for the current lines wherever saved content still uses it
+# word for word; anything rewritten in /admin is left alone.
+OLD_BRAND_WORDING = [
+    ("Care better.  Preserve what you treasure.", f"{SLOGAN}. {TAGLINE}."),
+    ("Care better. Preserve what you treasure.", f"{SLOGAN}. {TAGLINE}."),
+    ("Our values guide every choice: intentional care for **people**, **planet**, and the **textiles** you treasure.",
+     "Intentional care for the **people** and **textiles** you love."),
+    ("Our values guide every choice: intentional care for **people**, planet, and the textiles you treasure.",
+     "Intentional care for the **people** and textiles you love."),
+    ("Our values guide every choice: intentional care for people, planet, and the textiles you treasure.", f"{SERVICE_MESSAGE}."),
+    ("Our values guide every choice: intentional care for people, planet and the textiles you treasure.", f"{SERVICE_MESSAGE}."),
+]
+
+
+def update_brand_wording(db: Session) -> int:
+    """Bring saved pages, footer and page wording up to the current brand lines. Returns how many were changed."""
+    def swap(text: str) -> str:
+        for old, new in OLD_BRAND_WORDING:
+            text = text.replace(old, new)
+        return text
+
+    changed = 0
+    for row in db.scalars(select(SiteContent)):
+        new = json.loads(swap(json.dumps(row.value, ensure_ascii=False)))
+        if new != row.value:
+            row.value, row.updated_by = new, "Brand lines"
+            changed += 1
+    for page_row in db.scalars(select(PageContent)):
+        intro, body = swap(page_row.intro or ""), swap(page_row.body or "")
+        if (intro, body) != (page_row.intro or "", page_row.body or ""):
+            page_row.intro, page_row.body = intro, body
+            changed += 1
+    if changed:
+        db.commit()
+        from app.site import store
+        store._cache["stamp"] = None
+    return changed
 
 
 def load_starter_content(db: Session) -> None:

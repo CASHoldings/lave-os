@@ -57,8 +57,8 @@ def footer() -> dict:
         "welcome_heading": "Welcome to LAVE, your Textile Care Atelier",
         "welcome_text": "LAVE is a technology-enabled **Textile Care Atelier** that cares for, manages and extends the life "
                         "of wardrobes, home and business textiles.",
-        "values_heading": "Care better.  Preserve what you treasure.",
-        "values_text": "Our values guide every choice: intentional care for **people**, **planet**, and the **textiles** you treasure.",
+        "values_heading": f"{content.SLOGAN}. {content.TAGLINE}.",
+        "values_text": "Intentional care for the **people** and **textiles** you love.",
         "links": [{"label": label, "href": href} for label, href in content.FOOTER["links"]],
         "social": [{"name": name, "url": url} for name, url, _icon in content.FOOTER["social"]],
     }
@@ -158,8 +158,7 @@ def laveworld() -> dict:
     return {
         "heading": "Welcome to LAVEWorld",
         "lead": "The story, knowledge and community behind LAVE.",
-        "text": "Care better. Preserve what you treasure. Our values guide every choice: intentional care for people, planet "
-                "and the textiles you treasure.",
+        "text": f"{content.SLOGAN}. {content.TAGLINE}. {content.SERVICE_MESSAGE}.",
         "journal_heading": "THREAD by LAVE",
         "journal_text": "Notes on caring for the textiles in your life.",
         "values_heading": "What guides us",

@@ -250,3 +250,33 @@ def test_uploads_are_slimmed(api, staff_headers, tmp_path, monkeypatch):
     r = api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("big.webp", _photo(2400, 1200), "image/webp")})
     name = r.json()["url"].removeprefix("/media/")
     assert Image.open(tmp_path / name).width == 1920 and (tmp_path / "thumbs" / name).exists()
+
+
+def test_brand_lines(api, db_session):
+    db = db_session()
+    from app.models import PageContent, SiteContent
+    from app.services.content import update_brand_wording
+    from app.site.defaults import footer
+
+    # Saved before the brand lines: old wording is brought up to date; wording rewritten in /admin is left alone.
+    old_footer = footer() | {"values_heading": "Care better.  Preserve what you treasure.",
+                             "values_text": "Our values guide every choice: intentional care for **people**, **planet**, "
+                                            "and the **textiles** you treasure."}
+    db.add(SiteContent(key="footer", value=old_footer))
+    principles = db.query(PageContent).filter_by(path="/laveworld/impact/principles/").one()
+    principles.intro = "Care better. Preserve what you treasure."
+    planet = db.query(PageContent).filter_by(path="/laveworld/impact/planet/").one()
+    planet.body = "Our own words about the planet."
+    db.commit()
+
+    assert update_brand_wording(db) == 2
+    assert update_brand_wording(db) == 0  # nothing left to change
+    saved = db.get(SiteContent, "footer").value
+    assert saved["values_heading"] == "Care Better. Preserve what you treasure."
+    assert saved["values_text"] == "Intentional care for the **people** and **textiles** you love."
+    assert principles.intro == "Care Better. Preserve what you treasure." and planet.body == "Our own words about the planet."
+
+    page = api.get("/laveworld/").text
+    assert "Care Better. Preserve what you treasure. Intentional care for the people and textiles you love." in page
+    assert "Intentional care for the <strong>people</strong> and <strong>textiles</strong> you love." in page
+    assert "planet, and the" not in page

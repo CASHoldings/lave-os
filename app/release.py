@@ -2,7 +2,8 @@
 
 1. Brings the database up to date (new tables and columns).
 2. On a brand-new database only, loads the starting slots, price list, catalogue, sample products and pages.
-   After that it never touches content, so anything deleted or edited in /admin stays that way.
+   After that it never touches content, so anything deleted or edited in /admin stays that way. The one exception:
+   old wording of the brand lines is swapped for the current lines where it's still there word for word.
 3. If there are no staff accounts yet, creates the first admin from LAVE_FIRST_ADMIN_EMAIL and
    LAVE_FIRST_ADMIN_PASSWORD. Remove the password from the host's settings once you've signed in.
 """
@@ -17,7 +18,7 @@ from app.db import SessionLocal, engine
 from app.migrate import upgrade
 from app.models import SlotTemplate, StaffRole, StaffUser
 from app.seed import seed_services, seed_slots
-from app.services.content import load_starter_content
+from app.services.content import load_starter_content, update_brand_wording
 from app.services.shop import load_sample_products
 from app.site.catalogue import load_starting_catalogue
 
@@ -59,6 +60,8 @@ def release() -> list[str]:
         if (photos := repository.load_bundled_images(db)) and (photos["added"] or photos["items"]):
             notes.append(f"Photos: {photos['added']} added to the image library; placed on {photos['items']} items, "
                          f"{photos['packs']} packs and {photos['categories']} categories.")
+        if changed := update_brand_wording(db):
+            notes.append(f"Brand lines: updated the wording in {changed} saved page(s).")
         if not db.scalar(select(func.count()).select_from(StaffUser)):
             email, password = settings.first_admin_email.strip().lower(), settings.first_admin_password
             if email and len(password) >= 12:
