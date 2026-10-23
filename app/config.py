@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     # Public address of the website, used in emailed links.
     site_url: str = "http://localhost:8000"
-    # Outgoing email (e.g. Postmark or Amazon SES over SMTP). Without a host, emails are logged instead of sent.
+    # Outgoing email over SMTP (Resend: smtp.resend.com, user `resend`, an API key as password). Without a host, emails are logged instead of sent.
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
