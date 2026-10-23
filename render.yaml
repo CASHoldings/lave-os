@@ -19,10 +19,6 @@ services:
       - www.lavelondon.com
       - lavelondon.co.uk        # redirected to lavelondon.com by the app
       - www.lavelondon.co.uk
-    disk:
-      name: media
-      mountPath: /var/data
-      sizeGB: 5
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.7
@@ -32,9 +28,7 @@ services:
         fromDatabase:
           name: lave-db
           property: connectionString
-      - key: LAVE_MEDIA_DIR
-        value: /var/data/media
-      # Photo storage: Cloudflare R2 (see LAUNCH.md). Once set, photos on the disk above are copied into the bucket.
+      # Photo storage: Cloudflare R2 (see LAUNCH.md). No disk, so Render can switch versions without going offline.
       - key: LAVE_STORAGE_BUCKET
         sync: false
       - key: LAVE_STORAGE_ENDPOINT

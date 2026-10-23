@@ -103,4 +103,5 @@ In Google Search Console (search.google.com/search-console), add `lavelondon.com
 
 - **Editing**: everything in /admin goes live as soon as you save. No deploy needed.
 - **Code changes from Claude**: once they're pushed to GitHub, Render deploys them automatically, updates the database, and keeps the site up if anything fails.
-- **Backups**: Render backs up the database daily (restore from `lave-db` → **Recovery**) and snapshots the image disk daily.
+- **Backups**: Render backs up the database daily (restore from `lave-db` → **Recovery**). Photos are kept in the
+  Cloudflare R2 bucket `lave-media`.

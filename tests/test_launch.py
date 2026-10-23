@@ -281,3 +281,8 @@ def test_brand_lines(api, db_session):
     assert "Care Better. Preserve what you treasure. Intentional care for the people and textiles you love." in page
     assert "Intentional care for the <strong>people</strong> and <strong>textiles</strong> you love." in page
     assert "planet, and the" not in page
+
+
+def test_health_check_answers_under_every_address(api):
+    for host in ("lavelondon.co.uk", "www.lavelondon.co.uk", "www.lavelondon.com", "lave-os.onrender.com"):
+        assert api.get("/healthz", headers={"host": host}, follow_redirects=False).status_code == 200

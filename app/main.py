@@ -65,6 +65,8 @@ def create_app() -> FastAPI:
     async def one_address(request: Request, call_next):
         # www.lavelondon.com and lavelondon.co.uk → lavelondon.com, so search engines see a single site.
         host = request.headers.get("host", "")
+        if request.url.path == "/healthz":
+            return await call_next(request)  # Render's health check can arrive under any of the addresses
         if host.split(":")[0] in OTHER_DOMAINS:
             main = urlparse(settings.site_url)
             return RedirectResponse(str(request.url.replace(scheme=main.scheme, netloc=main.netloc)), status_code=301)
