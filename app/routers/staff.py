@@ -662,7 +662,6 @@ from app.models import ContactMessage, PageContent, Post, PostStatus  # noqa: E4
 from app.schemas import MarkdownIn, PageIn, PostIn, PublishChange  # noqa: E402
 from app.services import content as cms  # noqa: E402
 
-MEDIA_DIR = get_settings().media_path
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif"}
 MAX_UPLOAD = 8 * 1024 * 1024
 
@@ -792,7 +791,7 @@ async def upload_image(file: UploadFile = File(...), staff: StaffUser = Depends(
     }[ext]
     if not looks_right:
         raise HTTPException(400, "That file doesn't look like an image.")
-    m = media_svc.save_bytes(db, data, ext, file.filename or "", media_dir=MEDIA_DIR)
+    m = media_svc.save_bytes(db, data, ext, file.filename or "")
     db.commit()
     return {"id": m.id, "url": m.url}
 

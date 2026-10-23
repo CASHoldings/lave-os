@@ -101,7 +101,8 @@ def test_home_and_footer_edits(api, staff_headers):
 
 def test_image_library_upload_and_alt(api, staff_headers, tmp_path, monkeypatch):
     from app.routers import staff
-    monkeypatch.setattr(staff, "MEDIA_DIR", tmp_path)
+    from app.services import storage
+    monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path))
     r = api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("towels.png", PNG, "image/png")})
     assert r.status_code == 201
     lib = api.get("/api/staff/media", headers=staff_headers).json()

@@ -84,3 +84,10 @@ def staff_headers(api):
     assert r.status_code == 200, r.text
     api.cookies.clear()
     return {"Authorization": f"Bearer {r.json()['token']}"}
+
+
+@pytest.fixture(autouse=True)
+def photo_folder(tmp_path_factory, monkeypatch):
+    """Every test keeps its photos in a fresh folder, never in this machine's media folder."""
+    from app.services import storage
+    monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path_factory.mktemp("media")))

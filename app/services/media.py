@@ -10,11 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Media, PageContent, Post, Product, Service, SiteContent
+from app.services import storage
 from app.services.clock import local_now
 
-from app.config import get_settings
-
-MEDIA_DIR = get_settings().media_path
 WP_PREFIX = "https://lavelondon.com/wp-content/uploads/"
 WP_URL = re.compile(r"https://lavelondon\.com/wp-content/uploads/[^\s\"')]+")
 MAX_IMPORT = 15 * 1024 * 1024
@@ -51,12 +49,12 @@ def sniff(data: bytes) -> str | None:
 
 
 def save_bytes(db: Session, data: bytes, ext: str, filename: str = "", source_url: str = "", media_dir: Path | None = None) -> Media:
-    folder = media_dir or MEDIA_DIR
-    folder.mkdir(parents=True, exist_ok=True)
+    """Add a photo to the library, in photo storage (the R2 bucket on the live site)."""
+    store = storage.Folder(media_dir) if media_dir else storage.current()
     name = f"{local_now():%Y%m}-{secrets.token_hex(8)}{ext}"
     data = slim(data, ext)
-    (folder / name).write_bytes(data)
-    make_thumb(folder, name, data)
+    store.write(name, data)
+    make_thumb(store, name, data)
     m = Media(url=f"/media/{name}", filename=filename[:200], source_url=source_url[:600], size_bytes=len(data))
     db.add(m)
     db.flush()
@@ -94,32 +92,30 @@ def slim(data: bytes, ext: str, width: int = MAX_WIDTH) -> bytes:
     return out.getvalue() if out.tell() < len(data) * 0.9 else data
 
 
-def make_thumb(media_dir: Path, name: str, data: bytes) -> None:
-    """Save the small copy of a photo in thumbs/, if it's worth having."""
+def make_thumb(store, name: str, data: bytes) -> None:
+    """Save the small copy of a photo as thumbs/<name>, if it's worth having."""
     small = slim(data, Path(name).suffix, THUMB_WIDTH)
     if small is not data:
-        (media_dir / "thumbs").mkdir(exist_ok=True)
-        _replace(media_dir / "thumbs" / name, small)
+        store.write(f"thumbs/{name}", small)
 
 
 def small_url(url: str) -> str:
     """The small copy's address for a library photo, where there is one; otherwise the photo itself."""
     name = (url or "").removeprefix("/media/")
-    if name != url and UPLOAD_NAME.match(name) and (MEDIA_DIR / "thumbs" / name).exists():
-        return f"/media/thumbs/{name}"
+    try:
+        if name != url and UPLOAD_NAME.match(name) and storage.current().has(f"thumbs/{name}"):
+            return f"/media/thumbs/{name}"
+    except Exception:  # storage unreachable: the full-size photo still shows
+        pass
     return url
-
-
-def _replace(path: Path, data: bytes) -> None:
-    temp = path.with_name(path.name + ".tmp")
-    temp.write_bytes(data)
-    temp.replace(path)  # in one step, so a visitor never gets half a file
 
 
 def slim_library(media_dir: Path) -> int:
     """Slim down photos already in the library, and make their small copies, once each. Files keep their names, so
     every page still finds them.
-    Runs in the background when the website starts; the record of what's done is kept on the image disk."""
+    Runs in the background when the website starts, for photos kept in a folder (uploads to the bucket are slimmed as
+    they arrive); the record of what's done is kept in the folder."""
+    folder = storage.Folder(media_dir)
     record_file = media_dir / ".slimmed.json"
     try:
         done = json.loads(record_file.read_text())
@@ -132,9 +128,9 @@ def slim_library(media_dir: Path) -> int:
         data = path.read_bytes()
         smaller = slim(data, path.suffix)
         if smaller is not data:
-            _replace(path, smaller)
+            folder.write(path.name, smaller)
             slimmed += 1
-        make_thumb(media_dir, path.name, smaller)
+        make_thumb(folder, path.name, smaller)
         done[path.name] = len(smaller)
         record_file.write_text(json.dumps(done))
     return slimmed

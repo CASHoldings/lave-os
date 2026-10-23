@@ -514,39 +514,31 @@ def set_category_image(db: Session, category: str, url: str) -> dict[str, str]:
     return images
 
 
-def load_bundled_images(db: Session, media_dir: Path | None = None) -> dict | None:
+def load_bundled_images(db: Session) -> dict | None:
     """Add the bundled photos to the image library, and (once) put them on items, packs and categories that have none.
+    The files themselves ship with the code and are sent from there (see storage.find).
 
     Photos chosen in /admin are never replaced; photos carried over from the old WordPress listings are, because the
     studio set is consistent.
     """
-    import shutil
-
-    from app.config import get_settings
     from app.models import Media
 
     manifest_path = IMAGES_DIR / "manifest.json"
     if not manifest_path.exists():
         return None
     manifest = json.loads(manifest_path.read_text())
-    folder = media_dir or get_settings().media_path
-    folder.mkdir(parents=True, exist_ok=True)
     have = {m.source_url: m for m in db.scalars(select(Media).where(Media.source_url.like("bundle:%")))}
     added = 0
     urls = {}
     for entry in manifest:
         key = "bundle:" + entry["file"]
         m = have.get(key)
-        target = folder / entry["file"]
-        source = IMAGES_DIR / entry["file"]
-        # Copy new photos, and refresh ones whose bundled version has improved since (these files are ours).
-        if not target.exists() or target.stat().st_size != source.stat().st_size or target.read_bytes() != source.read_bytes():
-            shutil.copyfile(source, target)
-            if m:
-                m.size_bytes = target.stat().st_size
-        if not m:
+        size = (IMAGES_DIR / entry["file"]).stat().st_size
+        if m:
+            m.size_bytes = size
+        else:
             m = Media(url=f"/media/{entry['file']}", filename=entry["source"][:200], alt=entry["alt"][:300], source_url=key,
-                      size_bytes=target.stat().st_size)
+                      size_bytes=size)
             db.add(m)
             added += 1
         urls[entry["file"]] = m.url
@@ -602,19 +594,3 @@ def load_bundled_images(db: Session, media_dir: Path | None = None) -> dict | No
         set_setting(db, "images_applied", IMAGES_VERSION)
     db.commit()
     return {"added": added, **assigned}
-
-
-def sync_bundle_files(media_dir: Path) -> int:
-    """Copy the bundled photos onto the image disk. Runs when the website starts: on Render the disk isn't attached
-    during the pre-deploy step, so files written there are lost."""
-    import shutil
-    if not IMAGES_DIR.exists():
-        return 0
-    media_dir.mkdir(parents=True, exist_ok=True)
-    copied = 0
-    for source in IMAGES_DIR.glob("*.webp"):
-        target = media_dir / source.name
-        if not target.exists() or target.stat().st_size != source.stat().st_size or target.read_bytes() != source.read_bytes():
-            shutil.copyfile(source, target)
-            copied += 1
-    return copied

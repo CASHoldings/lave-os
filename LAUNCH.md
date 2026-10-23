@@ -65,6 +65,29 @@ The app sends `lavelondon.co.uk` and `www.lavelondon.co.uk` on to `lavelondon.co
    - Leave any MX or TXT records alone.
 3. In Render, click **Verify** next to both. Then `https://lavelondon.co.uk` should land on `https://lavelondon.com`.
 
+### Photo storage (Cloudflare R2)
+
+Photos live in a Cloudflare R2 bucket rather than on a Render disk, so Render can switch to a new version without taking
+the site offline. Their addresses (`/media/...`) don't change.
+
+1. Sign in at dash.cloudflare.com (a free account is fine) → **R2 Object Storage**. Cloudflare may ask for a card to
+   switch R2 on; LAVE's photos are far inside the free allowance (10 GB, no download charges).
+2. **Create bucket**: name `lave-media`, location **Automatic** (or Western Europe), storage class **Standard**. Leave
+   public access off: the website fetches the photos itself.
+3. On the R2 overview page, copy the **S3 API** address under Account details. It looks like
+   `https://<account id>.r2.cloudflarestorage.com`. Leave off anything after `.com`.
+4. **Manage API tokens → Create API token**: permission **Object Read & Write**, applied to the `lave-media` bucket
+   only, no expiry. Copy the **Access Key ID** and **Secret Access Key**. The secret is shown once.
+5. In Render, `lave-os` → **Environment**, add (paste the keys here only, never in chat or email):
+   - `LAVE_STORAGE_BUCKET` = `lave-media`
+   - `LAVE_STORAGE_ENDPOINT` = the S3 API address from step 3
+   - `LAVE_STORAGE_KEY_ID` and `LAVE_STORAGE_SECRET` = the two keys from step 4
+   Then **Save, rebuild and deploy**.
+6. When the site starts, it copies every photo from the old disk into the bucket. In `lave-os` → **Logs**, look for
+   `Photo storage: ... All photos are in the bucket.`
+7. Only then remove the disk: Claude takes it out of `render.yaml`; after that deploy, delete it under `lave-os` →
+   **Settings → Disk** if Render still lists it.
+
 ## 7. Tell Google
 
 In Google Search Console (search.google.com/search-console), add `lavelondon.com` if it isn't there, and submit

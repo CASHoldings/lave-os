@@ -16,3 +16,4 @@ Jinja2==3.1.6
 fonttools==4.66.1  # dev only: font conversion
 Markdown==3.11
 Pillow==12.2.0
+boto3==1.43.118  # photo storage (Cloudflare R2)

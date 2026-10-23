@@ -15,6 +15,7 @@ from app.site import routes as site
 from app.site import journal_routes as site_journal
 from app.site import price_routes as site_prices
 from app.site import shop_routes as site_shop
+from app.services import storage
 from app.services.media import UPLOAD_NAME
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
@@ -96,19 +97,25 @@ def create_app() -> FastAPI:
         return FileResponse(STATIC / "admin" / "index.html")
 
     app.mount("/static/site", StaticFiles(directory=STATIC / "site"), name="site-assets")
-    # Images uploaded from /admin (journal covers, page images).
-    settings.media_path.mkdir(parents=True, exist_ok=True)
 
-    # The price-list photos ship with the code. Put them on the image disk here, as the website starts: on Render the
-    # disk isn't attached during the pre-deploy step.
+    # Library photos (uploads, journal covers, page images), from photo storage, and the price-list photos that ship
+    # with the code.
+    @app.api_route("/media/{name:path}", methods=["GET", "HEAD"], include_in_schema=False)
+    def media_file(name: str):
+        if not (path := storage.find(name)):
+            raise StarletteHTTPException(404)
+        return FileResponse(path)
+
     if settings.env != "test":
-        from app.services.repository import sync_bundle_files
-        sync_bundle_files(settings.media_path)
-        # Slim down oversized photos already in the library, in the background so the website starts at once.
         import threading
-        from app.services.media import slim_library
-        threading.Thread(target=slim_library, args=(settings.media_path,), daemon=True).start()
-    app.mount("/media", StaticFiles(directory=settings.media_path), name="media")
+        if settings.storage_bucket:
+            # Photos still on the old image disk go into the bucket, in the background so the website starts at once.
+            threading.Thread(target=storage.move_from_disk, args=(settings.media_path,), daemon=True).start()
+        else:
+            # Slim down oversized photos already in the folder, in the background.
+            from app.services.media import slim_library
+            settings.media_path.mkdir(parents=True, exist_ok=True)
+            threading.Thread(target=slim_library, args=(settings.media_path,), daemon=True).start()
 
     if settings.is_dev:
         # Local preview of the WordPress pages, with a stand-in for the connector plugin's SSO token.

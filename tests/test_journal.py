@@ -68,7 +68,8 @@ def test_contact_form(api, staff_headers):
 
 def test_upload_rejects_non_images(api, staff_headers, tmp_path, monkeypatch):
     from app.routers import staff
-    monkeypatch.setattr(staff, "MEDIA_DIR", tmp_path)
+    from app.services import storage
+    monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path))
     r = api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("x.png", b"not an image", "image/png")})
     assert r.status_code == 400
     r = api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("x.png", b"\x89PNG\r\n\x1a\nrest", "image/png")})

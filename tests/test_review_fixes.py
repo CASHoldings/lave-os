@@ -63,7 +63,8 @@ def test_oversold_orders_are_flagged(api, staff_headers, db_session):
 
 def test_upload_checks_real_file_type(api, staff_headers, tmp_path, monkeypatch):
     from app.routers import staff
-    monkeypatch.setattr(staff, "MEDIA_DIR", tmp_path)
+    from app.services import storage
+    monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path))
     wav = b"RIFF\x00\x00\x00\x00WAVEfmt "
     assert api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("a.webp", wav, "image/webp")}).status_code == 400
     webp = b"RIFF\x00\x00\x00\x00WEBPVP8 "

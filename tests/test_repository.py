@@ -212,10 +212,9 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
         chosen = db.scalar(select(Service).where(Service.name == "Coat, long"))
         chosen.image = "/media/founder-picked.webp"  # picked in /admin before the photos arrived
         db.commit()
-        result = repo.load_bundled_images(db, media_dir=tmp_path)
+        result = repo.load_bundled_images(db)
         assert result["added"] == 461 and result["packs"] == 50 and result["categories"] == 19
         assert result["items"] == 123  # all mapped items except the one already chosen
-        assert len(list(tmp_path.glob("*.webp"))) == 461
         assert db.scalar(select(Service).where(Service.name == "Coat, long")).image == "/media/founder-picked.webp"
         cashmere = db.scalar(select(Service).where(Service.name == "Coat, cashmere"))
         assert cashmere.image == "/media/women-coat-cashmere.webp"
@@ -225,7 +224,7 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
         # A second deploy adds and changes nothing, even if the founder has since removed a photo.
         cashmere.image = ""
         db.commit()
-        assert repo.load_bundled_images(db, media_dir=tmp_path) == {"added": 0, "items": 0, "packs": 0, "categories": 0}
+        assert repo.load_bundled_images(db) == {"added": 0, "items": 0, "packs": 0, "categories": 0}
         assert db.scalar(select(Service).where(Service.name == "Coat, cashmere")).image == ""
 
         # A newer photo set refreshes photos the bundle placed (here: a scene photo that has since been dropped),
@@ -235,7 +234,7 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
         repo.set_setting(db, "images_applied", "0")
         db.query(SiteSetting).filter(SiteSetting.key == "repository.images_assigned").delete()
         db.commit()
-        repo.load_bundled_images(db, media_dir=tmp_path)
+        repo.load_bundled_images(db)
         assert db.scalar(select(Service).where(Service.name == "Throw")).image == ""
         assert db.scalar(select(Service).where(Service.name == "Coat, long")).image == "/media/founder-picked.webp"
         assert "Curtains & blinds" not in repo.category_images(db)  # no clean photo, so no banner
@@ -253,19 +252,11 @@ def test_bundled_photos_go_to_the_library_and_the_price_list(db_session, api, st
                    json={"category": "Coats", "image": "javascript:alert(1)"}).status_code == 400
 
 
-def test_improved_bundled_photos_replace_older_copies(db_session, tmp_path):
+def test_bundled_photos_are_sent_from_the_code(api):
     from app.services.repository import IMAGES_DIR
     first = sorted(IMAGES_DIR.glob("*.webp"))[0]
-    (tmp_path / first.name).write_bytes(b"an older version")
-    with db_session() as db:
-        repo.load_bundled_images(db, media_dir=tmp_path)
-    assert (tmp_path / first.name).read_bytes() == first.read_bytes()
-
-
-def test_bundled_photos_are_copied_at_startup(tmp_path):
-    from app.services.repository import IMAGES_DIR, sync_bundle_files
-    total = len(list(IMAGES_DIR.glob("*.webp")))
-    assert sync_bundle_files(tmp_path) == total
-    assert sync_bundle_files(tmp_path) == 0  # nothing to do the second time
-    (tmp_path / "men-3-shirts-cotton.webp").unlink()
-    assert sync_bundle_files(tmp_path) == 1
+    r = api.get(f"/media/{first.name}")
+    assert r.status_code == 200 and r.content == first.read_bytes()
+    assert r.headers["cache-control"] == "public, max-age=86400"
+    assert api.get("/media/../app/config.py").status_code == 404
+    assert api.get("/media/nothing-here.webp").status_code == 404

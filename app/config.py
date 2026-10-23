@@ -13,8 +13,14 @@ class Settings(BaseSettings):
     # "production" unless set: development-only shortcuts (test sign-in, fake payments) must be switched on deliberately.
     env: str = "production"
     database_url: str = "sqlite:///./lave.db"
-    # Where uploaded and imported images are kept. On Render this is the persistent disk.
+    # Where uploaded and imported images are kept when there's no bucket (this machine). On Render this was the
+    # persistent disk; photos are copied from it into the bucket the first time the bucket is set up.
     media_dir: str = ""
+    # Photo storage: a Cloudflare R2 bucket (any S3-compatible bucket works). Blank: the folder above.
+    storage_bucket: str = ""
+    storage_endpoint: str = ""  # https://<account id>.r2.cloudflarestorage.com
+    storage_key_id: str = ""
+    storage_secret: str = ""
     # First admin, created by `python -m app.release` when the database has no staff yet.
     first_admin_email: str = ""
     first_admin_password: str = ""

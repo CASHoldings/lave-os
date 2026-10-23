@@ -227,7 +227,8 @@ def test_oversized_photos_are_slimmed(tmp_path, monkeypatch):
     assert media.slim(b"not a photo", ".png") == b"not a photo"
 
     # The library pass: slims uploads in place (same name), makes small copies, leaves bundled photos, runs once.
-    monkeypatch.setattr(media, "MEDIA_DIR", tmp_path)
+    from app.services import storage
+    monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path))
     upload = tmp_path / "202610-0123456789abcdef.webp"
     upload.write_bytes(big)
     bundled = tmp_path / "shirt-1.webp"
@@ -245,8 +246,8 @@ def test_uploads_are_slimmed(api, staff_headers, tmp_path, monkeypatch):
     from PIL import Image
     from app.routers import staff
     from app.services import media
-    monkeypatch.setattr(staff, "MEDIA_DIR", tmp_path)
-    monkeypatch.setattr(media, "MEDIA_DIR", tmp_path)
+    from app.services import storage
+    monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path))
     r = api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("big.webp", _photo(2400, 1200), "image/webp")})
     name = r.json()["url"].removeprefix("/media/")
     assert Image.open(tmp_path / name).width == 1920 and (tmp_path / "thumbs" / name).exists()
