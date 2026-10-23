@@ -61,8 +61,11 @@ def test_existing_email_cannot_be_claimed_by_registering(api, client_headers):
     r = api.post("/account/login/", data={"email": "client@example.com", "password": "attacker-password"})
     assert r.status_code == 400
     sent = mailer.last_to("client@example.com")
-    assert sent["subject"] == "Welcome back to LAVE" and "you already have one with us" in sent["text"]
+    assert sent["subject"] == "Welcome back to LAVE" and "there's no need to start over" in sent["text"]
     assert sent["text"].startswith("Hello ") and "Care Better. Preserve what you treasure." in sent["text"]
+    assert "M +44 7763 566 145" in sent["text"] and "E hello@lavelondon.com" in sent["text"]
+    # The designed version has the button, and escapes anything a client typed.
+    assert ">Sign in to your account</a>" in sent["html"] and "/account/link/" in sent["html"]
 
 
 def test_wrong_password_and_rate_limit(api):
@@ -99,3 +102,11 @@ def test_account_pages_need_sign_in_and_next_is_safe(api):
     assert accounts.safe_next("https://evil.example/") == "/account/"
     assert accounts.safe_next("//evil.example/") == "/account/"
     assert accounts.safe_next("/book/?mode=drop_off") == "/book/?mode=drop_off"
+
+
+def test_letters_escape_names_and_fall_back_to_hello():
+    from app.services import letters
+    text, html = letters.compose("Subject", letters.hello("<b>Ada</b>"), ["Line & more", letters.Button("Go", "https://x.test/?a=1&b=2")], letters.SOON)
+    assert text.startswith("Hello <b>Ada</b>,") and "Go:\nhttps://x.test/?a=1&b=2" in text
+    assert "&lt;b&gt;Ada&lt;/b&gt;" in html and "<b>Ada" not in html and 'href="https://x.test/?a=1&amp;b=2"' in html
+    assert letters.hello("") == "Hello," and letters.hello(None) == "Hello,"

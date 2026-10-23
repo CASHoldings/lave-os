@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.auth import hash_password, verify_password
 from app.config import get_settings
 from app.models import Client, LoginToken
-from app.services import mailer
+from app.services import letters
 from app.services.clock import local_now
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -86,16 +86,6 @@ def consume_link(db: Session, token: str) -> tuple[Client, str] | None:
     return (client, row.purpose) if client else None
 
 
-def _hello(client: Client) -> str:
-    return f"Hello {client.first_name.strip()}," if (client.first_name or "").strip() else "Hello,"
-
-
-def _signature() -> str:
-    """How LAVE signs off its emails."""
-    from app.site.content import SLOGAN, TAGLINE
-    return f"\n\nWith care,\nLAVE\n\n{SLOGAN}. {TAGLINE}.\nlavelondon.com"
-
-
 def register(db: Session, first_name: str, last_name: str, email: str, password: str, next_path: str) -> None:
     """Create an account and email a verification link. Never reveals whether the email already exists."""
     email = normalise_email(email)
@@ -110,23 +100,28 @@ def register(db: Session, first_name: str, last_name: str, email: str, password:
         db.add(client)
         db.commit()
         link = issue_link(db, client, "verify", next_path)
-        mailer.send(email, "Confirm your LAVE account",
-                    f"Welcome to LAVE, {client.first_name}.\n\nConfirm your email to finish setting up your account:\n{link}\n\n"
-                    "This link works once and expires in 24 hours.")
+        letters.send(email, "Welcome to LAVE", client.first_name, [
+            "How lovely to have you with us.",
+            "Please confirm your email address to finish setting up your LAVE account.",
+            letters.Button("Confirm my email", link),
+            "This link works once and expires in 24 hours. If you didn't create an account with LAVE, there's nothing "
+            "you need to do and nothing will happen.",
+        ], letters.SOON)
     else:
         # Someone already has this email (perhaps from a booking or the old site). Don't set a password from an
         # unverified request: send a sign-in link to the real owner instead.
         link = issue_link(db, client, "signin", next_path)
-        password_note = ("Forgotten your password? You can change it once you're signed in." if client.password_hash
-                         else "Once you're in, you can set a password under Account, so signing in next time is quicker.")
-        mailer.send(email, "Welcome back to LAVE",
-                    f"{_hello(client)}\n\n"
-                    "Good to see you again. Someone, we hope you, just tried to create a new LAVE account with this "
-                    "email address, but you already have one with us.\n\n"
-                    f"To sign straight in, use this link:\n{link}\n\n"
-                    f"It works once and expires in 30 minutes. {password_note}\n\n"
-                    "If this wasn't you, there's nothing to do: your account is safe and nothing has changed."
-                    f"{_signature()}")
+        password_note = ("If you've forgotten your password, you can set a new one once you're signed in."
+                         if client.password_hash else
+                         "Once you're signed in, you can set a password so signing in next time is quicker.")
+        letters.send(email, "Welcome back to LAVE", client.first_name, [
+            "How lovely to see you again.",
+            "Someone tried to open a new LAVE account with this email address. We hope it was you. You already have "
+            "an account with us, so there's no need to start over.",
+            letters.Button("Sign in to your account", link),
+            f"This link works once and expires in 30 minutes. {password_note}",
+            "If this wasn't you, there's nothing you need to do. Your account is safe and nothing has changed.",
+        ])
 
 
 def authenticate(db: Session, email: str, password: str) -> Client:
@@ -139,8 +134,13 @@ def authenticate(db: Session, email: str, password: str) -> Client:
         raise AccountError("Email or password is incorrect.")
     if not client.email_verified_at:
         link = issue_link(db, client, "verify")
-        mailer.send(email, "Confirm your LAVE account",
-                    f"Confirm your email to finish setting up your LAVE account:\n{link}\n\nThis link works once and expires in 24 hours.")
+        letters.send(email, "Confirm your LAVE account", client.first_name, [
+            "You're almost there.",
+            "Before you can sign in, please confirm your email address.",
+            letters.Button("Confirm my email", link),
+            "This link works once and expires in 24 hours. If you didn't try to sign in to LAVE, there's nothing you "
+            "need to do.",
+        ], letters.SOON)
         raise AccountError("Confirm your email first. We've sent you a new link.")
     return client
 
@@ -153,13 +153,19 @@ def send_signin_link(db: Session, email: str, next_path: str, purpose: str = "si
         return
     link = issue_link(db, client, purpose, next_path)
     if purpose == "reset":
-        mailer.send(email, "Reset your LAVE password",
-                    f"Choose a new password for your LAVE account:\n{link}\n\nThis link works once and expires in 30 minutes. "
-                    "If you didn't ask for it, ignore this email.")
+        letters.send(email, "Reset your LAVE password", client.first_name, [
+            "We received a request to reset the password for your LAVE account.",
+            letters.Button("Choose a new password", link),
+            "This link works once and expires in 30 minutes. If you didn't ask to reset your password, there's nothing "
+            "you need to do. Your password stays the same and your account is safe.",
+        ])
     else:
-        mailer.send(email, "Your LAVE sign-in link",
-                    f"Sign in to LAVE:\n{link}\n\nThis link works once and expires in 30 minutes. "
-                    "If you didn't ask for it, ignore this email.")
+        letters.send(email, "Your LAVE sign-in link", client.first_name, [
+            "Here is the link you asked for to sign in to your LAVE account.",
+            letters.Button("Sign in to your account", link),
+            "This link works once and expires in 30 minutes. If you didn't ask for it, there's nothing you need to do. "
+            "Your account is safe and nothing has changed.",
+        ])
 
 
 def set_password(db: Session, client: Client, password: str) -> None:

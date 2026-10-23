@@ -19,7 +19,7 @@ from app.models import (
     SiteSetting,
     WaitlistEntry,
 )
-from app.services import mailer
+from app.services import letters
 from app.services.clock import local_now
 
 SAMPLE = Path(__file__).resolve().parent.parent / "site" / "data" / "apothecary_products.json"
@@ -51,9 +51,12 @@ def set_selling(db: Session, on: bool) -> int:
     if on:
         url = get_settings().site_url + "/apothecary/"
         for entry in db.scalars(select(WaitlistEntry).where(WaitlistEntry.notified_at.is_(None))):
-            mailer.send(entry.email, "The LAVE Apothecary is open",
-                        f"Hello {entry.first_name},\n\nThank you for waiting. The LAVE Apothecary is now open: detergents, "
-                        f"treatments and tools from the atelier.\n\n{url}\n\nLAVE")
+            letters.send(entry.email, "The LAVE Apothecary is open", entry.first_name, [
+                "Thank you for waiting. The LAVE Apothecary is now open.",
+                "Our detergents, treatments and tools come straight from the atelier, made to care for your textiles "
+                "at home the way we care for them here.",
+                letters.Button("Visit the Apothecary", url),
+            ], letters.SOON)
             entry.notified_at = local_now()
             sent += 1
     db.commit()
@@ -241,11 +244,30 @@ def mark_paid(db: Session, order: ShopOrder, email: str = "", address: dict | No
     order.stock_issue = "; ".join(short)
     db.commit()
     if order.email:
-        lines = "\n".join(f"  {l.quantity} × {l.name} {('(' + l.variant_label + ')') if l.variant_label else ''}  £{l.unit_price_pence * l.quantity / 100:.2f}"
-                          for l in order.lines)
-        how = "We'll email you when it's on its way." if order.fulfilment == "delivery" else "We'll let you know when it's ready to collect from the atelier."
-        mailer.send(order.email, f"Your LAVE Apothecary order {order.ref}",
-                    f"Thank you for your order.\n\n{lines}\n  Delivery £{order.shipping_pence / 100:.2f}\n  Total £{order.total_pence / 100:.2f}\n\n{how}\n\nLAVE")
+        rows = [(f"{l.quantity} × {l.name}" + (f" ({l.variant_label})" if l.variant_label else ""),
+                 f"£{l.unit_price_pence * l.quantity / 100:.2f}") for l in order.lines]
+        rows += [("Delivery" if order.fulfilment == "delivery" else "Collection from the atelier",
+                  f"£{order.shipping_pence / 100:.2f}"), ("Total", f"£{order.total_pence / 100:.2f}")]
+        how = ("We'll email you as soon as it's on its way." if order.fulfilment == "delivery" else
+               "We'll let you know as soon as it's ready to collect from the atelier.")
+        letters.send(order.email, f"Thank you for your LAVE Apothecary order {order.ref}", order_first_name(order), [
+            "Thank you for your order. It has been received and paid for, and the atelier is preparing it now.",
+            f"Order {order.ref}",
+            letters.Table(rows),
+            how,
+            letters.Button("View your order", order_url(order)),
+        ], f"{letters.CARE} Thank you for bringing our care into your home.")
+
+
+def order_url(order: ShopOrder) -> str:
+    return f"{get_settings().site_url}/checkout/done/{order.ref}/?key={order.view_key}"
+
+
+def order_first_name(order: ShopOrder) -> str:
+    """For the greeting: the client's first name, or the first word of the delivery name."""
+    if order.client and order.client.first_name:
+        return order.client.first_name
+    return ((order.shipping_address or {}).get("name") or "").split(" ")[0]
 
 
 def by_ref(db: Session, ref: str) -> ShopOrder | None:

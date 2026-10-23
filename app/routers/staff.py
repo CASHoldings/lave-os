@@ -570,7 +570,7 @@ def patch_team(staff_id: int, body: StaffPatch, staff: StaffUser = Depends(admin
 
 from app.models import Product, ProductVariant, ShopOrder, ShopOrderStatus, WaitlistEntry  # noqa: E402
 from app.schemas import SellingSwitch, ShopOrderUpdate, VariantPatch  # noqa: E402
-from app.services import mailer, shop as shop_svc  # noqa: E402
+from app.services import letters, mailer, shop as shop_svc  # noqa: E402
 
 
 def _shop_order(o: ShopOrder) -> dict:
@@ -643,8 +643,12 @@ def shop_order_status(order_id: int, body: ShopOrderUpdate, staff: StaffUser = D
         o.dispatched_at = local_now()
         o.tracking = body.tracking.strip()[:120]
         if o.email:
-            mailer.send(o.email, f"Your LAVE order {o.ref} is on its way",
-                        f"Your Apothecary order {o.ref} has been dispatched." + (f"\nTracking: {o.tracking}" if o.tracking else "") + "\n\nLAVE")
+            letters.send(o.email, f"Your LAVE order {o.ref} is on its way", shop_svc.order_first_name(o), [
+                f"Good news: your Apothecary order {o.ref} has left the atelier and is on its way to you.",
+                *([f"Tracking number: {o.tracking}"] if o.tracking else []),
+                letters.Button("View your order", shop_svc.order_url(o)),
+                "If anything isn't quite right when it arrives, simply reply to this email and we'll put it right.",
+            ], f"{letters.CARE} Thank you for bringing our care into your home.")
     elif body.status == "collected":
         o.dispatched_at = local_now()
     db.commit()
