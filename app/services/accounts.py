@@ -86,6 +86,16 @@ def consume_link(db: Session, token: str) -> tuple[Client, str] | None:
     return (client, row.purpose) if client else None
 
 
+def _hello(client: Client) -> str:
+    return f"Hello {client.first_name.strip()}," if (client.first_name or "").strip() else "Hello,"
+
+
+def _signature() -> str:
+    """How LAVE signs off its emails."""
+    from app.site.content import SLOGAN, TAGLINE
+    return f"\n\nWith care,\nLAVE\n\n{SLOGAN}. {TAGLINE}.\nlavelondon.com"
+
+
 def register(db: Session, first_name: str, last_name: str, email: str, password: str, next_path: str) -> None:
     """Create an account and email a verification link. Never reveals whether the email already exists."""
     email = normalise_email(email)
@@ -107,10 +117,16 @@ def register(db: Session, first_name: str, last_name: str, email: str, password:
         # Someone already has this email (perhaps from a booking or the old site). Don't set a password from an
         # unverified request: send a sign-in link to the real owner instead.
         link = issue_link(db, client, "signin", next_path)
-        mailer.send(email, "Sign in to LAVE",
-                    "Someone tried to create a LAVE account with this email, which already has one.\n\n"
-                    f"If it was you, sign in here:\n{link}\n\nYou can set a password from your account. "
-                    "If it wasn't you, ignore this email.")
+        password_note = ("Forgotten your password? You can change it once you're signed in." if client.password_hash
+                         else "Once you're in, you can set a password under Account, so signing in next time is quicker.")
+        mailer.send(email, "Welcome back to LAVE",
+                    f"{_hello(client)}\n\n"
+                    "Good to see you again. Someone, we hope you, just tried to create a new LAVE account with this "
+                    "email address, but you already have one with us.\n\n"
+                    f"To sign straight in, use this link:\n{link}\n\n"
+                    f"It works once and expires in 30 minutes. {password_note}\n\n"
+                    "If this wasn't you, there's nothing to do: your account is safe and nothing has changed."
+                    f"{_signature()}")
 
 
 def authenticate(db: Session, email: str, password: str) -> Client:

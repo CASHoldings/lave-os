@@ -60,7 +60,9 @@ def test_existing_email_cannot_be_claimed_by_registering(api, client_headers):
     assert "Check your email" in r.text  # same response as a new account
     r = api.post("/account/login/", data={"email": "client@example.com", "password": "attacker-password"})
     assert r.status_code == 400
-    assert "already has one" in mailer.last_to("client@example.com")["text"]
+    sent = mailer.last_to("client@example.com")
+    assert sent["subject"] == "Welcome back to LAVE" and "you already have one with us" in sent["text"]
+    assert sent["text"].startswith("Hello ") and "Care Better. Preserve what you treasure." in sent["text"]
 
 
 def test_wrong_password_and_rate_limit(api):
