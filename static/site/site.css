@@ -220,6 +220,7 @@ p { margin: 0; }
 .footer-mark { grid-row: 1 / span 3; }
 .footer-mark img { width: 112px; height: auto; }
 .footer-copy, .footer-right { grid-row: 1 / span 3; display: grid; grid-template-rows: subgrid; row-gap: 22px; }
+.footer-right { justify-self: end; }  /* flush with the right edge, mirroring the left */
 .footer-nav, .social { align-self: center; }
 .site-footer h2 { font-size: 0.75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .site-footer p { color: var(--ink); font-size: 0.8125rem; line-height: 1.75; max-width: 80ch; }
@@ -236,6 +237,7 @@ p { margin: 0; }
 @media (max-width: 980px) {
   .footer-grid { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 36px; }
   .footer-left, .footer-copy, .footer-right { grid-row: auto; grid-template-rows: none; }
+  .footer-right { justify-self: stretch; }
   .footer-copy, .footer-right { row-gap: 18px; }
   .footer-left { row-gap: 20px; }
 }
