@@ -52,6 +52,19 @@ Make any content edits you want in /admin now; they carry straight over to lavel
 3. Back in Render, click **Verify** next to each domain. It can take from a few minutes up to a few hours. Render then issues the HTTPS certificates itself.
 4. Visit `https://lavelondon.com`. Then send an email to yourself at your @lavelondon.com address to confirm email still works.
 
+### lavelondon.co.uk
+
+The app sends `lavelondon.co.uk` and `www.lavelondon.co.uk` on to `lavelondon.com`; Render gives them HTTPS.
+
+1. In Render, `lave-os` → **Settings → Custom Domains** lists both (from `render.yaml`). If they're missing, run
+   **Blueprints → lave-os → Manual sync**, or add them there with **+ Add Custom Domain**.
+2. In Hostinger: **Domains → lavelondon.co.uk → DNS / Nameservers → DNS records**. Remove any redirect set on the
+   domain in Hostinger first, then:
+   - Edit the **A** record for `@` to `216.24.57.1`. Delete any other **A** or **AAAA** records for `@`.
+   - Edit (or add) the **CNAME** for `www` to `lave-os.onrender.com`.
+   - Leave any MX or TXT records alone.
+3. In Render, click **Verify** next to both. Then `https://lavelondon.co.uk` should land on `https://lavelondon.com`.
+
 ## 7. Tell Google
 
 In Google Search Console (search.google.com/search-console), add `lavelondon.com` if it isn't there, and submit

@@ -13,7 +13,7 @@
 {% if not item %}
 {% for col in subnav.columns %}
 <section class="feature" id="{{ col.slug }}">
-  <img src="{{ col.image }}" alt="" loading="lazy" decoding="async">
+  <img src="{{ col.image|small }}" alt="" loading="lazy" decoding="async">
   <div>
     <p class="eyebrow">{{ subnav.title }}</p>
     <h2>{{ col.title }}</h2>

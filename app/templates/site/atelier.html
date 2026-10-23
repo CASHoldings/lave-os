@@ -5,7 +5,7 @@
 {% macro cards(group, product=False) %}
   <div class="cards{{ ' product-cards' if product }}" data-count="{{ group.cards|length }}">
     {% for c in group.cards %}
-    <a class="card" href="{{ c.href }}"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><span class="card-label">{{ c.label }}</span>
+    <a class="card" href="{{ c.href }}"><img src="{{ c.image|small }}" alt="" loading="lazy" decoding="async"><span class="card-label">{{ c.label }}</span>
       {% if product and counts.get(c.label|lower) %}<span class="card-count">{{ counts[c.label|lower] }} services</span>{% endif %}</a>
     {% endfor %}
   </div>
@@ -45,7 +45,7 @@
   <div class="plans">
     {% for p in plans %}
     <article class="plan">
-      <img src="{{ p.image }}" alt="" loading="lazy">
+      <img src="{{ p.image|small }}" alt="" loading="lazy">
       <p class="eyebrow">Tier {{ p.tier }}</p>
       <h3>{{ p.name }}</h3>
       <p class="tagline">{{ p.tagline }}</p>

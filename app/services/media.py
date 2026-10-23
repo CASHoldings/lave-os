@@ -18,6 +18,14 @@ MEDIA_DIR = get_settings().media_path
 WP_PREFIX = "https://lavelondon.com/wp-content/uploads/"
 WP_URL = re.compile(r"https://lavelondon\.com/wp-content/uploads/[^\s\"')]+")
 MAX_IMPORT = 15 * 1024 * 1024
+# Names given to uploads and copies (202610-1a2b3c4d5e6f7a8b.webp). The bundled price-list photos are named differently.
+UPLOAD_NAME = re.compile(r"\d{6}-[0-9a-f]{16}\.(jpg|png|webp|avif)$")
+# Photos wider or heavier than this are slimmed down for the web.
+MAX_WIDTH = 1920
+# Smaller copies for cards, menus and price-list tiles, which show a photo at most about 360 px wide.
+THUMB_WIDTH = 720
+SLIM_FROM = 150 * 1024
+QUALITY = {".jpg": 82, ".webp": 80, ".avif": 60}
 
 # Background import progress, shown in /admin.
 STATUS: dict = {"running": False, "total": 0, "done": 0, "copied": 0, "failed": [], "finished_at": None}
@@ -46,11 +54,90 @@ def save_bytes(db: Session, data: bytes, ext: str, filename: str = "", source_ur
     folder = media_dir or MEDIA_DIR
     folder.mkdir(parents=True, exist_ok=True)
     name = f"{local_now():%Y%m}-{secrets.token_hex(8)}{ext}"
+    data = slim(data, ext)
     (folder / name).write_bytes(data)
+    make_thumb(folder, name, data)
     m = Media(url=f"/media/{name}", filename=filename[:200], source_url=source_url[:600], size_bytes=len(data))
     db.add(m)
     db.flush()
     return m
+
+
+def slim(data: bytes, ext: str, width: int = MAX_WIDTH) -> bytes:
+    """A lighter copy of a photo for the website: at most `width` px wide and saved at good web quality, in the same
+    format. The original comes back if it's already light, or the copy wouldn't be clearly smaller."""
+    if ext not in (".jpg", ".png", ".webp", ".avif"):
+        return data
+    from io import BytesIO
+    from PIL import Image, ImageOps
+    try:
+        img = Image.open(BytesIO(data))
+        if len(data) <= SLIM_FROM and img.width <= width:
+            return data
+        if getattr(img, "n_frames", 1) > 1:
+            return data  # animated
+        img = ImageOps.exif_transpose(img)
+        if img.width > width:
+            img = img.resize((width, round(img.height * width / img.width)), Image.LANCZOS)
+        if ext == ".jpg" and img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        out = BytesIO()
+        options = {"icc_profile": img.info.get("icc_profile")} if img.info.get("icc_profile") else {}
+        if ext == ".png":
+            img.save(out, "PNG", optimize=True, **options)
+        else:
+            fmt = {".jpg": "JPEG", ".webp": "WEBP", ".avif": "AVIF"}[ext]
+            extra = {"progressive": True} if ext == ".jpg" else {"method": 6} if ext == ".webp" else {}
+            img.save(out, fmt, quality=QUALITY[ext], **extra, **options)
+    except Exception:
+        return data  # unreadable here: keep it as it is
+    return out.getvalue() if out.tell() < len(data) * 0.9 else data
+
+
+def make_thumb(media_dir: Path, name: str, data: bytes) -> None:
+    """Save the small copy of a photo in thumbs/, if it's worth having."""
+    small = slim(data, Path(name).suffix, THUMB_WIDTH)
+    if small is not data:
+        (media_dir / "thumbs").mkdir(exist_ok=True)
+        _replace(media_dir / "thumbs" / name, small)
+
+
+def small_url(url: str) -> str:
+    """The small copy's address for a library photo, where there is one; otherwise the photo itself."""
+    name = (url or "").removeprefix("/media/")
+    if name != url and UPLOAD_NAME.match(name) and (MEDIA_DIR / "thumbs" / name).exists():
+        return f"/media/thumbs/{name}"
+    return url
+
+
+def _replace(path: Path, data: bytes) -> None:
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_bytes(data)
+    temp.replace(path)  # in one step, so a visitor never gets half a file
+
+
+def slim_library(media_dir: Path) -> int:
+    """Slim down photos already in the library, and make their small copies, once each. Files keep their names, so
+    every page still finds them.
+    Runs in the background when the website starts; the record of what's done is kept on the image disk."""
+    record_file = media_dir / ".slimmed.json"
+    try:
+        done = json.loads(record_file.read_text())
+    except (OSError, ValueError):
+        done = {}
+    slimmed = 0
+    for path in sorted(media_dir.iterdir()):
+        if not UPLOAD_NAME.match(path.name) or done.get(path.name) == path.stat().st_size:
+            continue
+        data = path.read_bytes()
+        smaller = slim(data, path.suffix)
+        if smaller is not data:
+            _replace(path, smaller)
+            slimmed += 1
+        make_thumb(media_dir, path.name, smaller)
+        done[path.name] = len(smaller)
+        record_file.write_text(json.dumps(done))
+    return slimmed
 
 
 def _wp(url_or_path: str) -> str | None:

@@ -14,7 +14,7 @@
 {% macro price_row(s, price_of, in_list, back, thumbs=False) %}
 {% set p = price_of(s) %}
 <li class="price-row{% if thumbs %} with-thumb{% endif %}" id="{{ s.slug }}" data-name="{{ (s.name ~ ' ' ~ s.service_type)|lower }}">
-  {% if thumbs %}<span class="price-thumb">{% if s.image %}<img src="{{ image_url(s) }}" alt="" loading="lazy" decoding="async">{% else %}<img class="price-mark" src="{{ footer.anagram }}" alt="" loading="lazy">{% endif %}</span>{% endif %}
+  {% if thumbs %}<span class="price-thumb">{% if s.image %}<img src="{{ image_url(s)|small }}" alt="" loading="lazy" decoding="async">{% else %}<img class="price-mark" src="{{ footer.anagram }}" alt="" loading="lazy">{% endif %}</span>{% endif %}
   <div class="price-what">
     <span class="price-name">{{ s.name }}</span>
     <span class="price-meta">{{ s.service_type }}{% if p.note %} · {{ p.note }}{% endif %}</span>
@@ -31,7 +31,7 @@
 {% macro pack_card(card, in_list, back) %}
 {% set p = card.pack %}
 <article class="pack-card with-photo" id="{{ p.slug }}">
-  <div class="pack-photo{% if not p.image %} empty{% endif %}">{% if p.image %}<img src="{{ p.image }}" alt="" loading="lazy" decoding="async">{% else %}<img class="price-mark" src="{{ footer.anagram }}" alt="" loading="lazy">{% endif %}</div>
+  <div class="pack-photo{% if not p.image %} empty{% endif %}">{% if p.image %}<img src="{{ p.image|small }}" alt="" loading="lazy" decoding="async">{% else %}<img class="price-mark" src="{{ footer.anagram }}" alt="" loading="lazy">{% endif %}</div>
   {% if p.note %}<p class="pack-when">{{ p.note }}</p>{% endif %}
   <h3>{{ p.name }}</h3>
   {% if p.summary %}<p class="pack-summary">{{ p.summary }}</p>{% endif %}

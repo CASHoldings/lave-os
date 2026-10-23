@@ -19,6 +19,7 @@ from app.db import get_db
 from app.models import WaitlistEntry
 from app.site import catalogue, content
 from app.site.content import slugify
+from app.services.media import small_url
 from app.site.store import site_dependency
 
 TEMPLATES = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
@@ -33,6 +34,7 @@ def _bold(text: str):
 
 
 TEMPLATES.env.filters["bold"] = _bold
+TEMPLATES.env.filters["small"] = small_url  # the light copy of a photo, for cards, menus and tiles
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 ASSET_VERSION = "41"
 

@@ -18,7 +18,7 @@
 
 <section class="cat-index" aria-label="Browse by category">
   {% for d in departments %}{% for c in d.categories %}{% if c.image %}
-  <a href="#{{ c.slug }}"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><span>{{ c.name }}</span></a>
+  <a href="#{{ c.slug }}"><img src="{{ c.image|small }}" alt="" loading="lazy" decoding="async"><span>{{ c.name }}</span></a>
   {% endif %}{% endfor %}{% endfor %}
 </section>
 
@@ -39,7 +39,7 @@
   </header>
   {% for c in d.categories %}
   <section class="price-cat" id="{{ c.slug }}" data-cat>
-    {% if c.image %}<div class="price-cat-head"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><div><h3>{{ c.name }}</h3><p class="price-cat-count">{{ c["items"]|length }} item{{ "s" if c["items"]|length != 1 }}</p></div></div>
+    {% if c.image %}<div class="price-cat-head"><img src="{{ c.image|small }}" alt="" loading="lazy" decoding="async"><div><h3>{{ c.name }}</h3><p class="price-cat-count">{{ c["items"]|length }} item{{ "s" if c["items"]|length != 1 }}</p></div></div>
     {% else %}<h3>{{ c.name }}</h3>{% endif %}
     <ul class="price-list">
       {% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/prices/#" ~ s.slug, c.thumbs) }}{% endfor %}

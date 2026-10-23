@@ -18,7 +18,7 @@
     <nav class="price-cats" aria-label="Categories">{% for c in d.categories %}<a href="#{{ c.slug }}">{{ c.name }}</a>{% endfor %}</nav>
     {% for c in d.categories %}
     <section class="price-cat" id="{{ c.slug }}">
-      {% if c.image %}<div class="price-cat-head"><img src="{{ c.image }}" alt="" loading="lazy" decoding="async"><div><h3>{{ c.name }}</h3><p class="price-cat-count">{{ c["items"]|length }} item{{ "s" if c["items"]|length != 1 }}</p></div></div>
+      {% if c.image %}<div class="price-cat-head"><img src="{{ c.image|small }}" alt="" loading="lazy" decoding="async"><div><h3>{{ c.name }}</h3><p class="price-cat-count">{{ c["items"]|length }} item{{ "s" if c["items"]|length != 1 }}</p></div></div>
     {% else %}<h3>{{ c.name }}</h3>{% endif %}
       <ul class="price-list">{% for s in c["items"] %}{{ price_row(s, price_of, in_list, "/atelier/clean/" ~ current ~ "/#" ~ s.slug, c.thumbs) }}{% endfor %}</ul>
     </section>

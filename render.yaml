@@ -17,6 +17,8 @@ services:
     domains:
       - lavelondon.com
       - www.lavelondon.com
+      - lavelondon.co.uk        # redirected to lavelondon.com by the app
+      - www.lavelondon.co.uk
     disk:
       name: media
       mountPath: /var/data

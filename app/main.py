@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler
@@ -14,8 +15,28 @@ from app.site import routes as site
 from app.site import journal_routes as site_journal
 from app.site import price_routes as site_prices
 from app.site import shop_routes as site_shop
+from app.services.media import UPLOAD_NAME
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
+# Other addresses LAVE owns, sent on to the main one.
+OTHER_DOMAINS = {"lavelondon.co.uk", "www.lavelondon.co.uk"}
+YEAR, DAY = 365 * 86400, 86400
+
+
+def cache_rule(path: str, versioned: bool) -> str | None:
+    if path == "/admin":
+        return "no-cache"  # always check for a newer dashboard, which points at the new ?v= files
+    if path.startswith(("/static/", "/admin/assets/", "/embed/")):
+        if versioned:
+            return f"public, max-age={YEAR}, immutable"  # a change gets a new ?v= number
+        if "/fonts/" in path:
+            return f"public, max-age={30 * DAY}"
+        return f"public, max-age={DAY}"
+    if path.startswith("/media/"):
+        # Uploaded photos (and their small copies) never change. The bundled price-list photos can, when a new set
+        # ships, so they're kept a day.
+        return f"public, max-age={30 * DAY if UPLOAD_NAME.match(path.rsplit('/', 1)[-1]) else DAY}"
+    return None
 
 
 def create_app() -> FastAPI:
@@ -31,9 +52,21 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
+    async def cache_times(request: Request, call_next):
+        # Tell browsers how long they can keep files without asking again.
+        response = await call_next(request)
+        if response.status_code in (200, 304) and "cache-control" not in response.headers:
+            if rule := cache_rule(request.url.path, bool(request.query_params.get("v"))):
+                response.headers["cache-control"] = rule
+        return response
+
+    @app.middleware("http")
     async def one_address(request: Request, call_next):
-        # www.lavelondon.com → lavelondon.com, so search engines see a single site.
+        # www.lavelondon.com and lavelondon.co.uk → lavelondon.com, so search engines see a single site.
         host = request.headers.get("host", "")
+        if host.split(":")[0] in OTHER_DOMAINS:
+            main = urlparse(settings.site_url)
+            return RedirectResponse(str(request.url.replace(scheme=main.scheme, netloc=main.netloc)), status_code=301)
         if host.startswith("www."):
             return RedirectResponse(str(request.url.replace(netloc=host[4:])), status_code=301)
         return await call_next(request)
@@ -71,6 +104,10 @@ def create_app() -> FastAPI:
     if settings.env != "test":
         from app.services.repository import sync_bundle_files
         sync_bundle_files(settings.media_path)
+        # Slim down oversized photos already in the library, in the background so the website starts at once.
+        import threading
+        from app.services.media import slim_library
+        threading.Thread(target=slim_library, args=(settings.media_path,), daemon=True).start()
     app.mount("/media", StaticFiles(directory=settings.media_path), name="media")
 
     if settings.is_dev:

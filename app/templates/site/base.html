@@ -39,7 +39,7 @@
           {% for col in sub.columns %}
             <div class="mega-col">
               <a class="mega-title" href="{{ section.path }}{{ sub.slug }}/#{{ col.slug }}">{{ col.title }}</a>
-              <a class="mega-img" href="{{ section.path }}{{ sub.slug }}/#{{ col.slug }}" tabindex="-1" aria-hidden="true"><img src="{{ col.image }}" alt="" loading="lazy" decoding="async"></a>
+              <a class="mega-img" href="{{ section.path }}{{ sub.slug }}/#{{ col.slug }}" tabindex="-1" aria-hidden="true"><img src="{{ col.image|small }}" alt="" loading="lazy" decoding="async"></a>
               <ul>{% for label, href in col.items(section.path, sub.slug) %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>
             </div>
           {% endfor %}

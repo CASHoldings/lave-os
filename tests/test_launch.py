@@ -180,3 +180,73 @@ def test_staff_forgot_password_by_email(api):
     again = api.post("/api/staff/auth/reset", json={"token": token, "password": "another-new-password"})
     assert again.status_code == 400 and "expired or has already been used" in again.json()["detail"]
     assert api.post("/api/staff/auth/reset", json={"token": "x" * 40, "password": "another-new-password"}).status_code == 400
+
+
+def test_co_uk_goes_to_the_main_address(api, monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "site_url", "https://lavelondon.com")
+    for host in ("lavelondon.co.uk", "www.lavelondon.co.uk"):
+        r = api.get("/atelier/prices/?x=1", headers={"host": host}, follow_redirects=False)
+        assert r.status_code == 301 and r.headers["location"] == "https://lavelondon.com/atelier/prices/?x=1"
+
+
+def test_browsers_keep_files(api):
+    css = api.get("/static/site/site.css?v=41")
+    assert css.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert api.get("/static/site/site.css").headers["cache-control"] == "public, max-age=86400"
+    assert api.get("/static/site/fonts/century-gothic-400.woff2").headers["cache-control"] == "public, max-age=2592000"
+    assert api.get("/admin").headers["cache-control"] == "no-cache"
+    assert "cache-control" not in api.get("/atelier/").headers  # pages are always fresh
+    from app.main import cache_rule
+    assert cache_rule("/media/202610-0123456789abcdef.webp", False) == "public, max-age=2592000"
+    assert cache_rule("/media/thumbs/202610-0123456789abcdef.webp", False) == "public, max-age=2592000"
+    assert cache_rule("/media/shirt-1.webp", False) == "public, max-age=86400"
+
+
+def _photo(width, height, fmt="WEBP"):
+    import random
+    from io import BytesIO
+    from PIL import Image
+    random.seed(1)
+    img = Image.frombytes("RGB", (width, height), bytes(random.getrandbits(8) for _ in range(width * height * 3)))
+    out = BytesIO()
+    img.save(out, fmt, quality=100)
+    return out.getvalue()
+
+
+def test_oversized_photos_are_slimmed(tmp_path, monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+    from app.services import media
+
+    big = _photo(2400, 1200)
+    small = media.slim(big, ".webp")
+    assert Image.open(BytesIO(small)).size == (1920, 960) and len(small) < len(big)
+    light = _photo(300, 200, "JPEG")
+    assert len(light) < media.SLIM_FROM and media.slim(light, ".jpg") is light  # already light: untouched
+    assert media.slim(b"not a photo", ".png") == b"not a photo"
+
+    # The library pass: slims uploads in place (same name), makes small copies, leaves bundled photos, runs once.
+    monkeypatch.setattr(media, "MEDIA_DIR", tmp_path)
+    upload = tmp_path / "202610-0123456789abcdef.webp"
+    upload.write_bytes(big)
+    bundled = tmp_path / "shirt-1.webp"
+    bundled.write_bytes(big)
+    assert media.slim_library(tmp_path) == 1
+    assert Image.open(upload).width == 1920 and bundled.read_bytes() == big
+    assert Image.open(tmp_path / "thumbs" / upload.name).width == media.THUMB_WIDTH
+    assert media.small_url(f"/media/{upload.name}") == f"/media/thumbs/{upload.name}"
+    assert media.small_url("/media/shirt-1.webp") == "/media/shirt-1.webp"
+    stamp = upload.stat().st_mtime_ns
+    assert media.slim_library(tmp_path) == 0 and upload.stat().st_mtime_ns == stamp
+
+
+def test_uploads_are_slimmed(api, staff_headers, tmp_path, monkeypatch):
+    from PIL import Image
+    from app.routers import staff
+    from app.services import media
+    monkeypatch.setattr(staff, "MEDIA_DIR", tmp_path)
+    monkeypatch.setattr(media, "MEDIA_DIR", tmp_path)
+    r = api.post("/api/staff/uploads", headers=staff_headers, files={"file": ("big.webp", _photo(2400, 1200), "image/webp")})
+    name = r.json()["url"].removeprefix("/media/")
+    assert Image.open(tmp_path / name).width == 1920 and (tmp_path / "thumbs" / name).exists()
