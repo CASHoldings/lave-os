@@ -40,6 +40,8 @@ def wait_for_database(timeout: float = 120, every: float = 5) -> None:
 
 def release() -> list[str]:
     notes = []
+    # A missing setting fails the deploy here, so the version already live keeps running.
+    get_settings().check_production_safety()
     wait_for_database()
     added = upgrade()
     notes.append(f"Database up to date ({len(added)} new columns)." if added else "Database up to date.")

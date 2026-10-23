@@ -83,6 +83,11 @@ class Settings(BaseSettings):
             problems.append("LAVE_WP_SSO_SECRET must be a long random value")
         if not self.site_url.startswith("https://"):
             problems.append("LAVE_SITE_URL must start with https://")
+        # Without these, the site would quietly run on an empty database, or keep photos where a deploy wipes them.
+        if self.database_url.startswith("sqlite"):
+            problems.append("LAVE_DATABASE_URL must point at the live database (lave-db)")
+        if not all((self.storage_bucket, self.storage_endpoint, self.storage_key_id, self.storage_secret)):
+            problems.append("LAVE_STORAGE_BUCKET, _ENDPOINT, _KEY_ID and _SECRET must all be set (Cloudflare R2)")
         if problems:
             raise RuntimeError("LAVE OS won't start in production: " + "; ".join(problems))
 

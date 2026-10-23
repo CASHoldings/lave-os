@@ -25,8 +25,15 @@ def test_production_is_the_default_and_refuses_weak_secrets(monkeypatch):
     assert s.env == "production" and not s.is_dev
     with pytest.raises(RuntimeError, match="LAVE_SECRET_KEY"):
         s.check_production_safety()
-    ok = Settings(_env_file=None, secret_key="x" * 40, wp_sso_secret="y" * 40, site_url="https://lavelondon.com")
-    ok.check_production_safety()
+    live = dict(secret_key="x" * 40, wp_sso_secret="y" * 40, site_url="https://lavelondon.com",
+                database_url="postgresql://lave@db/lave", storage_bucket="lave-media",
+                storage_endpoint="https://account.r2.cloudflarestorage.com", storage_key_id="id", storage_secret="secret")
+    Settings(_env_file=None, **live).check_production_safety()
+    # A setting lost in the host's dashboard stops the deploy rather than starting on an empty database.
+    with pytest.raises(RuntimeError, match="LAVE_DATABASE_URL"):
+        Settings(_env_file=None, **(live | {"database_url": "sqlite:///./lave.db"})).check_production_safety()
+    with pytest.raises(RuntimeError, match="LAVE_STORAGE_BUCKET"):
+        Settings(_env_file=None, **(live | {"storage_secret": ""})).check_production_safety()
 
 
 def test_dev_shortcuts_are_off_outside_development(api):
