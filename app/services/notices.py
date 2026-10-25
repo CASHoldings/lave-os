@@ -130,6 +130,42 @@ def vault_return_booked(booking: Booking, pieces: int) -> None:
     ])
 
 
+def driver_on_the_way(db: Session, b: Booking) -> str | None:
+    """"Your driver is on the way": by text when we have a mobile number and texts are set up, otherwise (or if the
+    text fails) by email. Once per visit. Returns how it went ("text" or "email"), or None if nothing was sent."""
+    from app.services import sms
+    from app.services import orders as order_svc
+    if b.mode != BookingMode.lave_collects or b.atelier_id:
+        return None
+    claimed = db.execute(update(Booking).where(Booking.id == b.id, Booking.on_the_way_sent_at.is_(None))
+                         .values(on_the_way_sent_at=local_now())).rowcount
+    db.commit()
+    if claimed != 1:
+        return None
+    collecting = b.kind == BookingKind.collection
+    window = f"{_time(b.starts_at)} to {_time(b.ends_at)}"
+    ref = b.order.ref if b.order else b.ref
+    text = (f"LAVE: your driver is on the way {'to collect your pieces' if collecting else 'with your pieces'}, due "
+            f"{window} today. Booking {ref}. Questions? Call {letters.PHONE}.")
+    how = None
+    if sms.send(b.client.phone, text):
+        how = "text"
+    elif b.client.email:
+        letters.send(b.client.email, "Your LAVE driver is on the way", b.client.first_name, [
+            f"Your driver is on the way {'to collect your pieces' if collecting else 'with your pieces'}, and will be with "
+            f"you between {window} today.",
+            letters.Table([("Collection" if collecting else "Delivery", when(b)), ("Address", place(b)),
+                           ("Booking reference", ref)]),
+            "Please have your pieces ready in a bag." if collecting else "Please make sure someone is in to receive them.",
+            f"If anything has changed, call us on {letters.PHONE} or simply reply to this email.",
+        ])
+        how = "email"
+    if how and b.order:
+        order_svc.log(db, b.order, "on_the_way", f"Driver on the way ({how} sent)")
+        db.commit()
+    return how
+
+
 def items_counted(order: Order) -> None:
     """Once the atelier has counted an order (marked inspected), tell the client how many pieces arrived."""
     if not order.client.email or not order.items:

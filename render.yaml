@@ -58,6 +58,13 @@ services:
         sync: false
       - key: LAVE_SMTP_PASSWORD
         sync: false
+      # Text messages: "your driver is on the way" (Twilio). Without them, it goes by email.
+      - key: LAVE_TWILIO_ACCOUNT_SID
+        sync: false
+      - key: LAVE_TWILIO_AUTH_TOKEN
+        sync: false
+      - key: LAVE_TWILIO_FROM
+        sync: false
       # Stripe (phase 7, step 3). Test keys until launch.
       - key: LAVE_STRIPE_SECRET_KEY
         sync: false

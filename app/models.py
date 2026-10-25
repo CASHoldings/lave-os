@@ -321,6 +321,7 @@ class Booking(Timestamped, Base):
     driver_id: Mapped[int | None] = mapped_column(ForeignKey("staff_users.id"))
     notes: Mapped[str] = mapped_column(Text, default="")
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime)  # the evening-before reminder (notices.py)
+    on_the_way_sent_at: Mapped[datetime | None] = mapped_column(DateTime)  # "your driver is on the way" (notices.py)
     # Atelier drop-offs (members): where, how many bags (labelled <ref>-1, <ref>-2…), and which have been checked in.
     atelier_id: Mapped[int | None] = mapped_column(ForeignKey("atelier_locations.id"))
     bags: Mapped[int] = mapped_column(Integer, default=0)

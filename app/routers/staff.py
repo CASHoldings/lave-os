@@ -175,6 +175,9 @@ def patch_booking(booking_id: int, body: BookingPatch, staff: StaffUser = anyone
             v.status = VaultStatus.retrieved
             v.retrieved_at = local_now()
     db.commit()
+    if body.status == BookingStatus.en_route:
+        from app.services import notices
+        notices.driver_on_the_way(db, b)  # by text, or email if we can't text
     return ser.booking(b, True)
 
 
@@ -1146,7 +1149,8 @@ from app.services import bookings as bookings_svc  # noqa: E402
 @router.get("/delivery-settings")
 def get_delivery_settings(staff: StaffUser = anyone, db: Session = Depends(get_db)):
     hols = sorted(d for d in delivery_svc.bank_holidays(db) if d >= local_now().date())
-    return {**delivery_svc.config(db), "bank_holidays": [d.isoformat() for d in hols[:12]]}
+    from app.services import sms
+    return {**delivery_svc.config(db), "bank_holidays": [d.isoformat() for d in hols[:12]], "texts": sms.configured()}
 
 
 @router.put("/delivery-settings")

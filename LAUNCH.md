@@ -111,6 +111,16 @@ The rules from "LAVE_Collection_Delivery_Spec" are built in; everything below is
   only appears for members once at least one atelier is active. Retire (don't delete) a location that has bookings.
 - **Today**: scan or type bag codes (`LV-7K2M9P-1`) to check drop-offs in; log bags left without a booking.
 
+### "Your driver is on the way" (text or email)
+
+When a collection or delivery is marked **En route** on Today, the client is told their driver is on the way: by text
+when they have a UK mobile number and texts are set up, otherwise (or if the text fails) by email. Once per visit.
+
+To send texts, open a Twilio account (twilio.com), buy a UK number or register the sender name "LAVE", then add in
+Render → `lave-os` → Environment (paste the token there only): `LAVE_TWILIO_ACCOUNT_SID`, `LAVE_TWILIO_AUTH_TOKEN`
+and `LAVE_TWILIO_FROM` (the number, `LAVE`, or a Messaging Service SID starting MG). /admin → Settings →
+Collection & delivery shows whether texts are on.
+
 ## Day to day
 
 - **Editing**: everything in /admin goes live as soon as you save. No deploy needed.

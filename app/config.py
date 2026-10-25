@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # Text messages (Twilio). Without them, "driver on the way" messages go by email instead.
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from: str = ""  # a number (+44…), an approved sender name ("LAVE"), or a Messaging Service SID (MG…)
     # Emails come from this address, and contact-form messages are delivered to it.
     mail_from: str = "LAVE <hello@lavelondon.com>"
 

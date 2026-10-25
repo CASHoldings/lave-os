@@ -1492,6 +1492,8 @@
           <label class="check-label"><input type="checkbox" name="dropoff_enabled" ${d.dropoff_enabled ? "checked" : ""} ${dis}> Members can drop off at an atelier</label>
           ${isAdmin ? `<div><button class="btn primary">Save</button></div>` : ""}
         </form>
+        <section class="panel"><h2>Driver on the way</h2><p class="small">When a visit is marked <strong>En route</strong> on Today, the client is told their driver is on the way:
+          ${d.texts ? "by text message, or by email if they have no mobile number or the text fails." : "by email. To send text messages instead, add the LAVE_TWILIO_ settings in Render → lave-os → Environment."}</p></section>
         <section class="panel"><h2>Bank holidays</h2><p class="small muted">England &amp; Wales, from gov.uk (checked daily). No collections or returns on these days. Close other days under <a href="#/settings?tab=closures">Closures</a>.</p>
           <p>${d.bank_holidays.map((x) => D.format(parse(x))).join(" · ") || "None listed"}</p></section>`;
       pane.querySelector("#delivery").addEventListener("submit", act((e) => {
