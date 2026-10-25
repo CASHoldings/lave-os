@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { requireTalent } from "@/server/auth/current";
 import { getOwnProfile } from "@/server/services/profile";
 import { listGrants, listIntroductionRequests, listShareLinks } from "@/server/services/sharing";
@@ -17,9 +16,8 @@ const scopeLabel = { contact: "Contact details", evidence: "Evidence files", ref
 export default async function SharingPage() {
   const actor = await requireTalent();
   const [profile, links, grants, intros] = await Promise.all([getOwnProfile(actor), listShareLinks(actor), listGrants(actor), listIntroductionRequests(actor)]);
-  const h = await headers();
-  const origin = h.get("host") ? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}` : getEnv().APP_URL;
-  const now = Date.now();
+  // Built from configuration, never from request headers, so a spoofed Host cannot shape the link.
+  const origin = getEnv().APP_URL.replace(/\/$/, "");
 
   return (
     <div className="space-y-10">
@@ -113,7 +111,7 @@ export default async function SharingPage() {
           ) : (
             <ul className="mt-4 space-y-2">
               {links.map((l) => {
-                const status = l.revokedAt ? "Revoked" : l.expiresAt.getTime() <= now ? "Expired" : "Active";
+                const status = { active: "Active", revoked: "Revoked", expired: "Expired" }[l.status];
                 return (
                   <Card as="li" key={l.id}>
                     <div className="flex flex-wrap items-center justify-between gap-2">

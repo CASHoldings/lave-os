@@ -43,7 +43,9 @@ export async function createShareLink(actor: Actor, input: unknown) {
 
 export async function listShareLinks(actor: Actor) {
   const profileId = assertTalent(actor);
-  return getDb().select().from(shareLinks).where(eq(shareLinks.profileId, profileId)).orderBy(desc(shareLinks.createdAt));
+  const rows = await getDb().select().from(shareLinks).where(eq(shareLinks.profileId, profileId)).orderBy(desc(shareLinks.createdAt));
+  const now = Date.now();
+  return rows.map((l) => ({ ...l, status: l.revokedAt ? ("revoked" as const) : l.expiresAt.getTime() <= now ? ("expired" as const) : ("active" as const) }));
 }
 
 export async function revokeShareLink(actor: Actor, linkId: string) {
