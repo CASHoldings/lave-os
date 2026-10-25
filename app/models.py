@@ -315,6 +315,7 @@ class Booking(Timestamped, Base):
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.scheduled)
     driver_id: Mapped[int | None] = mapped_column(ForeignKey("staff_users.id"))
     notes: Mapped[str] = mapped_column(Text, default="")
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime)  # the evening-before reminder (notices.py)
 
     client: Mapped[Client] = relationship()
     order: Mapped[Order | None] = relationship(back_populates="bookings")

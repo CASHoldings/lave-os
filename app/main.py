@@ -110,6 +110,9 @@ def create_app() -> FastAPI:
 
     if settings.env != "test":
         import threading
+        # Evening-before booking reminders.
+        from app.services.notices import reminder_loop
+        threading.Thread(target=reminder_loop, daemon=True).start()
         if settings.storage_bucket:
             # Photos still on the old image disk go into the bucket, in the background so the website starts at once.
             threading.Thread(target=storage.move_from_disk, args=(settings.media_path,), daemon=True).start()

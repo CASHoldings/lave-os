@@ -36,6 +36,7 @@ from app.services import orders as order_svc
 from app.services import payments
 from app.services import wardrobe as wardrobe_svc
 from app.services.clock import local_now
+from app.services import notices
 from app.services.slots import reserve_slot
 
 router = APIRouter(prefix="/api/me", tags=["client"])
@@ -139,6 +140,7 @@ def book(body: BookingRequest, response: Response, lave_list: str | None = Cooki
     order_svc.log(db, order, OrderStatus.awaiting_collection.value)
     db.commit()
     db.refresh(order)
+    notices.booking_confirmed(order)
     if lave_list:
         response.delete_cookie(repo.LIST_COOKIE, path="/")
     return ser.order(order, detail=True)
@@ -240,6 +242,7 @@ def retrieve(body: VaultRetrieval, client: Client = Depends(current_client), db:
         v.status = VaultStatus.retrieval_requested
         v.retrieval_booking_id = booking.id
     db.commit()
+    notices.vault_return_booked(booking, len(items))
     return ser.booking(booking)
 
 
