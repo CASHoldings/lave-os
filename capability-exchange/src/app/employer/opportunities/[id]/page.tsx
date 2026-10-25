@@ -10,6 +10,7 @@ import { Alert, Badge, ButtonLink, Card, EmptyState, PageHeader, formatDate } fr
 import { applicationStatuses, labelOf, proficiencyLevels } from "@/config/taxonomy";
 import { canDiscoverTalent } from "@/server/policy/actor";
 import { addRequirementAction, opportunityStatusAction, removeRequirementAction } from "../../actions";
+import { OpportunityClarityPanel } from "@/components/opportunity-clarity-panel";
 
 export const metadata: Metadata = { title: "Opportunity" };
 
@@ -97,6 +98,7 @@ export default async function EmployerOpportunityPage({ params, searchParams }: 
             </div>
             {!approved && <p className="mt-2 text-xs text-warning">Publishing opens after your organisation is approved.</p>}
           </Card>
+          <OpportunityClarityPanel opportunityId={o.id} />
           <Card><OpportunityFacts o={o} /></Card>
         </aside>
       </div>

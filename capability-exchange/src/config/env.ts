@@ -20,7 +20,7 @@ const schema = z.object({
   SUPABASE_STORAGE_BUCKET: z.string().default("evidence"),
   AI_PROVIDER: z.enum(["anthropic", "demo", "none"]).optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default("claude-sonnet-5-5"),
+  ANTHROPIC_MODEL: z.string().default("claude-opus-5-5"),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   AI_HOURLY_LIMIT: z.coerce.number().int().positive().default(30),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(10),
