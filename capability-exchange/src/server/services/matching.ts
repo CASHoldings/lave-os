@@ -97,7 +97,10 @@ export function compareProfileToOpportunity(view: ProfileView, opp: OpportunityR
         results.push({
           ...base,
           outcome: "supported",
-          explanation: `Listed as ${cap.selfProficiency} (self-rated), with ${evidenced.length} related claim${evidenced.length > 1 ? "s" : ""} that ${verified ? "include independently verified evidence" : "have evidence supplied"}.`,
+          explanation:
+            evidenced.length === 1
+              ? `Listed as ${cap.selfProficiency} (self-rated), with a related claim that ${verified ? "is independently verified" : "has evidence supplied"}.`
+              : `Listed as ${cap.selfProficiency} (self-rated), with ${evidenced.length} related claims that ${verified ? "include independently verified evidence" : "have evidence supplied"}.`,
           refs,
         });
       } else {

@@ -20,6 +20,7 @@ import { fieldErrorsFrom, reasonSchema, reportSchema, verificationReviewSchema }
 import { assertAdmin, type Actor } from "@/server/policy/actor";
 import { conflict, notFound, validationError } from "@/server/errors";
 import { recomputeClaimStatus } from "./portfolio";
+import { buildProfileView } from "./profile-view";
 import { profileChanged } from "./profile";
 import { audit } from "./audit";
 
@@ -270,4 +271,13 @@ export async function listAuditEvents(actor: Actor, filter: { action?: string } 
   const actorIds = Array.from(new Set(rows.map((r) => r.actorUserId).filter(Boolean))) as string[];
   const names = actorIds.length ? await getDb().select({ id: users.id, name: users.displayName }).from(users).where(inArray(users.id, actorIds)) : [];
   return rows.map((r) => ({ ...r, actorName: names.find((n) => n.id === r.actorUserId)?.name ?? (r.actorUserId ? "Deleted account" : "System") }));
+}
+
+/** Administrator view of a profile for moderation. Every view is recorded. */
+export async function getProfileForAdmin(actor: Actor, profileId: string) {
+  assertAdmin(actor);
+  const [profile] = await getDb().select().from(talentProfiles).where(eq(talentProfiles.id, profileId)).limit(1);
+  if (!profile) throw notFound("That profile");
+  await audit({ actorUserId: actor.userId, actorRole: "admin", action: "admin.profile_viewed", targetType: "profile", targetId: profileId });
+  return buildProfileView(profile, { kind: "admin" });
 }
