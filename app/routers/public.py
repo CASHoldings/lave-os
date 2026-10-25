@@ -10,7 +10,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import BookingMode, Client, Service, WindowType
 from app.site import store
-from app.schemas import WpExchange
+from app.schemas import AreaWaitlistIn, WpExchange
 from app.services import payments
 from app.services.slots import available_slots
 
@@ -82,3 +82,24 @@ def wp_exchange(body: WpExchange, db: Session = Depends(get_db)):
 async def stripe_webhook(request: Request, stripe_signature: str | None = Header(default=None), db: Session = Depends(get_db)):
     payload = await request.body()
     return {"handled": payments.handle_webhook(db, payload, stripe_signature)}
+
+
+# Service area
+
+@router.get("/area/check")
+def area_check(postcode: str, db: Session = Depends(get_db)):
+    from app.services import area
+    pc = area.normalise(postcode)
+    ok = area.in_zone(db, pc)
+    return {"postcode": pc, "in_zone": ok, "message": "" if ok else area.OUT_OF_AREA}
+
+
+@router.post("/area/waitlist", status_code=201)
+def area_waitlist(body: AreaWaitlistIn, request: Request, db: Session = Depends(get_db)):
+    """Out of the area: leave details, and LAVE lets them know when it reaches them."""
+    from app.services import accounts, area
+    if not accounts.allow("area-waitlist:" + (request.client.host if request.client else "?"), 10, 3600):
+        raise HTTPException(429, "Too many attempts. Try again later.")
+    area.join_waitlist(db, name=body.name, email=str(body.email), phone=body.phone, postcode=body.postcode,
+                       services=body.services)
+    return {"ok": True, "message": "Thank you. We'll let you know as soon as we reach you."}

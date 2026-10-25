@@ -18,8 +18,11 @@ from app.auth import (
 from app.config import get_settings
 from app.db import get_db
 from app.models import (
+    Address,
+    AtelierLocation,
     Booking,
     BookingKind,
+    BookingMode,
     BookingStatus,
     Client,
     Garment,
@@ -34,6 +37,7 @@ from app.models import (
     StaffUser,
     VaultItem,
     VaultStatus,
+    WindowType,
 )
 from app.schemas import (
     BlackoutIn,
@@ -232,6 +236,9 @@ def patch_order(order_id: int, body: OrderPatch, staff: StaffUser = Depends(ops)
         raise HTTPException(409, "This order is paid; its total can't change. Refund in Stripe instead.")
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(o, k, v)
+    if body.fees_pence is not None:
+        # Set by hand: the automatic collection & delivery charge leaves it alone from now on.
+        o.delivery_basis = {**(o.delivery_basis or {}), "manual": True}
     db.commit()
     return ser.order(o, staff_view=True, detail=True)
 
@@ -241,6 +248,9 @@ def change_status(order_id: int, body: OrderStatusChange, staff: StaffUser = Dep
     o = _order(db, order_id)
     order_svc.advance(db, o, body.status, staff.id, body.note)
     db.commit()
+    if body.status == OrderStatus.inspected:
+        from app.services import notices
+        notices.items_counted(o)
     return ser.order(o, staff_view=True, detail=True)
 
 
@@ -1124,3 +1134,157 @@ def repository_export(staff: StaffUser = Depends(admin_only), db: Session = Depe
     from app.services.clock import local_now
     return _Response(repo.export_csv(db), media_type="text/csv",
                      headers={"Content-Disposition": f'attachment; filename="LAVE_Products_{local_now():%Y-%m-%d}.csv"'})
+
+
+# Collection & delivery: settings, service area, atelier locations and drop-off check-in
+
+from app.schemas import AreaAdd, AtelierIn, DropOffCheckIn, ReturnRequest, UnbookedDropOff  # noqa: E402
+from app.services import area as area_svc, ateliers as atelier_svc, delivery as delivery_svc  # noqa: E402
+from app.services import bookings as bookings_svc  # noqa: E402
+
+
+@router.get("/delivery-settings")
+def get_delivery_settings(staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    hols = sorted(d for d in delivery_svc.bank_holidays(db) if d >= local_now().date())
+    return {**delivery_svc.config(db), "bank_holidays": [d.isoformat() for d in hols[:12]]}
+
+
+@router.put("/delivery-settings")
+def put_delivery_settings(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    try:
+        delivery_svc.save_config(db, body)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Check the amounts: whole pence, and hours as a whole number.")
+    return get_delivery_settings(staff, db)
+
+
+@router.get("/area")
+def area_summary(staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    return area_svc.summary(db)
+
+
+@router.get("/area/check")
+def area_check_staff(postcode: str, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    return {"postcode": area_svc.normalise(postcode), "in_zone": area_svc.in_zone(db, postcode)}
+
+
+@router.post("/area")
+def area_add(body: AreaAdd, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    return area_svc.add(db, body.entries, staff.email)
+
+
+@router.delete("/area/{entry}", status_code=204)
+def area_remove(entry: str, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    if not area_svc.remove(db, entry):
+        raise HTTPException(404, "That postcode or sector isn't in the area.")
+
+
+@router.get("/area/waitlist")
+def area_waitlist_list(staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    return [{"id": w.id, "name": w.name, "email": w.email, "phone": w.phone, "postcode": w.postcode, "district": w.district,
+             "services": w.services or [], "created_at": ser.iso(w.created_at)} for w in area_svc.waitlist(db)]
+
+
+def _atelier(db: Session, atelier_id: int) -> AtelierLocation:
+    loc = db.get(AtelierLocation, atelier_id)
+    if not loc:
+        raise HTTPException(404, "Atelier not found.")
+    return loc
+
+
+@router.get("/ateliers")
+def list_ateliers(staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    rows = db.scalars(select(AtelierLocation).order_by(AtelierLocation.status, AtelierLocation.name)).all()
+    return [atelier_svc.describe(loc, staff_view=True) for loc in rows]
+
+
+@router.post("/ateliers", status_code=201)
+def create_atelier(body: AtelierIn, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    loc = atelier_svc.create(db, body.model_dump(exclude_none=True, exclude={"confirm"}), staff.email)
+    return atelier_svc.describe(loc, staff_view=True)
+
+
+@router.patch("/ateliers/{atelier_id}")
+def update_atelier(atelier_id: int, body: AtelierIn, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    loc = _atelier(db, atelier_id)
+    result = atelier_svc.update(db, loc, body.model_dump(exclude_unset=True, exclude={"confirm"}), staff.email, body.confirm)
+    return {**result, "atelier": atelier_svc.describe(loc, staff_view=True)}
+
+
+@router.delete("/ateliers/{atelier_id}", status_code=204)
+def delete_atelier(atelier_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    atelier_svc.remove(db, _atelier(db, atelier_id), staff.email)
+
+
+@router.get("/ateliers/{atelier_id}/history")
+def atelier_history(atelier_id: int, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    return atelier_svc.history(db, _atelier(db, atelier_id))
+
+
+@router.get("/dropoffs")
+def dropoffs(day: date | None = None, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    """Drop-offs booked for a day, with their bag codes and which have been checked in."""
+    day = day or local_now().date()
+    start, end = _day_bounds(day)
+    rows = db.scalars(select(Booking).where(Booking.atelier_id.is_not(None), Booking.starts_at >= start, Booking.starts_at < end,
+                                            Booking.status != BookingStatus.cancelled).order_by(Booking.starts_at)).all()
+    return [ser.booking(b, True) for b in rows]
+
+
+@router.post("/dropoffs/check-in")
+def dropoff_check_in(body: DropOffCheckIn, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    """Scan or type a bag code (LV-7K2M9P-2). The first bag in moves the order to Received."""
+    code = body.code.strip().upper()
+    ref, _, n = code.rpartition("-")
+    order = db.scalar(select(Order).where(Order.ref == ref)) if n.isdigit() else None
+    b = next((x for x in (order.bookings if order else []) if x.atelier_id and x.status != BookingStatus.cancelled), None)
+    if not b or code not in b.bag_codes:
+        raise HTTPException(404, f"No booked drop-off bag {code}. Check the label, or log it as an unbooked drop-off.")
+    if code not in (b.bags_checked or []):
+        b.bags_checked = [*(b.bags_checked or []), code]
+    if not b.checked_in_at:
+        b.checked_in_at = local_now()
+        b.status = BookingStatus.completed
+        if order.status == OrderStatus.awaiting_collection:
+            order_svc.advance(db, order, OrderStatus.collected, staff.id, note=f"Received at {b.atelier.name}")
+    db.commit()
+    return {**ser.booking(b, True), "all_in": len(b.bags_checked) >= b.bags}
+
+
+@router.post("/dropoffs/unbooked", status_code=201)
+def unbooked_dropoff(body: UnbookedDropOff, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Bags left at an atelier without a booking: logged at check-in and attached to the member."""
+    client = db.get(Client, body.client_id)
+    loc = _atelier(db, body.atelier_id)
+    if not client:
+        raise HTTPException(404, "Client not found.")
+    now = local_now()
+    order = Order(client_id=client.id, staff_notes=f"Unbooked drop-off at {loc.name}. {body.note}".strip(),
+                  delivery_basis={"level": delivery_svc.member_level(client), "value_pence": 0})
+    db.add(order)
+    db.flush()
+    b = Booking(client_id=client.id, order_id=order.id, kind=BookingKind.collection, mode=BookingMode.drop_off,
+                window_type=WindowType.saver, atelier_id=loc.id, bags=body.bags, starts_at=now, ends_at=now,
+                checked_in_at=now, status=BookingStatus.completed, fee_pence=0)
+    db.add(b)
+    db.flush()
+    b.bags_checked = list(b.bag_codes)
+    order_svc.log(db, order, OrderStatus.awaiting_collection.value, staff_id=staff.id, visible=False)
+    order_svc.advance(db, order, OrderStatus.collected, staff.id, note=f"Received at {loc.name}")
+    db.refresh(order)
+    delivery_svc.recompute(db, order)
+    db.commit()
+    return ser.order(order, staff_view=True, detail=True)
+
+
+@router.post("/orders/{order_id}/return", status_code=201)
+def staff_book_return(order_id: int, body: ReturnRequest, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Book the return for an order (e.g. once longer items are ready). The single charge is recalculated."""
+    o = _order(db, order_id)
+    address = db.get(Address, body.address_id)
+    if not address or address.client_id != o.client_id:
+        raise HTTPException(404, "Address not found.")
+    bookings_svc.book_return(db, o, (body.slot.template_id, body.slot.day), address)
+    db.commit()
+    db.refresh(o)
+    return ser.order(o, staff_view=True, detail=True)

@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Booking, BookingKind, BookingMode, BookingStatus, Order
+from app.models import Booking, BookingKind, BookingMode, BookingStatus, Order, WindowType
 from app.services import letters
 from app.services.clock import local_now
 
@@ -29,6 +29,8 @@ def when(b: Booking) -> str:
 
 
 def place(b: Booking) -> str:
+    if b.atelier:
+        return ", ".join(x for x in (b.atelier.name, b.atelier.address, b.atelier.postcode) if x)
     a = b.address if b.mode == BookingMode.lave_collects else None
     if not a:
         return "At the atelier"
@@ -49,33 +51,64 @@ def _change_line() -> str:
             "simply reply to this email and we'll help.")
 
 
-def booking_confirmed(order: Order) -> None:
-    """Sent as soon as a client books a collection (and, if chosen, the delivery back)."""
+def _window(b: Booking) -> str:
+    """Tuesday 27 October, 7am to 10am (Saver)"""
+    return f"{when(b)} ({'One-hour' if b.window_type == WindowType.hour else 'Saver'})"
+
+
+def booking_confirmed(db: Session, order: Order) -> None:
+    """Sent as soon as a client books a collection or an atelier drop-off (spec §7 wording)."""
+    from app.services import bookings, delivery
     visits = [b for b in order.bookings if b.status != BookingStatus.cancelled]
-    collection = next((b for b in visits if b.kind == BookingKind.collection), None)
-    if not collection or not order.client.email:
+    first = next((b for b in visits if b.kind == BookingKind.collection), None)
+    if not first or not order.client.email:
         return
-    delivery = next((b for b in visits if b.kind == BookingKind.delivery), None)
-    collects = collection.mode == BookingMode.lave_collects
-    rows = [("Collection" if collects else "Drop-off at the atelier", when(collection))]
-    if collects:
-        rows.append(("Address", place(collection)))
-    if delivery:
-        rows.append(("Delivery" if delivery.mode == BookingMode.lave_collects else "Ready to collect", when(delivery)))
-    if order.fees_pence:
-        rows.append(("Collection and delivery", _pounds(order.fees_pence)))
+    returns = [b for b in visits if b.kind == BookingKind.delivery]
+    longer = order.return_preference in ("together", "split")
+    if first.atelier_id:
+        return dropoff_confirmed(db, order, first, returns)
+    rows = [("Collection", _window(first)), ("Address", place(first))]
+    rows += [("Return", _window(r)) for r in returns] or [("Return", "We'll arrange it with you" if not longer else
+                                                           "Confirmed after we've inspected your items")]
+    rows.append(("Collection and delivery", delivery.charge_text(order)))
     if order.estimate_pence:
         rows.append(("Estimate for your list", _pounds(order.estimate_pence)))
     rows.append(("Booking reference", order.ref))
+    ready = delivery.earliest_return(db, bookings.collected_by(db, first))
     letters.send(order.client.email, "Your LAVE collection is confirmed", order.client.first_name, [
-        f"Thank you for booking with LAVE. Your {'collection' if collects else 'drop-off'} is confirmed.",
+        "Thank you for booking with LAVE. Your collection is confirmed.",
         letters.Table(rows),
-        ("Please have your pieces ready in a bag." if collects else
-         "Please bring your pieces to the atelier at your chosen time.")
-        + " When they reach the atelier, we tag and itemise each one and confirm the price with you before we charge.",
+        *([delivery.LONGER_NOTE] if longer else []),
+        "Please have your pieces ready in a bag. When they reach the atelier, we tag and itemise each one and confirm "
+        f"the price with you before we charge. Your items are ready to come back from {bookings.when_text(ready)}.",
         "We'll send you a gentle reminder the evening before.",
         letters.Button("View your booking", _bookings_url()),
         _change_line(),
+    ], letters.SOON)
+
+
+def dropoff_confirmed(db: Session, order: Order, b: Booking, returns: list[Booking]) -> None:
+    """"Your drop-off is booked: {name}, {day_date}, {hours}. Label each bag with its code…" (spec §7)."""
+    from app.services import bookings, delivery
+    loc = b.atelier
+    collected = bookings.collected_by(db, b)
+    ready = delivery.earliest_return(db, collected)
+    day = f"{b.starts_at:%A} {b.starts_at.day} {b.starts_at:%B}"
+    hours = f"{_time(b.starts_at)} to {_time(b.ends_at)}"
+    codes = ", ".join(b.bag_codes)
+    rows = [("Atelier", loc.name), ("Address", loc.address + (f", {loc.postcode}" if loc.postcode else "")),
+            ("Drop off", f"{day}, {hours}"), ("Bag labels", codes)]
+    rows += [("Return", _window(r)) for r in returns] or [("Return", "We'll arrange it with you")]
+    rows += [("Collection and delivery", delivery.charge_text(order)), ("Booking reference", order.ref)]
+    letters.send(order.client.email, "Your LAVE drop-off is booked", order.client.first_name, [
+        f"Your drop-off is booked: {loc.name}, {day}, {hours}. Label each bag with its code: {codes}. We'll treat your "
+        f"items as collected {bookings.when_text(collected)} and can return them from {bookings.when_text(ready)}.",
+        letters.Table(rows),
+        *([loc.access_instructions] if loc.access_instructions else []),
+        *([delivery.LONGER_NOTE] if order.return_preference else []),
+        letters.Button("View your booking", _bookings_url()),
+        "Need to change the location, day or number of bags? You can do it until we check your bags in: simply reply "
+        "to this email.",
     ], letters.SOON)
 
 
@@ -97,8 +130,32 @@ def vault_return_booked(booking: Booking, pieces: int) -> None:
     ])
 
 
+def items_counted(order: Order) -> None:
+    """Once the atelier has counted an order (marked inspected), tell the client how many pieces arrived."""
+    if not order.client.email or not order.items:
+        return
+    n = len(order.items)
+    letters.send(order.client.email, f"We've counted your LAVE order {order.ref}", order.client.first_name, [
+        f"Your pieces have arrived safely at the atelier. We've counted {n} item{'s' if n != 1 else ''} in order "
+        f"{order.ref}, and each one is tagged and recorded.",
+        "You can see every piece, and the price before we charge, in your account.",
+        letters.Button("View your order", f"{get_settings().site_url}/account/orders/"),
+        "If anything doesn't look right, simply reply to this email.",
+    ])
+
+
 def _reminder(b: Booking) -> None:
     to_door = b.mode == BookingMode.lave_collects
+    if b.atelier_id:
+        letters.send(b.client.email, "Your LAVE drop-off is tomorrow", b.client.first_name, [
+            f"A gentle reminder of your drop-off at {b.atelier.name} tomorrow.",
+            letters.Table([("Drop off", when(b)), ("Address", place(b)), ("Bag labels", ", ".join(b.bag_codes))]),
+            *([b.atelier.access_instructions] if b.atelier.access_instructions else []),
+            "Please label each bag with its code.",
+            letters.Button("View your booking", _bookings_url()),
+            f"If you need to change anything, simply reply to this email or call us on {letters.PHONE}.",
+        ])
+        return
     if b.kind == BookingKind.collection:
         subject = "See you tomorrow: your LAVE collection"
         opening = ("A gentle reminder that we'll be with you tomorrow to collect your pieces." if to_door else
@@ -145,13 +202,18 @@ def send_reminders(db: Session, now: datetime | None = None) -> int:
 
 
 def reminder_loop() -> None:
-    """Runs in the background while the website is up."""
+    """Runs in the background while the website is up: booking reminders, and once a day the bank holidays."""
     from app.db import SessionLocal
+    from app.services import delivery
+    holidays_checked = None
     while True:
         try:
             with SessionLocal() as db:
                 if sent := send_reminders(db):
                     log.info("Sent %d booking reminders", sent)
+                if holidays_checked != local_now().date():
+                    holidays_checked = local_now().date()
+                    delivery.refresh_bank_holidays(db)  # gov.uk; the bundled list stays if it can't be reached
         except Exception:  # never let one bad night stop the reminders for good
-            log.exception("Booking reminders failed")
+            log.exception("Booking reminders or bank holiday refresh failed")
         time.sleep(CHECK_EVERY)

@@ -23,10 +23,15 @@ def iso(dt):
 
 
 def address(a: Address) -> dict:
+    from sqlalchemy.orm import object_session
+    from app.services import area
+    db = object_session(a)
     return {
         "id": a.id, "label": a.label, "line1": a.line1, "line2": a.line2, "city": a.city,
         "postcode": a.postcode, "instructions": a.instructions, "is_default": a.is_default,
         "one_line": a.one_line(),
+        # Only addresses in the service area can be chosen for a collection or return.
+        "in_zone": area.in_zone(db, a.postcode) if db else None,
     }
 
 
@@ -55,7 +60,7 @@ def client(c: Client, staff_view: bool = False) -> dict:
 def slot(s: Slot) -> dict:
     return {"template_id": s.template_id, "day": s.day.isoformat(), "starts_at": iso(s.starts_at),
             "ends_at": iso(s.ends_at), "window_type": s.window_type.value, "mode": s.mode.value,
-            "fee_pence": s.fee_pence, "remaining": s.remaining, "available": s.remaining > 0}
+            "remaining": s.remaining, "available": s.remaining > 0}
 
 
 def booking(b: Booking, staff_view: bool = False) -> dict:
@@ -64,6 +69,9 @@ def booking(b: Booking, staff_view: bool = False) -> dict:
         "starts_at": iso(b.starts_at), "ends_at": iso(b.ends_at), "fee_pence": b.fee_pence,
         "status": b.status.value, "address": address(b.address) if b.address else None,
         "order_ref": b.order.ref if b.order else None, "order_id": b.order_id,
+        "atelier": {"id": b.atelier.id, "name": b.atelier.name, "address": b.atelier.address,
+                    "access_instructions": b.atelier.access_instructions} if b.atelier else None,
+        "bags": b.bags or 0, "bag_codes": b.bag_codes, "bags_checked": b.bags_checked or [],
     }
     if staff_view:
         out.update(client={"id": b.client.id, "name": b.client.full_name, "phone": b.client.phone},

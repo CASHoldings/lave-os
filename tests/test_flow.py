@@ -34,29 +34,30 @@ def test_slots_respect_notice_and_sundays(api):
     assert min(s["starts_at"] for s in today) == "2026-10-05T10:00:00"
     week = _slots(api, start="2026-10-05", days=7)
     assert not any(s["day"] == "2026-10-11" for s in week)  # Sunday closed
-    assert all(s["fee_pence"] == 400 for s in week)
+    # Slots carry no price of their own: one collection & delivery charge per booking (services/delivery.py).
+    assert all("fee_pence" not in s for s in week)
 
 
 def test_full_booking_to_delivery(api, client_headers, staff_headers):
     addr = _address(api, client_headers)
     coll = _slots(api)[0]
     deliveries = _slots(api, after=coll["ends_at"])
-    # Delivery must be at least 24h after collection.
-    too_soon = next(s for s in deliveries if s["starts_at"] < "2026-10-07T11:00:00")
+    # The return must start at least 48 hours after the collection window ends (6–7am Tuesday → 7am Thursday).
+    too_soon = next(s for s in deliveries if s["starts_at"] < "2026-10-08T07:00:00")
     r = api.post("/api/me/bookings", headers=client_headers, json={
         "collection": {"template_id": coll["template_id"], "day": coll["day"]},
         "delivery": {"template_id": too_soon["template_id"], "day": too_soon["day"]},
         "address_id": addr})
     assert r.status_code == 409
 
-    later = _slots(api, start="2026-10-08")[0]
+    later = next(s for s in _slots(api, start="2026-10-08") if s["starts_at"] >= "2026-10-08T07:00:00")
     r = api.post("/api/me/bookings", headers=client_headers, json={
         "collection": {"template_id": coll["template_id"], "day": coll["day"]},
         "delivery": {"template_id": later["template_id"], "day": later["day"]},
         "address_id": addr, "requested_services": ["clean"], "notes": "Wine on the silk hem"})
     assert r.status_code == 201, r.text
     order = r.json()
-    assert order["fees_pence"] == 800
+    assert order["fees_pence"] == 695  # non-member, one-hour: £6.95 once for both legs
     oid = order["id"]
 
     # Driver completes the collection -> order collected.
@@ -76,7 +77,7 @@ def test_full_booking_to_delivery(api, client_headers, staff_headers):
                  json={"description": "Wool coat", "service_id": services["Coat, long"]["id"], "send_to_vault": True})
     detail = r.json()
     assert [i["tag_code"][-2:] for i in detail["items"]] == ["01", "02"]
-    assert detail["total_pence"] == 2599 + 2799 + 800
+    assert detail["total_pence"] == 2599 + 2799 + 695
 
     for st in ["inspected", "in_care", "quality_check", "ready"]:
         r = api.post(f"/api/staff/orders/{oid}/status", headers=staff_headers, json={"status": st})

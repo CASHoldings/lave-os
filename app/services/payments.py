@@ -80,6 +80,10 @@ def charge_order(db: Session, order: Order, staff_id: int | None) -> Order:
         raise HTTPException(status.HTTP_409_CONFLICT, "This order is already paid.")
     if not order.items:
         raise HTTPException(status.HTTP_409_CONFLICT, "Add and price the garments before charging.")
+    # The collection & delivery charge follows the counted order value (it can cross £45 either way).
+    from app.services import delivery
+    delivery.settle(db, order)
+    db.flush()
     amount = order.total_pence
     if amount <= 0:
         order.payment_status = PaymentStatus.waived

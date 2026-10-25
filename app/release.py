@@ -62,6 +62,13 @@ def release() -> list[str]:
         if (photos := repository.load_bundled_images(db)) and (photos["added"] or photos["items"]):
             notes.append(f"Photos: {photos['added']} added to the image library; placed on {photos['items']} items, "
                          f"{photos['packs']} packs and {photos['categories']} categories.")
+        # Collection & delivery (spec v1.4): the launch-zone postcodes, and the old atelier counter slots retired.
+        from app.services import area, delivery
+        if added := area.load_launch_zone(db):
+            notes.append(f"Service area: {added} launch-zone postcodes added.")
+        if retired := delivery.retire_counter_slots(db):
+            notes.append(f"Retired {retired} atelier-counter slots (replaced by atelier drop-off locations).")
+        db.commit()
         if changed := update_brand_wording(db):
             notes.append(f"Brand lines: updated the wording in {changed} saved page(s).")
         if not db.scalar(select(func.count()).select_from(StaffUser)):

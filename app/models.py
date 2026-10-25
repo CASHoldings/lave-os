@@ -279,6 +279,11 @@ class Order(Timestamped, Base):
     client_notes: Mapped[str] = mapped_column(Text, default="")
     staff_notes: Mapped[str] = mapped_column(Text, default="")
     fees_pence: Mapped[int] = mapped_column(Integer, default=0)
+    # How the collection & delivery charge was set at booking (membership level then, one-hour leg, estimate);
+    # see services/delivery.py. "manual" once staff override the charge by hand.
+    delivery_basis: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Orders with pieces outside the 48-hour promise: "together" (one return when all is ready) or "split".
+    return_preference: Mapped[str] = mapped_column(String(10), default="")
     discount_pence: Mapped[int] = mapped_column(Integer, default=0)
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.unpaid)
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(String(64))
@@ -316,11 +321,23 @@ class Booking(Timestamped, Base):
     driver_id: Mapped[int | None] = mapped_column(ForeignKey("staff_users.id"))
     notes: Mapped[str] = mapped_column(Text, default="")
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime)  # the evening-before reminder (notices.py)
+    # Atelier drop-offs (members): where, how many bags (labelled <ref>-1, <ref>-2…), and which have been checked in.
+    atelier_id: Mapped[int | None] = mapped_column(ForeignKey("atelier_locations.id"))
+    bags: Mapped[int] = mapped_column(Integer, default=0)
+    bags_checked: Mapped[list] = mapped_column(JSON, default=list)
+    checked_in_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     client: Mapped[Client] = relationship()
     order: Mapped[Order | None] = relationship(back_populates="bookings")
     address: Mapped[Address | None] = relationship()
     driver: Mapped[StaffUser | None] = relationship()
+    atelier: Mapped["AtelierLocation | None"] = relationship()
+
+    @property
+    def bag_codes(self) -> list[str]:
+        """LV-7K2M9P-1, LV-7K2M9P-2…: the order reference the member sees, plus the bag number."""
+        ref = self.order.ref if self.order else self.ref
+        return [f"{ref}-{n}" for n in range(1, (self.bags or 0) + 1)]
 
 
 class Garment(Timestamped, Base):
@@ -603,4 +620,66 @@ class Media(Base):
     alt: Mapped[str] = mapped_column(String(300), default="")
     source_url: Mapped[str] = mapped_column(String(600), default="")
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class AtelierLocation(Timestamped, Base):
+    """A LAVE atelier where members can drop items off (services/ateliers.py). Retired, never deleted, once used."""
+    __tablename__ = "atelier_locations"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(160))
+    address: Mapped[str] = mapped_column(String(300), default="")
+    postcode: Mapped[str] = mapped_column(String(12), default="")
+    map_link: Mapped[str] = mapped_column(String(500), default="")
+    access_instructions: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(10), default="active")  # active | paused | retired
+    available_from: Mapped[date | None] = mapped_column(Date)
+    available_to: Mapped[date | None] = mapped_column(Date)
+    # {"0": ["08:00", "20:00"], …}: opening hours by weekday (0 = Monday); any day may be set, Sunday included.
+    weekly_hours: Mapped[dict] = mapped_column(JSON, default=dict)
+    closure_dates: Mapped[list] = mapped_column(JSON, default=list)  # ["2026-12-25", …]
+    daily_capacity: Mapped[int | None] = mapped_column(Integer)
+    members_only: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class AtelierChange(Base):
+    """Every change to an atelier location: who, when, what."""
+    __tablename__ = "atelier_changes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    atelier_id: Mapped[int] = mapped_column(ForeignKey("atelier_locations.id", ondelete="CASCADE"), index=True)
+    by: Mapped[str] = mapped_column(String(120), default="")
+    what: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ServicePostcode(Base):
+    """A postcode LAVE collects from and delivers to (services/area.py)."""
+    __tablename__ = "service_postcodes"
+    postcode: Mapped[str] = mapped_column(String(10), primary_key=True)  # normalised: "SW11 6AB"
+    district: Mapped[str] = mapped_column(String(6), default="", index=True)
+    sector: Mapped[str] = mapped_column(String(8), default="")
+    source: Mapped[str] = mapped_column(String(30), default="launch")
+    added_by: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ServiceSector(Base):
+    """A whole postcode sector added to the service area by admin, e.g. "SW4 9"."""
+    __tablename__ = "service_sectors"
+    sector: Mapped[str] = mapped_column(String(8), primary_key=True)
+    added_by: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class AreaWaitlistEntry(Base):
+    """People outside the service area who asked to hear when LAVE reaches them."""
+    __tablename__ = "area_waitlist"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), default="")
+    email: Mapped[str] = mapped_column(String(255))
+    phone: Mapped[str] = mapped_column(String(40), default="")
+    postcode: Mapped[str] = mapped_column(String(10), default="")
+    district: Mapped[str] = mapped_column(String(6), default="", index=True)
+    services: Mapped[list] = mapped_column(JSON, default=list)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

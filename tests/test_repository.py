@@ -98,7 +98,7 @@ def test_list_goes_with_the_booking(api, client_headers, staff_headers, db_sessi
     from tests.test_wardrobe import _slot
     coat = _item(db_session, "Coat, long")
     _add(api, "item", coat.id, 2)
-    addr = api.post("/api/me/addresses", headers=client_headers, json={"line1": "1 King's Road", "city": "London", "postcode": "SW3 4RP"}).json()["id"]
+    addr = api.post("/api/me/addresses", headers=client_headers, json={"line1": "1 Battersea Park Road", "city": "London", "postcode": "SW11 4NP"}).json()["id"]
     slot = _slot(api)
     r = api.post("/api/me/bookings", headers=client_headers, json={"collection": slot, "address_id": addr})
     assert r.status_code == 201, r.text

@@ -11,7 +11,6 @@ from app.models import (
     BookingKind,
     BookingMode,
     BookingStatus,
-    SlotBlackout,
     SlotTemplate,
     WindowType,
 )
@@ -79,7 +78,8 @@ def available_slots(
         by_weekday.setdefault(t.weekday, []).append(t)
 
     end_day = start_day + timedelta(days=days)
-    blackouts = set(db.scalars(select(SlotBlackout.day).where(SlotBlackout.day >= start_day, SlotBlackout.day < end_day)))
+    from app.services.delivery import closed_days
+    blackouts = closed_days(db, start_day, end_day)  # bank holidays and days the founder has closed
     booked = _booked_counts(db, datetime.combine(start_day, datetime.min.time()), datetime.combine(end_day, datetime.min.time()))
 
     slots: list[Slot] = []

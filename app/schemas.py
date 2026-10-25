@@ -58,13 +58,36 @@ class SlotChoice(BaseModel):
     day: date
 
 
+class DropOffChoice(BaseModel):
+    atelier_id: int
+    day: date
+    bags: int = Field(1, ge=1, le=20)
+
+
 class BookingRequest(BaseModel):
-    collection: SlotChoice
+    """A home collection (`collection`) or, for members, an atelier drop-off (`dropoff`); then the return."""
+    collection: SlotChoice | None = None
+    dropoff: DropOffChoice | None = None
     delivery: SlotChoice | None = None
     address_id: int | None = None
+    # Orders with pieces outside the 48-hour promise: one return when all is ready, or the 48-hour pieces first.
+    return_preference: str = Field("", pattern="^(|together|split)$")
     requested_services: list[str] = []
     wardrobe_item_ids: list[int] = []
     notes: str = Field("", max_length=2000)
+
+
+class ReturnRequest(BaseModel):
+    slot: SlotChoice
+    address_id: int
+
+
+class AreaWaitlistIn(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    email: EmailStr
+    phone: str = Field("", max_length=40)
+    postcode: str = Field(min_length=2, max_length=12)
+    services: list[str] = Field(default_factory=list, max_length=12)
 
 
 class VaultRetrieval(BaseModel):
@@ -384,3 +407,36 @@ class PageIn(BaseModel):
 
 class MarkdownIn(BaseModel):
     text: str = Field("", max_length=100_000)
+
+
+# Collection & delivery (staff)
+
+class AtelierIn(BaseModel):
+    name: str | None = Field(None, max_length=160)
+    address: str | None = Field(None, max_length=300)
+    postcode: str | None = Field(None, max_length=12)
+    map_link: str | None = Field(None, max_length=500)
+    access_instructions: str | None = Field(None, max_length=2000)
+    status: str | None = None
+    available_from: str | None = None
+    available_to: str | None = None
+    weekly_hours: dict[str, list[str]] | None = None
+    closure_dates: list[str] | None = None
+    daily_capacity: int | None = Field(None, ge=0)
+    members_only: bool | None = None
+    confirm: bool = False  # apply even though booked drop-offs are affected
+
+
+class AreaAdd(BaseModel):
+    entries: str = Field(min_length=1, max_length=20000)
+
+
+class DropOffCheckIn(BaseModel):
+    code: str = Field(min_length=3, max_length=40)
+
+
+class UnbookedDropOff(BaseModel):
+    client_id: int
+    atelier_id: int
+    bags: int = Field(1, ge=1, le=20)
+    note: str = Field("", max_length=1000)

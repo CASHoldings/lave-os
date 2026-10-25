@@ -11,7 +11,7 @@ from tests.test_flow import _address, _slots
 def _book(api, h, delivery_from="2026-10-08"):
     addr = _address(api, h)
     coll = _slots(api)[0]
-    back = _slots(api, start=delivery_from)[0]
+    back = next(s for s in _slots(api, start=delivery_from) if s["starts_at"] >= "2026-10-08T07:00:00")
     r = api.post("/api/me/bookings", headers=h, json={
         "collection": {"template_id": coll["template_id"], "day": coll["day"]},
         "delivery": {"template_id": back["template_id"], "day": back["day"]}, "address_id": addr})
@@ -26,7 +26,7 @@ def test_booking_is_confirmed_by_email(api, client_headers):
     assert sent["subject"] == "Your LAVE collection is confirmed"
     assert sent["text"].startswith("Hello Celia,")
     assert "Tuesday 6 October" in sent["text"] and "1 Haydon Way, SW11 1YF" in sent["text"]
-    assert order["ref"] in sent["text"] and "Collection and delivery" in sent["text"] and "£8.00" in sent["text"]
+    assert order["ref"] in sent["text"] and "Collection and delivery" in sent["text"] and "£6.95" in sent["text"]
     assert "/account/bookings/" in sent["html"] and "View your booking" in sent["html"]
 
 

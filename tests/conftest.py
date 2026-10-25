@@ -40,6 +40,9 @@ def db_session():
         load_starter_content(s)
         from app.services.repository import load_repository
         load_repository(s)
+        from app.services import area, delivery
+        area.load_launch_zone(s)
+        delivery.retire_counter_slots(s)
         s.add(StaffUser(email="admin@lavelondon.com", name="Ada", role=StaffRole.admin, password_hash=hash_password("admin-password")))
         s.add(StaffUser(email="driver@lavelondon.com", name="Dev", role=StaffRole.driver, password_hash=hash_password("driver-password")))
         s.commit()

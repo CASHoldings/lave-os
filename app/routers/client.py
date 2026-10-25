@@ -1,5 +1,5 @@
 """Endpoints for signed-in clients, called by the embeds on the WordPress site."""
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlalchemy import select
@@ -11,14 +11,18 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import (
     Address,
+    AtelierLocation,
     Booking,
     BookingKind,
+    BookingMode,
     BookingStatus,
     Client,
     Order,
     OrderStatus,
+    SlotTemplate,
     VaultItem,
     VaultStatus,
+    WindowType,
 )
 from app.schemas import (
     AddressIn,
@@ -28,6 +32,7 @@ from app.schemas import (
     MembershipCheckout,
     MembershipPause,
     ProfileUpdate,
+    ReturnRequest,
     ReturnUrl,
     VaultRetrieval,
     WardrobePatch,
@@ -36,7 +41,8 @@ from app.services import orders as order_svc
 from app.services import payments
 from app.services import wardrobe as wardrobe_svc
 from app.services.clock import local_now
-from app.services import notices
+from app.services import ateliers, delivery, notices
+from app.services import bookings as bookings_svc
 from app.services.slots import reserve_slot
 
 router = APIRouter(prefix="/api/me", tags=["client"])
@@ -110,39 +116,94 @@ def remove_address(address_id: int, client: Client = Depends(current_client), db
 @router.post("/bookings", status_code=201)
 def book(body: BookingRequest, response: Response, lave_list: str | None = Cookie(default=None),
          client: Client = Depends(current_client), db: Session = Depends(get_db)):
-    settings = get_settings()
-    if body.address_id is not None:
-        _own_address(db, client, body.address_id)
-
+    address = _own_address(db, client, body.address_id) if body.address_id is not None else None
     pieces = wardrobe_svc.owned(db, client.id, body.wardrobe_item_ids)
     if len(pieces) != len(set(body.wardrobe_item_ids)):
         raise HTTPException(404, "Some of those pieces aren't in your Wardrobe.")
     # The client's list from the price list goes with the booking as an estimate, then the list is cleared.
     from app.services import repository as repo
     planned = repo.summarise(db, repo.parse_list(lave_list))
-    order = Order(client_id=client.id, requested_services=body.requested_services, client_notes=body.notes,
-                  requested_wardrobe=[p.id for p in pieces], requested_items=repo.snapshot(planned),
-                  estimate_pence=planned.estimate_pence if planned.lines else None)
-    db.add(order)
-    db.flush()
-
-    collection = reserve_slot(db, template_id=body.collection.template_id, day=body.collection.day,
-                              client_id=client.id, kind=BookingKind.collection,
-                              address_id=body.address_id, order_id=order.id)
-    fees = collection.fee_pence
-    if body.delivery:
-        delivery = reserve_slot(db, template_id=body.delivery.template_id, day=body.delivery.day,
-                                client_id=client.id, kind=BookingKind.delivery, address_id=body.address_id,
-                                order_id=order.id,
-                                not_before=collection.ends_at + timedelta(hours=settings.turnaround_hours))
-        fees += delivery.fee_pence
-    order.fees_pence = fees
+    order = bookings_svc.place(
+        db, client, address=address,
+        collection=(body.collection.template_id, body.collection.day) if body.collection else None,
+        dropoff=(body.dropoff.atelier_id, body.dropoff.day, body.dropoff.bags) if body.dropoff else None,
+        delivery_slot=(body.delivery.template_id, body.delivery.day) if body.delivery else None,
+        requested_items=repo.snapshot(planned), estimate_pence=planned.estimate_pence if planned.lines else None,
+        return_preference=body.return_preference,
+        requested_services=body.requested_services, client_notes=body.notes, requested_wardrobe=[p.id for p in pieces])
     order_svc.log(db, order, OrderStatus.awaiting_collection.value)
     db.commit()
     db.refresh(order)
-    notices.booking_confirmed(order)
+    notices.booking_confirmed(db, order)
     if lave_list:
         response.delete_cookie(repo.LIST_COOKIE, path="/")
+    return ser.order(order, detail=True)
+
+
+@router.get("/delivery-terms")
+def delivery_terms(lave_list: str | None = Cookie(default=None), client: Client = Depends(current_client),
+                   db: Session = Depends(get_db)):
+    """What collection & delivery costs this client right now, for the booking screen's labels and notes."""
+    from app.services import repository as repo
+    planned = repo.summarise(db, repo.parse_list(lave_list))
+    cfg = delivery.config(db)
+    level = delivery.member_level(client)
+    estimate = planned.estimate_pence if planned.lines else 0
+    longer = delivery.longer_items(db, repo.snapshot(planned))
+    return {
+        "level": level, "labels": delivery.cell_labels(cfg, level, estimate), "estimate_pence": estimate,
+        "threshold_pence": cfg["free_saver_threshold_pence"],
+        "to_free_pence": max(0, cfg["free_saver_threshold_pence"] - estimate) if not level else 0,
+        "longer_items": longer, "longer_note": delivery.LONGER_NOTE if longer else "",
+        "one_charge_note": delivery.ONE_CHARGE_NOTE,
+        "dropoff": bool(cfg["dropoff_enabled"] and level),
+        "turnaround_hours": cfg["turnaround_hours"],
+    }
+
+
+@router.get("/earliest-return")
+def earliest_return(collection_end: datetime | None = None, atelier_id: int | None = None, day: date | None = None,
+                    client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """When items are ready to come back: 48 hours after the collection window ends (or the drop-off counts as
+    collected)."""
+    if atelier_id and day:
+        loc = db.get(AtelierLocation, atelier_id)
+        hours = ateliers.hours_on(loc, day) if loc else None
+        if not hours:
+            raise HTTPException(404, "That atelier isn't open that day.")
+        collected = delivery.deemed_collection(db, datetime.combine(day, hours[0]))
+    elif collection_end:
+        collected = collection_end
+    else:
+        raise HTTPException(400, "Choose a collection first.")
+    ready = delivery.earliest_return(db, collected)
+    return {"collected_at": collected.isoformat(), "earliest_return": ready.isoformat(),
+            "text": bookings_svc.ready_from_text(ready)}
+
+
+@router.get("/ateliers")
+def my_ateliers(start: date | None = None, days: int = 14, client: Client = Depends(current_client),
+                db: Session = Depends(get_db)):
+    """Atelier locations open for drop-off, with their dates. Members only."""
+    if not delivery.member_level(client) or not delivery.config(db)["dropoff_enabled"]:
+        return []
+    start = max(start or local_now().date(), local_now().date())
+    days = max(1, min(days, get_settings().booking_horizon_days))
+    return ateliers.offered(db, start, days)
+
+
+@router.post("/orders/{ref}/return", status_code=201)
+def book_my_return(ref: str, body: ReturnRequest, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """Book the return for an order whose return was left to arrange later."""
+    order = db.scalar(select(Order).where(Order.ref == ref.upper(), Order.client_id == client.id))
+    if not order:
+        raise HTTPException(404, "Order not found.")
+    if any(b.kind == BookingKind.delivery and b.status in (BookingStatus.scheduled, BookingStatus.en_route) for b in order.bookings) \
+            and order.return_preference != "split":
+        raise HTTPException(409, "This order already has a return booked.")
+    bookings_svc.book_return(db, order, (body.slot.template_id, body.slot.day), _own_address(db, client, body.address_id))
+    db.commit()
+    db.refresh(order)
     return ser.order(order, detail=True)
 
 
@@ -171,7 +232,9 @@ def cancel_booking(booking_id: int, client: Client = Depends(current_client), db
     b.status = BookingStatus.cancelled
     order = b.order
     if order:
-        order.fees_pence = max(0, order.fees_pence - b.fee_pence)
+        db.flush()
+        db.refresh(order)
+        delivery.recompute(db, order)  # one charge per booking: recalculated from the legs that remain
         # Cancelling the collection cancels the whole order (and its delivery) if nothing has been collected yet.
         if b.kind == BookingKind.collection and order.status == OrderStatus.awaiting_collection:
             order_svc.advance(db, order, OrderStatus.cancelled, staff_id=None, note="Cancelled by client")
@@ -232,12 +295,17 @@ def retrieve(body: VaultRetrieval, client: Client = Depends(current_client), db:
         raise HTTPException(404, "Some of those items aren't in your Vault.")
     if any(v.status != VaultStatus.stored for v in items):
         raise HTTPException(409, "Some of those items already have a return booked.")
-    if body.address_id is not None:
-        _own_address(db, client, body.address_id)
-
+    address = _own_address(db, client, body.address_id) if body.address_id is not None else None
+    t = db.get(SlotTemplate, body.slot.template_id)
+    if not t or t.mode != BookingMode.lave_collects:
+        raise HTTPException(400, "Choose a delivery time from the calendar.")
+    bookings_svc._in_zone(db, address, "deliver")
     booking = reserve_slot(db, template_id=body.slot.template_id, day=body.slot.day, client_id=client.id,
                            kind=BookingKind.delivery, address_id=body.address_id,
                            notes="Vault return: " + ", ".join(v.tag_code for v in items))
+    # Its own booking, so its own single charge, on the same terms as any return.
+    booking.fee_pence = delivery.charge(delivery.config(db), delivery.member_level(client), 0,
+                                        booking.window_type == WindowType.hour)
     for v in items:
         v.status = VaultStatus.retrieval_requested
         v.retrieval_booking_id = booking.id
