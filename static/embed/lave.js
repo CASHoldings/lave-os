@@ -330,8 +330,8 @@
 
   /* Week grid of slots, shared by booking and Vault returns. */
   class SlotPicker {
-    constructor(owner, el, { mode, windowType = "hour", after = null, onPick, allowWindowChoice = true, note = () => "" }) {
-      Object.assign(this, { owner, el, mode, windowType, after, onPick, allowWindowChoice, note });
+    constructor(owner, el, { mode, windowType = "hour", after = null, onPick, allowWindowChoice = true, note = () => "", priced = true }) {
+      Object.assign(this, { owner, el, mode, windowType, after, onPick, allowWindowChoice, note, priced });
       const base = after ? parse(after) : new Date();
       this.weekStart = new Date(base.getFullYear(), base.getMonth(), base.getDate());
       this.selected = null;
@@ -362,7 +362,8 @@
       const canNext = addDays(this.weekStart, 5) <= horizon;
       const sel = this.selected;
       const isSel = (s) => sel && sel.template_id === s.template_id && sel.day === s.day;
-      const price = this.owner.slotLabel(this.windowType);
+      // A return is covered by the booking's single charge, so its cells don't repeat a price (the notes explain).
+      const price = this.priced ? this.owner.slotLabel(this.windowType) : "Available";
       const cell = (s, label) => s
         ? `<button class="cell" data-key="${s.template_id}|${s.day}" aria-pressed="${isSel(s)}" ${s.available ? "" : "disabled"}
              aria-label="${esc(DAY_LONG.format(parse(s.day)) + ", " + range(s.starts_at, s.ends_at) + (s.available ? ", " + price : ", full"))}">${label ?? (s.available ? esc(price) : "Full")}</button>`
@@ -511,6 +512,14 @@
       });
     };
     draw();
+  }
+
+  /* Under the return calendar: one charge covers both legs, so say what (if anything) the return changes. */
+  function returnChargeNote(t, collectedHour, windowType, knowSaver = true) {
+    const saver = t.amounts?.saver || 0, hour = t.amounts?.hour || 0;
+    if (collectedHour || windowType !== "hour" || hour === saver) return "One charge covers both collection and return, so your return adds nothing.";
+    const instead = !knowSaver ? "" : saver ? ` instead of ${money(saver)}` : t.level ? " instead of being included with your membership" : " instead of free";
+    return `A one-hour return makes your single collection and delivery charge ${money(hour)}${instead}, once for both.`;
   }
 
   const DATE_HOURS = (d) => `${DAY_LONG.format(parse(d.day))}, ${hour(d.day + "T" + d.opens)}–${hour(d.day + "T" + d.closes)}`;
@@ -693,10 +702,10 @@
         s.ready ? `<p class="muted">${esc(s.ready.text)}</p>` : "",
         s.returnPref === "split" ? `<p class="muted small">Your 48-hour items come back in this slot. We'll confirm a date for the rest after we've inspected them.</p>` : "",
         !t.level && windowType === "saver" && t.to_free_pence > 0 && !collectedHour ? `<p class="small">Add ${money(t.to_free_pence)} more for free Saver collection and delivery.</p>` : "",
-        collectedHour || windowType === "hour" ? `<p class="muted small">${esc(t.one_charge_note)}</p>` : "",
+        `<p class="muted small">${esc(returnChargeNote(t, collectedHour, windowType))}</p>`,
       ].join("");
       new SlotPicker(this, el, {
-        mode: "lave_collects", after: s.ready?.earliest_return || null, note,
+        mode: "lave_collects", after: s.ready?.earliest_return || null, note, priced: false,
         windowType: s.mode === "lave_collects" ? s.collection.window_type : "saver",
         onPick: (slot) => { s.delivery = slot; this.drawSummary(); },
       });
@@ -894,8 +903,9 @@
       box.innerHTML = `<div id="r-address"></div><div id="r-slots" class="stack"></div><p class="error" hidden></p>
         <div class="row center"><button class="btn primary" id="r-book" disabled>Book return</button></div>`;
       addressBlock(this, box.querySelector("#r-address"), { selectedId: addressId, purpose: "deliver", onChange: (id) => { addressId = id; } });
-      new SlotPicker(this, box.querySelector("#r-slots"), { mode: "lave_collects", after: ready?.earliest_return || null,
-        note: () => (ready ? `<p class="muted">${esc(ready.text)}</p>` : "") + `<p class="muted small">${esc(this.terms.one_charge_note || "")}</p>`,
+      new SlotPicker(this, box.querySelector("#r-slots"), { mode: "lave_collects", after: ready?.earliest_return || null, priced: false,
+        note: (windowType) => (ready ? `<p class="muted">${esc(ready.text)}</p>` : "")
+          + `<p class="muted small">${esc(returnChargeNote(this.terms, first.window_type === "hour" && !first.atelier, windowType, false))}</p>`,
         onPick: (s) => { slot = s; box.querySelector("#r-book").disabled = !s; } });
       box.querySelector("#r-book").addEventListener("click", async () => {
         const err = box.querySelector(".error");
