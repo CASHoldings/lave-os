@@ -152,6 +152,7 @@ def delivery_terms(lave_list: str | None = Cookie(default=None), client: Client 
     longer = delivery.longer_items(db, repo.snapshot(planned))
     return {
         "level": level, "labels": delivery.cell_labels(cfg, level, estimate), "estimate_pence": estimate,
+        "amounts": {"saver": delivery.charge(cfg, level, estimate, False), "hour": delivery.charge(cfg, level, estimate, True)},
         "threshold_pence": cfg["free_saver_threshold_pence"],
         "to_free_pence": max(0, cfg["free_saver_threshold_pence"] - estimate) if not level else 0,
         "longer_items": longer, "longer_note": delivery.LONGER_NOTE if longer else "",

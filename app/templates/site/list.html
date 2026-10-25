@@ -32,8 +32,8 @@
   <div class="list-sum">
     <div><span class="eyebrow">Estimate</span><strong class="list-estimate">{{ summary.estimate_pence|gbp }}</strong>
       {% if summary.lines|selectattr("priced_later")|list %}<span class="muted small">plus pieces quoted after inspection</span>{% endif %}</div>
-    {% if summary.to_free_delivery_pence %}<p class="small">Add {{ summary.to_free_delivery_pence|gbp }} more for free collection and delivery (members always included).</p>
-    {% else %}<p class="small ok">Free collection and delivery.</p>{% endif %}
+    {% if summary.to_free_delivery_pence %}<p class="small">Add {{ summary.to_free_delivery_pence|gbp }} more for free Saver collection and delivery.</p>
+    {% else %}<p class="small ok">Free Saver collection and delivery.</p>{% endif %}
   </div>
   <div class="ctas"><a class="btn dark" href="/book/">Book a collection with this list</a><a class="btn" href="/atelier/prices/">Keep browsing</a></div>
   <form method="post" action="/atelier/list/" class="center"><input type="hidden" name="action" value="clear"><button class="link small">Clear the list</button></form>

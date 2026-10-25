@@ -84,8 +84,8 @@ def atelier() -> dict:
                       _card("Children", "/atelier/clean/children/", WP + "2025/05/LAVE_GIRL_Fabric_Care.avif"),
                       _card("Pets", "/atelier/clean/pets/", WP + "2025/05/LAVE_PETS_Fabric_Care.avif")]},
         "booking": {"eyebrow": "How to book with LAVE", "heading": "Your LAVE journey starts here",
-                    "text": "Choose a one-hour or Saver collection window, or drop off at the atelier. We text you when the driver "
-                            "is close, tag and itemise every piece, and show you the price before we charge.",
+                    "text": "Choose a one-hour or Saver collection window or, as a member, drop off at a LAVE atelier. We text "
+                            "you when the driver is close, tag and itemise every piece, and show you the price before we charge.",
                     "button": "Book a collection", "image": WP + "2024/11/LAVE_Dashboard_her.webp"},
         "refresh": {"eyebrow": "LAVE Refresh", "heading": "Laundry service that fits your life",
                     "text": "Your busy life demands easy care. We refresh everything, from clothing and gym wear to bedding and "

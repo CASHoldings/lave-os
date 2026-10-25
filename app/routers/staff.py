@@ -1277,6 +1277,16 @@ def unbooked_dropoff(body: UnbookedDropOff, staff: StaffUser = Depends(ops), db:
     return ser.order(order, staff_view=True, detail=True)
 
 
+@router.get("/orders/{order_id}/earliest-return")
+def staff_earliest_return(order_id: int, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    o = _order(db, order_id)
+    first = next((b for b in o.bookings if b.kind == BookingKind.collection and b.status != BookingStatus.cancelled), None)
+    if not first:
+        raise HTTPException(409, "This order has no collection.")
+    ready = delivery_svc.earliest_return(db, bookings_svc.collected_by(db, first))
+    return {"earliest_return": ready.isoformat(), "text": bookings_svc.ready_from_text(ready)}
+
+
 @router.post("/orders/{order_id}/return", status_code=201)
 def staff_book_return(order_id: int, body: ReturnRequest, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
     """Book the return for an order (e.g. once longer items are ready). The single charge is recalculated."""

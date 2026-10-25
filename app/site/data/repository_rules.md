@@ -3,7 +3,7 @@
 - 1. Prices match American Dry Cleaning Company's Standard list (captured July 2026). Items American doesn't price: market reference × B8. No discounts.
 - 2. Staples (shirts, tops, trousers, socks, underwear) are sold only in packs of B6 or more — single-type packs or mixed packs. No single staples. Pressing-only is sold singly.
 - 3. SoFresh processes at 50% of its counter price; that is LAVE's cost per item.
-- 4. Non-members: free collection and delivery from £45. Members: collection included.
+- 4. Collection & delivery (rules v1.4): one charge per booking. Non-members: Saver free from £45, else £4.95; one-hour £6.95. Essence: Saver free, one-hour £4.95. Elevate and Éclat: included. Returns from 48 hours after collection.
 - 5. LAVE is not VAT-registered and charges no VAT until it registers (at £90,000 turnover).
 - 6. Quote only, never bundled: bridal and occasion wear, leather, suede, wax and fur, designer and luxury down coats, rugs, traditional garments, evening and beaded dresses, and major alterations (£40+). Quoted after inspection. Premier finish is on request only, not advertised.
 - 7. Memberships: Essence £29, Elevate £59, Éclat £129 a month (Membership tab).

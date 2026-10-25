@@ -12,7 +12,7 @@
 
 <ul class="price-notes" aria-label="How pricing works">
   <li><strong>Packs of {{ rules.pack_minimum }}</strong>Everyday staples (shirts, tops, trousers, socks and underwear) are cleaned in packs of {{ rules.pack_minimum }} or more. Mix them as you like.</li>
-  <li><strong>Collection included</strong>Free collection and delivery on orders from {{ rules.free_delivery_from_pence|gbp }}. Members always included.</li>
+  <li><strong>Collection and delivery</strong>Free Saver collection and delivery on orders from {{ terms.threshold }}, in a 3-hour window. Orders under {{ terms.threshold }}: {{ terms.under }}. Prefer a one-hour window? {{ terms.hour }}. Members: Saver always included. One-hour {{ terms.essence_hour }} for Essence, included for Elevate and Éclat.</li>
   <li><strong>Quoted with care</strong>Specialist pieces show a "from" price. We quote after inspection, and nothing is charged until you approve.</li>
 </ul>
 
@@ -49,6 +49,18 @@
 </section>
 {% endfor %}
 <p class="price-empty" data-price-empty hidden>Nothing matches that search. Try another word, or <a href="/contact/">ask us</a>.</p>
+
+<section class="price-faq" aria-label="Questions about collection and delivery">
+  <h2>Collection and delivery</h2>
+  <details><summary>How quickly will I get my clothes back?</summary>
+    <p>We collect and deliver Monday to Saturday, 6am to 10pm. Most cleaning, wash &amp; fold and pressing comes back from {{ terms.turnaround }} hours after we collect: book a 6–7am collection on Monday and we can return it from 7am on Wednesday. Specialist pieces, alterations, repairs, curtains and rugs take longer; we'll confirm a date once we've seen them. If your return would fall on a Sunday or bank holiday, it moves to the next day we're open.</p></details>
+  <details><summary>Is collection and delivery free?</summary>
+    <p>Yes, in a 3-hour Saver window on orders from {{ terms.threshold }}. Under {{ terms.threshold }} it's {{ terms.under }}. A one-hour window is {{ terms.hour }}. Members always get Saver free; one-hour is {{ terms.essence_hour }} for Essence and included for Elevate and Éclat. One charge covers both collection and return.</p></details>
+  <details><summary>Where do you collect from?</summary>
+    <p>We currently collect and deliver across SW11, Nine Elms and Battersea Power Station. We're expanding across south-west London, so join the waitlist if we're not with you yet.</p></details>
+  <details><summary>Do you work on Sundays?</summary>
+    <p>We don't collect or deliver on Sundays. Members can drop items off at a LAVE atelier when it's open, including Sundays, and we'll treat them as collected on Monday morning.</p></details>
+</section>
 
 <section class="welcome tight">
   <p class="muted small">Prices include cleaning and finishing. LAVE isn't VAT-registered, so no VAT is added.</p>

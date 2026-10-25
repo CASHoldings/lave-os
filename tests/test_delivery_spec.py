@@ -367,3 +367,39 @@ def test_atelier_hours_text():
     from app.services import ateliers
     loc = AtelierLocation(weekly_hours={**{str(d): ["08:00", "20:00"] for d in range(5)}, "6": ["10:00", "16:30"]})
     assert ateliers.hours_text(loc) == "Mon–Fri 8am–8pm, Sun 10am–4:30pm"
+
+
+def test_return_booked_later_keeps_one_charge(api, client_headers, staff_headers):
+    """Arrange later, then book the return from the account (or staff book it): still one charge, 48 hours on."""
+    from tests.test_flow import _address, _slots
+    addr = _address(api, client_headers)
+    coll = next(s for s in _slots(api, window="saver") if s["day"] == "2026-10-06")
+    order = api.post("/api/me/bookings", headers=client_headers,
+                     json={"collection": {"template_id": coll["template_id"], "day": coll["day"]}, "address_id": addr}).json()
+    assert order["fees_pence"] == 495  # non-member, Saver, no list yet
+    too_soon = next(s for s in _slots(api, start="2026-10-07", window="hour") if s["day"] == "2026-10-07")
+    r = api.post(f"/api/me/orders/{order['ref']}/return", headers=client_headers,
+                 json={"slot": {"template_id": too_soon["template_id"], "day": too_soon["day"]}, "address_id": addr})
+    assert r.status_code == 409 and "ready from Thursday 8 October" in r.json()["detail"]
+    hour = next(s for s in _slots(api, start="2026-10-08", window="hour") if s["starts_at"] >= "2026-10-08T10:00:00")
+    r = api.post(f"/api/me/orders/{order['ref']}/return", headers=client_headers,
+                 json={"slot": {"template_id": hour["template_id"], "day": hour["day"]}, "address_id": addr})
+    assert r.status_code == 201 and r.json()["fees_pence"] == 695  # one-hour leg: £6.95 replaces £4.95, once
+    # A second return isn't possible from the account; staff can see when items are ready.
+    assert api.post(f"/api/me/orders/{order['ref']}/return", headers=client_headers,
+                    json={"slot": {"template_id": hour["template_id"], "day": hour["day"]}, "address_id": addr}).status_code == 409
+    ready = api.get(f"/api/staff/orders/{order['id']}/earliest-return", headers=staff_headers).json()
+    assert ready["earliest_return"] == "2026-10-08T10:00:00"
+
+
+def test_staff_book_a_return(api, client_headers, staff_headers):
+    from tests.test_flow import _address, _slots
+    addr = _address(api, client_headers)
+    coll = _slots(api)[0]
+    order = api.post("/api/me/bookings", headers=client_headers,
+                     json={"collection": {"template_id": coll["template_id"], "day": coll["day"]}, "address_id": addr}).json()
+    saver = next(s for s in _slots(api, start="2026-10-08", window="saver") if s["starts_at"] >= "2026-10-08T07:00:00")
+    r = api.post(f"/api/staff/orders/{order['id']}/return", headers=staff_headers,
+                 json={"slot": {"template_id": saver["template_id"], "day": saver["day"]}, "address_id": addr})
+    assert r.status_code == 201, r.text
+    assert [b["kind"] for b in r.json()["bookings"]] == ["collection", "delivery"] and r.json()["fees_pence"] == 695

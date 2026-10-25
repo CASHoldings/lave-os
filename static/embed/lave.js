@@ -60,6 +60,7 @@
   .addr { text-align: left; border: 1px solid var(--line); background: #fff; padding: 14px 16px; min-height: 120px; cursor: pointer; line-height: 1.7; }
   .addr[aria-pressed="true"] { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
   .addr.add { border-style: dashed; color: var(--ink); }
+  .addr[disabled] { cursor: not-allowed; background: var(--panel); color: var(--muted); }
 
   form.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
   form.grid .full { grid-column: 1 / -1; }
@@ -271,6 +272,15 @@
       return data;
     }
 
+    /* What collection & delivery costs this client (labels for slot cells, notes under the pickers). */
+    async loadTerms() {
+      try { this.terms = await this.call("GET", "/api/me/delivery-terms"); }
+      catch (_) { this.terms = { labels: {}, amounts: { saver: 0, hour: 0 } }; }
+      return this.terms;
+    }
+
+    slotLabel(windowType) { return this.terms?.labels?.[windowType] || "Book"; }
+
     $(sel) { return this.root.querySelector(sel); }
     $$(sel) { return [...this.root.querySelectorAll(sel)]; }
 
@@ -320,8 +330,8 @@
 
   /* Week grid of slots, shared by booking and Vault returns. */
   class SlotPicker {
-    constructor(owner, el, { mode, windowType = "hour", after = null, onPick, allowWindowChoice = true }) {
-      Object.assign(this, { owner, el, mode, windowType, after, onPick, allowWindowChoice });
+    constructor(owner, el, { mode, windowType = "hour", after = null, onPick, allowWindowChoice = true, note = () => "" }) {
+      Object.assign(this, { owner, el, mode, windowType, after, onPick, allowWindowChoice, note });
       const base = after ? parse(after) : new Date();
       this.weekStart = new Date(base.getFullYear(), base.getMonth(), base.getDate());
       this.selected = null;
@@ -352,9 +362,10 @@
       const canNext = addDays(this.weekStart, 5) <= horizon;
       const sel = this.selected;
       const isSel = (s) => sel && sel.template_id === s.template_id && sel.day === s.day;
+      const price = this.owner.slotLabel(this.windowType);
       const cell = (s, label) => s
         ? `<button class="cell" data-key="${s.template_id}|${s.day}" aria-pressed="${isSel(s)}" ${s.available ? "" : "disabled"}
-             aria-label="${esc(DAY_LONG.format(parse(s.day)) + ", " + range(s.starts_at, s.ends_at) + (s.available ? ", " + (s.fee_pence ? money(s.fee_pence) : "free") : ", full"))}">${label ?? (s.available ? (s.fee_pence ? money(s.fee_pence) : "Free") : "Full")}</button>`
+             aria-label="${esc(DAY_LONG.format(parse(s.day)) + ", " + range(s.starts_at, s.ends_at) + (s.available ? ", " + price : ", full"))}">${label ?? (s.available ? esc(price) : "Full")}</button>`
         : `<button class="cell" disabled aria-label="Not available">–</button>`;
 
       const windowTabs = this.allowWindowChoice && this.mode === "lave_collects" ? `
@@ -364,7 +375,7 @@
         </div>
         <p class="center muted">${this.windowType === "hour"
           ? "Perfect if you need us within a one-hour window. On the day, we'll text you when the driver is close."
-          : "A wider three-hour window at a lower price. We'll text you when the driver is close."}</p>` : "";
+          : "A wider three-hour window, free from £45. We'll text you when the driver is close."}</p>` : "";
 
       const visibleDays = days.filter((d) => d <= horizon);
       if (!this.mobileDay || !visibleDays.some((d) => isoDay(d) === this.mobileDay)) {
@@ -392,8 +403,9 @@
           </table>
         </div>
         <div class="day-pills">${visibleDays.map((d) => `<button class="pill" data-day="${isoDay(d)}" aria-pressed="${isoDay(d) === this.mobileDay}">${DAY.format(d).replace(" ", "<br>")}</button>`).join("")}</div>
-        <div class="list-slots">${mobileSlots.length ? mobileSlots.map((s) => cell(s, `<span>${range(s.starts_at, s.ends_at)}</span><span>${s.available ? (s.fee_pence ? money(s.fee_pence) : "Free") : "Full"}</span>`)).join("") : `<p class="muted center">No times left on this day.</p>`}</div>`
+        <div class="list-slots">${mobileSlots.length ? mobileSlots.map((s) => cell(s, `<span>${range(s.starts_at, s.ends_at)}</span><span>${s.available ? esc(price) : "Full"}</span>`)).join("") : `<p class="muted center">No times left on this day.</p>`}</div>`
         : `<p class="notice center">No times are open this week. Try the next week.</p>`}
+        ${this.note(this.windowType) ? `<div class="stack center">${this.note(this.windowType)}</div>` : ""}
       `;
 
       this.el.querySelectorAll("[data-window]").forEach((b) => b.addEventListener("click", () => {
@@ -417,20 +429,23 @@
     ["delicates", "Delicates"], ["vault", "Vault storage"], ["repairs", "Repairs"],
   ];
 
-  /* Address chooser with inline add form. */
+  /* Address chooser with inline add form. Only addresses in LAVE's area can be chosen; others offer the waitlist. */
+  const inZone = (a) => a && a.in_zone !== false;
+
   function addressBlock(owner, el, { selectedId, onChange, purpose = "collect" }) {
     const verb = purpose === "deliver" ? "deliver" : "collect";
-    let open = false, adding = false;
+    let open = false, adding = false, waitlist = null;
     const draw = () => {
       const list = owner.client.addresses;
-      const chosen = list.find((a) => a.id === selectedId);
+      const chosen = list.find((a) => a.id === selectedId && inZone(a));
+      if (waitlist) return drawWaitlist();
       el.innerHTML = `
         ${chosen ? `<p class="chosen"><span class="check">${ICON.check}</span> The address where we'll ${verb} your items</p>
           <p class="addr-line">${esc(chosen.one_line)}</p>
           <div class="row center"><button class="btn link" data-toggle aria-expanded="${open}">Change address ▾</button></div>`
         : `<p class="center muted">Add the address where we should ${verb} your items.</p>`}
         ${(open || !chosen) && !adding ? `<div class="addr-grid">
-          ${list.map((a) => `<button class="addr" data-addr="${a.id}" aria-pressed="${a.id === selectedId}"><strong>${esc(a.label)}</strong><br>${esc(a.line1)}${a.line2 ? ", " + esc(a.line2) : ""}<br>${esc(a.city)}, ${esc(a.postcode)}</button>`).join("")}
+          ${list.map((a) => `<button class="addr" data-addr="${a.id}" aria-pressed="${a.id === selectedId && inZone(a)}" ${inZone(a) ? "" : "disabled"}><strong>${esc(a.label)}</strong><br>${esc(a.line1)}${a.line2 ? ", " + esc(a.line2) : ""}<br>${esc(a.city)}, ${esc(a.postcode)}${inZone(a) ? "" : `<br><span class="small">Not yet in our area</span>`}</button>`).join("")}
           <button class="addr add" data-add>+ Add an address</button></div>` : ""}
         ${adding ? `<form class="grid" novalidate>
           <label>Label<input name="label" value="Home" maxlength="60"></label>
@@ -457,18 +472,59 @@
         try {
           const a = await owner.call("POST", "/api/me/addresses", body);
           owner.client = await owner.call("GET", "/api/me");
-          selectedId = a.id; adding = false; open = false; draw(); onChange(selectedId);
+          adding = false; open = false;
+          if (!inZone(a)) {
+            const check = await owner.call("GET", "/api/area/check?postcode=" + encodeURIComponent(a.postcode), null, false);
+            waitlist = { postcode: a.postcode, message: check.message, services: [] };
+            return draw();
+          }
+          selectedId = a.id; draw(); onChange(selectedId);
         } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+      });
+    };
+    const drawWaitlist = () => {
+      const c = owner.client, w = waitlist;
+      el.innerHTML = w.done
+        ? `<p class="notice center">${esc(w.done)}</p><div class="row center"><button class="btn link" data-back>Choose another address</button></div>`
+        : `<p class="notice">${esc(w.message)}</p>
+          <form class="grid" novalidate>
+            <label>Name<input name="name" required value="${esc(c.full_name || "")}" autocomplete="name"></label>
+            <label>Email<input name="email" type="email" required value="${esc(c.email || "")}" autocomplete="email"></label>
+            <label>Phone<input name="phone" value="${esc(c.phone || "")}" autocomplete="tel"></label>
+            <label>Postcode<input name="postcode" required value="${esc(w.postcode)}" autocomplete="postal-code"></label>
+            <div class="full stack"><span class="small muted">What would you like us to care for?</span>
+              <div class="chips">${BAG.map(([k, l]) => `<button type="button" class="chip" data-svc="${l}" aria-pressed="${w.services.includes(l)}">${l}</button>`).join("")}</div></div>
+            <div class="full row"><button class="btn primary" type="submit">Join the waitlist</button><button class="btn ghost" type="button" data-back>Choose another address</button></div>
+            <p class="full error" hidden></p>
+          </form>`;
+      el.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => { waitlist = null; draw(); }));
+      el.querySelectorAll("[data-svc]").forEach((b) => b.addEventListener("click", () => {
+        const v = b.dataset.svc;
+        w.services = w.services.includes(v) ? w.services.filter((x) => x !== v) : [...w.services, v];
+        b.setAttribute("aria-pressed", String(w.services.includes(v)));
+      }));
+      el.querySelector("form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const body = { ...Object.fromEntries(new FormData(e.target).entries()), services: w.services };
+        try { w.done = (await owner.call("POST", "/api/area/waitlist", body, false)).message; drawWaitlist(); }
+        catch (ex) { const err = e.target.querySelector(".error"); err.textContent = ex.message; err.hidden = false; }
       });
     };
     draw();
   }
 
+  const DATE_HOURS = (d) => `${DAY_LONG.format(parse(d.day))}, ${hour(d.day + "T" + d.opens)}–${hour(d.day + "T" + d.closes)}`;
+
   class LaveBooking extends LaveBase {
     async start() {
-      const def = this.client.addresses.find((a) => a.is_default) || this.client.addresses[0];
-      this.state = { mode: this.getAttribute("mode") === "drop_off" ? "drop_off" : "lave_collects", addressId: def?.id ?? null, collection: null, returnMode: "lave_collects",
-                     delivery: null, arrangeLater: false, bag: [], notes: "", pieces: [] };
+      await this.loadTerms();
+      this.ateliers = this.terms.dropoff ? await this.call("GET", "/api/me/ateliers?days=" + this.config.booking_horizon_days).catch(() => []) : [];
+      const usable = this.client.addresses.filter(inZone);
+      const def = usable.find((a) => a.is_default) || usable[0];
+      const wantsDropoff = this.getAttribute("mode") === "drop_off" && this.ateliers.length;
+      this.state = { mode: wantsDropoff ? "atelier" : "lave_collects", addressId: def?.id ?? null, collection: null,
+                     dropoff: null, ready: null, delivery: null, arrangeLater: false,
+                     returnPref: this.terms.longer_items?.length ? "together" : "", bag: [], notes: "", pieces: [] };
       const wanted = (this.getAttribute("items") || "").split(",").map(Number).filter(Boolean);
       if (wanted.length) {
         try {
@@ -479,43 +535,51 @@
       this.renderFlow();
     }
 
+    get collected() { return this.state.mode === "atelier" ? !!this.state.dropoff?.day : !!this.state.collection; }
+
     renderFlow() {
-      const s = this.state;
+      const s = this.state, t = this.terms;
       const needsCard = !!this.config.stripe_publishable_key && !this.client.has_card_on_file;
+      const atelier = s.mode === "atelier";
       this.view.innerHTML = `
         <div class="card stack">
-          <div class="tabs" role="tablist" aria-label="How should we receive your items?">
-            <button class="tab" role="tab" data-mode="lave_collects" aria-selected="${s.mode === "lave_collects"}">LAVE collects</button>
-            <button class="tab" role="tab" data-mode="drop_off" aria-selected="${s.mode === "drop_off"}">You drop off</button>
-          </div>
-          <div id="address" ${s.mode === "lave_collects" ? "" : "hidden"}></div>
-          <p class="center muted" ${s.mode === "drop_off" ? "" : "hidden"}>Choose when you'll bring your items to the atelier.</p>
+          ${this.ateliers.length ? `<div class="tabs" role="tablist" aria-label="How should we receive your items?">
+            <button class="tab" role="tab" data-mode="lave_collects" aria-selected="${!atelier}">LAVE collects</button>
+            <button class="tab" role="tab" data-mode="atelier" aria-selected="${atelier}">Drop off at a LAVE atelier</button>
+          </div>` : ""}
+          <div id="address" ${atelier ? "hidden" : ""}></div>
+          <p class="center muted" ${atelier ? "" : "hidden"}>Leave your items with us at a time that suits you. Choose a location and day, and we'll deliver everything back to you.</p>
         </div>
         <section class="stack">
-          <div class="section-head"><p class="eyebrow">Collection</p><p>${s.mode === "lave_collects" ? "Select a convenient time for LAVE to pick up your items." : "Select when you'll drop off."}</p></div>
+          <div class="section-head"><p class="eyebrow">${atelier ? "Drop-off" : "Collection"}</p><p>${atelier ? "Choose an atelier and a day." : "Select a convenient time for LAVE to pick up your items."}</p></div>
           <div id="collect" class="stack"></div>
         </section>
-        <section class="stack" id="return-section" ${s.collection ? "" : "hidden"}>
-          <div class="section-head"><p class="eyebrow">Return</p><p>When should we bring everything back? We need at least a day to care for your pieces.</p></div>
-          <div class="tabs" role="tablist">
-            <button class="tab" role="tab" data-return="lave_collects" aria-selected="${!s.arrangeLater && s.returnMode === "lave_collects"}">LAVE delivers</button>
-            <button class="tab" role="tab" data-return="drop_off" aria-selected="${!s.arrangeLater && s.returnMode === "drop_off"}">You collect</button>
+        <section class="stack" id="return-section" ${this.collected ? "" : "hidden"}>
+          <div class="section-head"><p class="eyebrow">Return</p><p>When should we bring everything back?</p></div>
+          ${t.longer_items?.length ? `<p class="notice">${esc(t.longer_note)}</p>
+          <div class="chips">
+            <button class="chip" data-pref="together" aria-pressed="${s.returnPref === "together"}">Return together</button>
+            <button class="chip" data-pref="split" aria-pressed="${s.returnPref === "split"}">Split return</button>
+          </div>` : ""}
+          <div id="return-address" ${atelier ? "" : "hidden"}></div>
+          <div class="tabs" role="tablist" id="return-tabs">
+            <button class="tab" role="tab" data-return="lave_collects" aria-selected="${!s.arrangeLater}">LAVE delivers</button>
             <button class="tab" role="tab" data-return="later" aria-selected="${s.arrangeLater}">Arrange later</button>
           </div>
           <div id="deliver" class="stack"></div>
         </section>
-        <section class="stack" id="details" ${s.collection ? "" : "hidden"}>
+        <section class="stack" id="details" ${this.collected ? "" : "hidden"}>
           <div class="section-head"><p class="eyebrow">Your items</p><p>What are you sending? This helps us prepare. We itemise and price everything when it arrives.</p></div>
           ${s.pieces.length ? `<div class="pieces" id="pieces"></div>` : ""}
           <div class="chips">${BAG.map(([k, l]) => `<button class="chip" data-bag="${k}" aria-pressed="${s.bag.includes(k)}">${l}</button>`).join("")}</div>
           <label style="max-width:640px;margin:0 auto;width:100%">Notes for the atelier
             <textarea id="notes" maxlength="2000" placeholder="Stains, delicate trims, a date you need something back by…">${esc(s.notes)}</textarea></label>
         </section>
-        <section class="stack" id="pay" ${s.collection && needsCard ? "" : "hidden"}>
+        <section class="stack" id="pay" ${this.collected && needsCard ? "" : "hidden"}>
           <div class="section-head"><p class="eyebrow">Payment</p><p>Add a card. We only charge once we've counted and priced your items, and we'll show you the total first.</p></div>
           <div id="card-mount"></div>
         </section>
-        <section class="stack" id="confirm" ${s.collection ? "" : "hidden"}>
+        <section class="stack" id="confirm" ${this.collected ? "" : "hidden"}>
           <dl class="summary" id="summary"></dl>
           <p class="error" id="book-error" hidden></p>
           <div class="row center"><button class="btn primary" id="book">Confirm booking</button></div>
@@ -523,15 +587,19 @@
 
       this.on("[data-mode]", "click", (_, b) => {
         if (s.mode === b.dataset.mode) return;
-        Object.assign(s, { mode: b.dataset.mode, collection: null, delivery: null });
+        Object.assign(s, { mode: b.dataset.mode, collection: null, dropoff: null, ready: null, delivery: null });
         this.renderFlow();
       });
       this.on("[data-return]", "click", (_, b) => {
-        const v = b.dataset.return;
-        s.arrangeLater = v === "later";
-        if (!s.arrangeLater) s.returnMode = v;
+        s.arrangeLater = b.dataset.return === "later";
         s.delivery = null;
         this.$$("[data-return]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+        this.drawDelivery();
+        this.drawSummary();
+      });
+      this.on("[data-pref]", "click", (_, b) => {
+        s.returnPref = b.dataset.pref; s.delivery = null;
+        this.$$("[data-pref]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
         this.drawDelivery();
         this.drawSummary();
       });
@@ -544,18 +612,58 @@
       if (s.pieces.length) this.drawPieces();
       this.$("#book").addEventListener("click", () => this.submit());
 
-      if (s.mode === "lave_collects") {
-        addressBlock(this, this.$("#address"), { selectedId: s.addressId, onChange: (id) => { s.addressId = id; this.drawSummary(); } });
+      const onAddress = (id) => { s.addressId = id; this.drawSummary(); };
+      if (atelier) {
+        addressBlock(this, this.$("#return-address"), { selectedId: s.addressId, purpose: "deliver", onChange: onAddress });
+        this.drawDropoff();
+      } else {
+        addressBlock(this, this.$("#address"), { selectedId: s.addressId, onChange: onAddress });
+        this.collectPicker = new SlotPicker(this, this.$("#collect"), {
+          mode: "lave_collects", onPick: (slot) => { s.collection = slot; this.collectionChanged(); },
+        });
       }
-      this.collectPicker = new SlotPicker(this, this.$("#collect"), {
-        mode: s.mode, onPick: (slot) => {
-          s.collection = slot; s.delivery = null;
-          ["#return-section", "#details", "#confirm"].forEach((id) => { this.$(id).hidden = !slot; });
-          this.$("#pay").hidden = !(slot && needsCard);
-          if (slot) { this.drawDelivery(); this.ensureCard(); this.drawSummary(); }
-        },
-      });
-      if (s.collection) { this.drawDelivery(); this.drawSummary(); }
+      if (this.collected) { this.drawDelivery(); this.drawSummary(); }
+    }
+
+    /* Atelier drop-off: a location card, then a day it's open, then how many bags. */
+    drawDropoff() {
+      const s = this.state, el = this.$("#collect");
+      const loc = this.ateliers.find((a) => a.id === s.dropoff?.atelier_id);
+      const date = loc?.dates.find((d) => d.day === s.dropoff?.day);
+      el.innerHTML = `
+        <div class="addr-grid">${this.ateliers.map((a) => `<button class="addr" data-atelier="${a.id}" aria-pressed="${a.id === loc?.id}">
+          <strong>${esc(a.name)}</strong><br>${esc(a.address)}${a.postcode ? ", " + esc(a.postcode) : ""}<br><span class="muted small">Open ${esc(a.hours_text)}</span></button>`).join("")}</div>
+        ${loc ? `<div class="day-pills" style="display:flex;flex-wrap:wrap;justify-content:center">${loc.dates.map((d) => `<button class="pill" data-dday="${d.day}" aria-pressed="${d.day === date?.day}" ${d.full ? "disabled" : ""}>${DAY.format(parse(d.day)).replace(" ", "<br>")}${d.full ? "<br>Full" : ""}</button>`).join("")}</div>` : ""}
+        ${date ? `<p class="notice">${esc(loc.name)} · ${esc(loc.address)}${loc.postcode ? ", " + esc(loc.postcode) : ""} · Open ${esc(DATE_HOURS(date))}${loc.access_instructions ? " · " + esc(loc.access_instructions) : ""}${loc.map_link ? ` · <a href="${esc(loc.map_link)}" target="_blank" rel="noopener">Map</a>` : ""}</p>
+          <label style="max-width:240px;margin:0 auto;width:100%">Bags<select id="bags">${[...Array(10)].map((_, i) => `<option ${i + 1 === (s.dropoff.bags || 1) ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label>
+          <p class="center muted small">We'll give each bag its own label code when you confirm.</p>` : ""}`;
+      el.querySelectorAll("[data-atelier]").forEach((b) => b.addEventListener("click", () => {
+        s.dropoff = { atelier_id: Number(b.dataset.atelier), day: null, bags: s.dropoff?.bags || 1 };
+        s.ready = null; s.delivery = null;
+        this.drawDropoff(); this.showLater();
+      }));
+      el.querySelectorAll("[data-dday]").forEach((b) => b.addEventListener("click", () => {
+        s.dropoff = { ...s.dropoff, day: b.dataset.dday };
+        this.drawDropoff(); this.collectionChanged();
+      }));
+      el.querySelector("#bags")?.addEventListener("change", (e) => { s.dropoff.bags = Number(e.target.value); this.drawSummary(); });
+    }
+
+    async collectionChanged() {
+      const s = this.state;
+      s.delivery = null; s.ready = null;
+      this.showLater();
+      if (!this.collected) return;
+      const q = s.mode === "atelier" ? `atelier_id=${s.dropoff.atelier_id}&day=${s.dropoff.day}` : `collection_end=${encodeURIComponent(s.collection.ends_at)}`;
+      try { s.ready = await this.call("GET", "/api/me/earliest-return?" + q); }
+      catch (_) { s.ready = null; }
+      this.drawDelivery(); this.ensureCard(); this.drawSummary();
+    }
+
+    showLater() {
+      const on = this.collected, needsCard = !!this.config.stripe_publishable_key && !this.client.has_card_on_file;
+      ["#return-section", "#details", "#confirm"].forEach((id) => { this.$(id).hidden = !on; });
+      this.$("#pay").hidden = !(on && needsCard);
     }
 
     drawPieces() {
@@ -574,13 +682,22 @@
     }
 
     drawDelivery() {
-      const s = this.state, el = this.$("#deliver");
-      if (s.arrangeLater) {
-        el.innerHTML = `<p class="center muted">Book a return from your account once your order is ready.</p>`;
-        return;
-      }
+      const s = this.state, t = this.terms, el = this.$("#deliver");
+      if (!el || !this.collected) return;
+      const together = s.returnPref === "together";
+      this.$("#return-tabs").hidden = together;
+      if (together) { el.innerHTML = `<p class="center muted">We'll bring everything back together once it's all ready, and confirm the date after we've inspected your items.</p>`; return; }
+      if (s.arrangeLater) { el.innerHTML = `<p class="center muted">Book a return from your account once your order is ready.</p>`; return; }
+      const collectedHour = s.mode === "lave_collects" && s.collection?.window_type === "hour";
+      const note = (windowType) => [
+        s.ready ? `<p class="muted">${esc(s.ready.text)}</p>` : "",
+        s.returnPref === "split" ? `<p class="muted small">Your 48-hour items come back in this slot. We'll confirm a date for the rest after we've inspected them.</p>` : "",
+        !t.level && windowType === "saver" && t.to_free_pence > 0 && !collectedHour ? `<p class="small">Add ${money(t.to_free_pence)} more for free Saver collection and delivery.</p>` : "",
+        collectedHour || windowType === "hour" ? `<p class="muted small">${esc(t.one_charge_note)}</p>` : "",
+      ].join("");
       new SlotPicker(this, el, {
-        mode: s.returnMode, after: addHours(s.collection.ends_at, 24),
+        mode: "lave_collects", after: s.ready?.earliest_return || null, note,
+        windowType: s.mode === "lave_collects" ? s.collection.window_type : "saver",
         onPick: (slot) => { s.delivery = slot; this.drawSummary(); },
       });
     }
@@ -594,15 +711,26 @@
       }
     }
 
+    chargeText() {
+      const s = this.state, t = this.terms;
+      const oneHour = (s.mode === "lave_collects" && s.collection?.window_type === "hour") || s.delivery?.window_type === "hour";
+      const fee = t.amounts?.[oneHour ? "hour" : "saver"] || 0;
+      return fee ? money(fee) : t.level ? "Included with your membership" : "Free";
+    }
+
     drawSummary() {
       const s = this.state, el = this.$("#summary");
-      if (!el || !s.collection) return;
-      const addr = this.client.addresses.find((a) => a.id === s.addressId);
-      const fees = (s.collection?.fee_pence || 0) + (s.delivery?.fee_pence || 0);
-      el.innerHTML = `
-        <dt>Collection</dt><dd>${esc(DAY_LONG.format(parse(s.collection.day)))}, ${range(s.collection.starts_at, s.collection.ends_at)}<br><span class="muted small">${s.mode === "lave_collects" ? esc(addr?.one_line || "Choose an address above") : "Drop off at the atelier"}</span></dd>
-        <dt>Return</dt><dd>${s.arrangeLater ? "Arrange later" : s.delivery ? `${esc(DAY_LONG.format(parse(s.delivery.day)))}, ${range(s.delivery.starts_at, s.delivery.ends_at)}<br><span class="muted small">${s.returnMode === "lave_collects" ? "Delivered to the same address" : "Collect from the atelier"}</span>` : `<span class="muted">Choose a time above</span>`}</dd>
-        <dt>Slot fees</dt><dd>${fees ? money(fees) : "None"}</dd>
+      if (!el || !this.collected) return;
+      const addr = this.client.addresses.find((a) => a.id === s.addressId && inZone(a));
+      const loc = this.ateliers.find((a) => a.id === s.dropoff?.atelier_id);
+      const date = loc?.dates.find((d) => d.day === s.dropoff?.day);
+      const together = s.returnPref === "together";
+      el.innerHTML = s.mode === "atelier"
+        ? `<dt>Drop-off</dt><dd>${esc(loc.name)}<br><span class="muted small">${esc(DATE_HOURS(date))} · ${s.dropoff.bags} bag${s.dropoff.bags > 1 ? "s" : ""}</span></dd>`
+        : `<dt>Collection</dt><dd>${esc(DAY_LONG.format(parse(s.collection.day)))}, ${range(s.collection.starts_at, s.collection.ends_at)}<br><span class="muted small">${esc(addr?.one_line || "Choose an address above")}</span></dd>`;
+      el.innerHTML += `
+        <dt>Return</dt><dd>${together ? "Together, once everything is ready" : s.arrangeLater ? "Arrange later" : s.delivery ? `${esc(DAY_LONG.format(parse(s.delivery.day)))}, ${range(s.delivery.starts_at, s.delivery.ends_at)}<br><span class="muted small">${esc(s.mode === "atelier" ? (addr?.one_line || "Choose an address above") : "Delivered to the same address")}</span>` : `<span class="muted">Choose a time above</span>`}</dd>
+        <dt>Collection and delivery</dt><dd>${esc(this.chargeText())}</dd>
         ${this.client.membership?.status === "active" ? `<dt>Membership</dt><dd>${esc(this.client.membership.plan_name)}</dd>` : ""}`;
     }
 
@@ -610,18 +738,22 @@
       const s = this.state, err = this.$("#book-error"), btn = this.$("#book");
       err.hidden = true;
       const fail = (m) => { err.textContent = m; err.hidden = false; };
+      const together = s.returnPref === "together";
+      const withReturn = !together && !s.arrangeLater;
       if (s.mode === "lave_collects" && !s.addressId) return fail("Add the address where we should collect your items.");
-      if (!s.arrangeLater && !s.delivery) return fail("Choose a return time, or pick “Arrange later”.");
-      const needsReturnAddress = !s.arrangeLater && s.returnMode === "lave_collects" && !s.addressId;
-      if (needsReturnAddress) return fail("Add the address for your delivery.");
+      if (s.mode === "atelier" && !s.dropoff?.day) return fail("Choose an atelier and a day to drop off.");
+      if (withReturn && !s.delivery) return fail("Choose a return time, or pick “Arrange later”.");
+      if (withReturn && !s.addressId) return fail("Add the address for your delivery.");
 
       btn.disabled = true; btn.textContent = "Booking…";
       try {
         if (this.card && !this.client.has_card_on_file) await this.card.confirm();
         const order = await this.call("POST", "/api/me/bookings", {
-          collection: { template_id: s.collection.template_id, day: s.collection.day },
-          delivery: s.arrangeLater ? null : { template_id: s.delivery.template_id, day: s.delivery.day },
-          address_id: s.addressId, requested_services: s.bag, notes: s.notes, wardrobe_item_ids: s.pieces.map((p) => p.id),
+          collection: s.mode === "lave_collects" ? { template_id: s.collection.template_id, day: s.collection.day } : null,
+          dropoff: s.mode === "atelier" ? { atelier_id: s.dropoff.atelier_id, day: s.dropoff.day, bags: s.dropoff.bags || 1 } : null,
+          delivery: withReturn ? { template_id: s.delivery.template_id, day: s.delivery.day } : null,
+          address_id: s.addressId, return_preference: s.returnPref, requested_services: s.bag, notes: s.notes,
+          wardrobe_item_ids: s.pieces.map((p) => p.id),
         });
         this.card?.unmount();
         this.card = null;
@@ -629,23 +761,28 @@
       } catch (e) {
         btn.disabled = false; btn.textContent = "Confirm booking";
         fail(e.message);
-        if (e.status === 409) this.collectPicker.load();
+        if (e.status === 409 && this.collectPicker) this.collectPicker.load();
       }
     }
 
     renderDone(order) {
       const coll = order.bookings.find((b) => b.kind === "collection");
       const del = order.bookings.find((b) => b.kind === "delivery");
+      const ready = this.state.ready;
       this.view.innerHTML = `<div class="card success">
         <span class="check" style="width:34px;height:34px">${ICON.check}</span>
         <p class="eyebrow">Booking confirmed</p>
         <p class="ref">${esc(order.ref)}</p>
         <dl class="summary">
-          <dt>Collection</dt><dd>${esc(when(coll))}</dd>
-          <dt>Return</dt><dd>${del ? esc(when(del)) : "To arrange from your account"}</dd>
+          ${coll.atelier ? `<dt>Drop-off</dt><dd>${esc(coll.atelier.name)}<br><span class="muted small">${esc(when(coll))}</span></dd>
+            <dt>Bag labels</dt><dd>${coll.bag_codes.map(esc).join(", ")}</dd>`
+            : `<dt>Collection</dt><dd>${esc(when(coll))}</dd>`}
+          <dt>Return</dt><dd>${del ? esc(when(del)) : order.return_preference === "together" ? "Together, once everything is ready" : "To arrange from your account"}</dd>
+          <dt>Collection and delivery</dt><dd>${order.fees_pence ? money(order.fees_pence) : this.terms.level ? "Included with your membership" : "Free"}</dd>
         </dl>
-        <p class="muted">We'll text you on the day when the driver is close. You can follow every item from your account.</p>
-        <div class="row center"><a class="btn primary" href="${esc(this.accountUrl)}">View my orders</a><button class="btn" id="again">Book another collection</button></div>
+        <p class="muted">${coll.atelier ? `Label each bag with its code. ${ready ? esc(ready.text.replace(" Choose any time from then.", "")) : ""}`
+          : "We'll text you on the day when the driver is close. You can follow every item from your account."}</p>
+        <div class="row center"><a class="btn primary" href="${esc(this.accountUrl)}">View my orders</a><button class="btn" id="again">${coll.atelier ? "Book another drop-off" : "Book another collection"}</button></div>
       </div>`;
       this.$("#again").addEventListener("click", () => this.start());
     }
@@ -726,14 +863,49 @@
           <tbody>${o.items.map((i) => `<tr><td class="tag">${esc(i.tag_code)}</td><td>${esc([i.colour, i.brand, i.description].filter(Boolean).join(" "))}${i.condition_notes ? `<br><span class="muted small">${esc(i.condition_notes)}</span>` : ""}</td>
             <td>${esc(i.service?.name || "")}</td><td>${i.status === "in_vault" ? "In the Vault" : esc(i.status.replace(/_/g, " "))}</td><td class="num">${money(i.price_pence)}</td></tr>`).join("")}</tbody>
           <tfoot>
-            ${o.fees_pence ? `<tr><td colspan="4">Slot fees</td><td class="num">${money(o.fees_pence)}</td></tr>` : ""}
+            ${o.fees_pence ? `<tr><td colspan="4">Collection and delivery</td><td class="num">${money(o.fees_pence)}</td></tr>` : ""}
             ${o.discount_pence ? `<tr><td colspan="4">Discount</td><td class="num">−${money(o.discount_pence)}</td></tr>` : ""}
             <tr><td colspan="4"><strong>Total</strong> <span class="muted small">${o.payment_status === "paid" ? "Paid" : o.payment_status === "waived" ? "No charge" : "Charged to your card on file once confirmed"}</span></td><td class="num"><strong>${money(o.total_pence)}</strong></td></tr>
           </tfoot></table></div>`
         : `<p class="notice">We'll list every item here, with its tag and price, once we've inspected your order.</p>`}
-        <div class="stack"><p class="eyebrow">Bookings</p>${o.bookings.map((b) => `<p>${b.kind === "collection" ? "Collection" : "Return"}: ${esc(when(b))} <span class="status ${b.status === "completed" ? "done" : b.status === "cancelled" ? "warn" : ""}">${esc(b.status)}</span></p>`).join("")}</div>
+        <div class="stack"><p class="eyebrow">Bookings</p>${o.bookings.map((b) => `<p>${b.atelier ? `Drop-off at ${esc(b.atelier.name)}` : b.kind === "collection" ? "Collection" : "Return"}: ${esc(when(b))} <span class="status ${b.status === "completed" ? "done" : b.status === "cancelled" ? "warn" : ""}">${esc(b.status)}</span>${b.bag_codes?.length ? `<br><span class="muted small">Bag labels: ${b.bag_codes.map(esc).join(", ")}</span>` : ""}</p>`).join("")}
+          ${this.canBookReturn(o) ? `<div class="row"><button class="btn" id="book-return">Book your return</button></div><div id="return-box" class="stack" hidden></div>` : ""}</div>
         <div class="stack"><p class="eyebrow">History</p><ul class="timeline">${o.timeline.slice().reverse().map((e) => `<li><span class="muted small">${DAY.format(parse(e.at))}, ${hour(e.at)}</span><span>${esc(e.label)}${e.note ? ` <span class="muted">· ${esc(e.note)}</span>` : ""}</span></li>`).join("")}</ul></div>`;
       this.$("#back").addEventListener("click", () => this.show());
+      this.$("#book-return")?.addEventListener("click", () => this.bookReturn(o));
+    }
+
+    canBookReturn(o) {
+      const open = (b) => b.status === "scheduled" || b.status === "en_route";
+      return !["delivered", "cancelled", "out_for_delivery"].includes(o.status)
+        && !o.bookings.some((b) => b.kind === "delivery" && open(b)) && o.bookings.some((b) => b.kind === "collection" && b.status !== "cancelled");
+    }
+
+    /* A return left to arrange later: address, then a slot from when the items are ready. */
+    async bookReturn(o) {
+      const box = this.$("#return-box");
+      box.hidden = false;
+      this.$("#book-return").hidden = true;
+      await this.loadTerms();
+      const first = o.bookings.find((b) => b.kind === "collection" && b.status !== "cancelled");
+      const q = first.atelier ? `atelier_id=${first.atelier.id}&day=${first.starts_at.slice(0, 10)}` : `collection_end=${encodeURIComponent(first.ends_at)}`;
+      const ready = await this.call("GET", "/api/me/earliest-return?" + q).catch(() => null);
+      let addressId = (this.client.addresses.filter(inZone).find((a) => a.is_default) || this.client.addresses.filter(inZone)[0])?.id ?? null, slot = null;
+      box.innerHTML = `<div id="r-address"></div><div id="r-slots" class="stack"></div><p class="error" hidden></p>
+        <div class="row center"><button class="btn primary" id="r-book" disabled>Book return</button></div>`;
+      addressBlock(this, box.querySelector("#r-address"), { selectedId: addressId, purpose: "deliver", onChange: (id) => { addressId = id; } });
+      new SlotPicker(this, box.querySelector("#r-slots"), { mode: "lave_collects", after: ready?.earliest_return || null,
+        note: () => (ready ? `<p class="muted">${esc(ready.text)}</p>` : "") + `<p class="muted small">${esc(this.terms.one_charge_note || "")}</p>`,
+        onPick: (s) => { slot = s; box.querySelector("#r-book").disabled = !s; } });
+      box.querySelector("#r-book").addEventListener("click", async () => {
+        const err = box.querySelector(".error");
+        err.hidden = true;
+        if (!addressId) { err.textContent = "Add the address for your delivery."; err.hidden = false; return; }
+        try {
+          await this.call("POST", `/api/me/orders/${encodeURIComponent(o.ref)}/return`, { slot: { template_id: slot.template_id, day: slot.day }, address_id: addressId });
+          this.orderDetail(this.$("#panel"), o.ref);
+        } catch (e) { err.textContent = e.message; err.hidden = false; }
+      });
     }
 
     async tab_bookings(panel) {
@@ -744,9 +916,9 @@
       }
       panel.innerHTML = `<div class="orders">${list.map((b) => `
         <div class="order-row" style="cursor:default">
-          <span><strong>${b.kind === "collection" ? "Collection" : "Return"}</strong><br><span class="muted small">${esc(b.order_ref || b.ref)}</span></span>
+          <span><strong>${b.atelier ? "Drop-off" : b.kind === "collection" ? "Collection" : "Return"}</strong><br><span class="muted small">${esc(b.order_ref || b.ref)}</span></span>
           <span class="hide-sm">${esc(when(b))}</span>
-          <span class="hide-sm muted small">${b.address ? esc(b.address.one_line) : "At the atelier"}</span>
+          <span class="hide-sm muted small">${b.atelier ? esc(b.atelier.name) + (b.bag_codes?.length ? "<br>Bags: " + b.bag_codes.map(esc).join(", ") : "") : b.address ? esc(b.address.one_line) : "At the atelier"}</span>
           <span class="row" data-cancel-wrap="${b.id}">${b.status === "scheduled" ? `<button class="btn ghost" data-cancel="${b.id}">Cancel</button>` : `<span class="status">${esc(b.status.replace("_", " "))}</span>`}</span>
         </div>`).join("")}</div><p class="error" id="cancel-error" hidden></p>`;
       this.on("[data-cancel]", "click", (_, btn) => {
@@ -824,6 +996,7 @@
 
     async tab_vault(panel) {
       const items = await this.call("GET", "/api/me/vault");
+      await this.loadTerms();
       if (!items.length) {
         panel.innerHTML = `<div class="notice center">Nothing in your Vault yet. Choose “Vault storage” when you book and we'll clean and store your pieces in climate-controlled conditions.</div>`;
         return;
@@ -843,7 +1016,7 @@
           <div class="row center"><button class="btn primary" id="v-book" disabled>Book return</button></div>
         </div>`;
       let slot = null;
-      let addressId = (this.client.addresses.find((a) => a.is_default) || this.client.addresses[0])?.id ?? null;
+      let addressId = (this.client.addresses.filter(inZone).find((a) => a.is_default) || this.client.addresses.filter(inZone)[0])?.id ?? null;
       this.on("[data-item]", "click", (_, b) => {
         const id = Number(b.dataset.item);
         picked.has(id) ? picked.delete(id) : picked.add(id);
@@ -898,7 +1071,7 @@
         } catch (ex) { const el = form.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
       });
       const addrs = this.$("#addresses");
-      addrs.innerHTML = c.addresses.map((a) => `<div class="addr" style="cursor:default"><strong>${esc(a.label)}</strong>${a.is_default ? ' <span class="status">Default</span>' : ""}<br>${esc(a.line1)}<br>${esc(a.city)}, ${esc(a.postcode)}
+      addrs.innerHTML = c.addresses.map((a) => `<div class="addr" style="cursor:default"><strong>${esc(a.label)}</strong>${a.is_default ? ' <span class="status">Default</span>' : ""}<br>${esc(a.line1)}<br>${esc(a.city)}, ${esc(a.postcode)}${inZone(a) ? "" : `<br><span class="muted small">Not yet in our area</span>`}
         <div class="row" style="margin-top:8px">${a.is_default ? "" : `<button class="btn link" data-default="${a.id}">Make default</button>`}<button class="btn link" data-remove="${a.id}">Remove</button></div></div>`).join("")
         || `<p class="muted">No saved addresses. You can add one when you book.</p>`;
       this.on("[data-default]", "click", async (_, b) => { await this.call("PATCH", `/api/me/addresses/${b.dataset.default}`, { is_default: true }); this.client = await this.call("GET", "/api/me"); this.show(); });

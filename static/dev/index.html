@@ -29,9 +29,10 @@
 <div class="sub"><span>CLEAN</span><span>PRESERVE</span><span>VAULT</span><span>REHOME</span></div>
 <main id="main"></main>
 <div class="devbar">Local preview <a href="?">Booking</a><a href="?page=account">Account</a><a href="?guest=1">Signed out</a><a href="/admin">Staff dashboard</a></div>
-<script src="/embed/lave.js"></script>
 <script>
   (async () => {
+    // Always the latest embed while developing (the live site versions it instead).
+    await new Promise((ok) => { const js = document.createElement("script"); js.src = "/embed/lave.js?t=" + Date.now(); js.onload = ok; document.head.appendChild(js); });
     const q = new URLSearchParams(location.search);
     const tag = q.get("page") === "account" ? "lave-account" : "lave-booking";
     const el = document.createElement(tag);

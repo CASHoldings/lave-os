@@ -52,7 +52,7 @@ def test_figures_match_the_sheet(db_session):
 def test_price_list_shows_prices_but_never_costs(api):
     page = api.get("/atelier/prices/").text
     for text in ["Shirt, non-member hung", "£5.99", "5 for £29.95", "In packs of 5 or more", "Leather jacket", "from</span> £109.99",
-                 "Quoted after inspection", "per m²", "Wardrobe", "Home", "Pressing, alterations &amp; repairs", "Free collection and delivery on orders from £45"]:
+                 "Quoted after inspection", "per m²", "Wardrobe", "Home", "Pressing, alterations &amp; repairs", "Free Saver collection and delivery on orders from £45"]:
         assert text in page, text
     for secret in ["American Standard", "SoFresh", "Market reference", "Margin", "American basis", "£1.40"]:
         assert secret not in page, secret
@@ -87,7 +87,7 @@ def test_client_list_estimate_and_rules(api, db_session):
     r = _add(api, "pack", week.id)
     assert r["estimate_pence"] == 2995 + 4395
     page = api.get("/atelier/list/").text
-    assert "The Work Week" in page and "Quoted after inspection" in page and "£73.90" in page and "Free collection and delivery" in page
+    assert "The Work Week" in page and "Quoted after inspection" in page and "£73.90" in page and "Free Saver collection and delivery" in page
     r = _add(api, "item", shirt.id, 0, action="set")
     assert r["qty"] == 0 and r["count"] == 2  # the jacket and the pack remain
     assert api.post("/atelier/list/", data={"action": "add", "kind": "item", "id": 999999}).status_code == 404
@@ -149,7 +149,7 @@ def test_rules_drive_the_client_list(api, staff_headers, db_session):
     assert r.status_code == 200 and r.json()["pack_minimum"] == 6
     shirt = _item(db_session, "Shirt, non-member hung")
     assert "Add 1 more" in _add(api, "item", shirt.id, 5)["warnings"][0]
-    assert "Free collection and delivery on orders from £60" in api.get("/atelier/prices/").text
+    assert "Free Saver collection and delivery on orders from £60" in api.get("/atelier/prices/").text
     assert _admin_overview(api, staff_headers)["stats"]["low_margin"] > 0
 
 

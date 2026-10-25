@@ -17,8 +17,8 @@ PLANS = [
         "sections": [
             ("Collection", _items(
                 "A fixed fortnightly collection day for your neighbourhood (two collections a month)",
-                "A 2-hour collection and return window",
-                "Standard return")),
+                "Saver collection and return included. One-hour windows £4.95.",
+                "Drop off at any LAVE atelier")),
             ("Care included", _items(
                 "1 LAVE laundry bag a month: 6 kg, washed, dried and folded",
                 "A care record for every garment we handle",
@@ -29,7 +29,7 @@ PLANS = [
                 "Member prices on extras: £16 per additional bag, £15 a month per storage box",
                 ("LAVE Coffee Lounge access",))),
         ],
-        "headline": ["Fortnightly collection, 2-hour window", "1 laundry bag a month (6 kg)", "LAVE Run Club and LAVE Living"],
+        "headline": ["Fortnightly collection, Saver window included", "1 laundry bag a month (6 kg)", "LAVE Run Club and LAVE Living"],
     },
     {
         "code": "elevate", "name": "Elevate", "tier": 2, "price_pence": 5900, "annual_pence": 59000,
@@ -38,8 +38,8 @@ PLANS = [
         "sections": [
             ("Collection", _items(
                 "A fixed weekly collection day",
-                "A 1-hour collection and return window",
-                "Priority return",
+                "Collection and return included, including one-hour windows",
+                "Drop off at any LAVE atelier",
                 "1 extra collection a month, on request")),
             ("Care included", _items(
                 "2 LAVE laundry bags a month",
@@ -54,7 +54,7 @@ PLANS = [
                 "Full LAVE Living support, delivered by Hope App",
                 "Priority booking for all member events")),
         ],
-        "headline": ["Weekly collection, 1-hour window", "2 bags, 1 repair and 1 storage box a month", "Wardrobe visits with your Fabric Care Concierge"],
+        "headline": ["Weekly collection, one-hour windows included", "2 bags, 1 repair and 1 storage box a month", "Wardrobe visits with your Fabric Care Concierge"],
     },
     {
         "code": "eclat", "name": "Éclat", "tier": 3, "price_pence": 12900, "annual_pence": 129000,
@@ -64,7 +64,7 @@ PLANS = [
             ("Collection", _items(
                 "A weekly collection day, plus 1 extra collection a month",
                 "Handover in your home or at your concierge desk",
-                "Priority return")),
+                "Drop off at any LAVE atelier")),
             ("Care included", _items(
                 "4 LAVE laundry bags a month (one a week)",
                 "2 repairs or alterations a month",
@@ -86,9 +86,10 @@ PLANS = [
 COMPARE = [
     ("Collection and return", [
         ("Price a month / a year", ["£29 / £290", "£59 / £590", "£129 / £1,290"]),
-        ("Collection", ["Fortnightly, 2-hour window", "Weekly, 1-hour window, +1 extra a month",
+        ("Collection", ["Fortnightly, Saver window included", "Weekly, one-hour windows included, +1 extra a month",
                         "Weekly, +1 extra a month, in-home or concierge handover"]),
-        ("Return", ["Standard", "Priority", "Priority"]),
+        ("Collection windows", ["Saver included, one-hour £4.95", "Saver and one-hour included", "Saver and one-hour included"]),
+        ("Atelier drop-off", ["yes", "yes", "yes"]),
     ]),
     ("Care", [
         ("Laundry bags (6 kg)", ["1", "2", "4"]),

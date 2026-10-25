@@ -99,6 +99,18 @@ In Google Search Console (search.google.com/search-console), add `lavelondon.com
 - **Stripe** (card payments and memberships): until the keys are added, bookings work without a card and the membership page says payments aren't switched on yet.
 - **WordPress**: keep the backup. Once you're happy, you can cancel the WordPress part of the Hostinger plan, but **keep the domain and email**.
 
+## Collection, delivery and turnaround (rules v1.4)
+
+The rules from "LAVE_Collection_Delivery_Spec" are built in; everything below is in /admin → **Settings**:
+
+- **Collection & delivery**: the charges (£45 free Saver threshold, £4.95, £6.95, Essence £4.95 one-hour), the 48-hour
+  turnaround, the categories confirmed per order, and whether members can drop off. Bank holidays come from gov.uk.
+- **Service area**: the 1,743 launch-zone postcodes (SW11 and the Wandsworth side of SW8). Add postcodes or whole
+  sectors (`SW4 9`) for phase 2; see the waitlist and demand by district.
+- **Ateliers**: add each drop-off location with its opening hours, closures and daily capacity. The drop-off option
+  only appears for members once at least one atelier is active. Retire (don't delete) a location that has bookings.
+- **Today**: scan or type bag codes (`LV-7K2M9P-1`) to check drop-offs in; log bags left without a booking.
+
 ## Day to day
 
 - **Editing**: everything in /admin goes live as soon as you save. No deploy needed.

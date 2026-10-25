@@ -104,6 +104,8 @@ def order(o: Order, staff_view: bool = False, detail: bool = False) -> dict:
         "requested_services": o.requested_services or [], "client_notes": o.client_notes,
         "requested_items": o.requested_items or [], "estimate_pence": o.estimate_pence,
         "bookings": [booking(b, staff_view) for b in o.bookings],
+        "return_preference": o.return_preference or "",
+        "delivery_basis": o.delivery_basis or {},
     }
     if detail:
         out["items"] = [garment(g) for g in o.items]

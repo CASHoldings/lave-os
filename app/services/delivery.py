@@ -146,6 +146,15 @@ def settle(db: Session, order: Order) -> str | None:
     return note
 
 
+def public_terms(db: Session) -> dict:
+    """The current amounts, written for the website's copy: {"threshold": "£45", "under": "£4.95", …}."""
+    cfg = config(db)
+    short = lambda p: f"£{p / 100:.2f}".removesuffix(".00")  # noqa: E731
+    return {"threshold": short(cfg["free_saver_threshold_pence"]), "under": short(cfg["nonmember_saver_under_pence"]),
+            "hour": short(cfg["nonmember_one_hour_pence"]), "essence_hour": short(cfg["essence_one_hour_pence"]),
+            "turnaround": cfg["turnaround_hours"]}
+
+
 # Days and times
 
 def bank_holidays(db: Session) -> set[date]:

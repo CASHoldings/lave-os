@@ -172,10 +172,11 @@
     const drivers = d.drivers;
     const run = (b) => `
       <div class="run">
-        <div><div class="time">${T.format(parse(b.starts_at))}–${T.format(parse(b.ends_at))}</div><span class="small muted">${b.window_type === "saver" ? "Saver" : "1 hour"}</span></div>
+        <div><div class="time">${T.format(parse(b.starts_at))}–${T.format(parse(b.ends_at))}</div><span class="small muted">${b.atelier ? "Drop-off" : b.window_type === "saver" ? "Saver" : "1 hour"}</span></div>
         <div class="stack" style="gap:2px">
           <strong>${esc(b.client.name)}</strong>
-          <span class="small">${b.address ? esc(b.address.one_line) : "At the atelier"}${b.client.phone ? " · " + esc(b.client.phone) : ""}</span>
+          <span class="small">${b.atelier ? "Drop-off · " + esc(b.atelier.name) : b.address ? esc(b.address.one_line) : "At the atelier"}${b.client.phone ? " · " + esc(b.client.phone) : ""}</span>
+          ${b.bag_codes?.length ? `<span class="small">${b.bag_codes.map((code) => `<span class="tag">${esc(code)}</span>${b.bags_checked.includes(code) ? " ✓" : ""}`).join(" · ")}</span>` : ""}
           ${b.address?.instructions ? `<span class="small muted">${esc(b.address.instructions)}</span>` : ""}
           ${b.notes ? `<span class="small muted">${esc(b.notes)}</span>` : ""}
           ${b.order_id && me.role !== "driver" ? `<a class="small" href="#/orders/${b.order_id}">${esc(b.order_ref)}</a>` : b.order_ref ? `<span class="small">${esc(b.order_ref)}</span>` : ""}
@@ -183,7 +184,8 @@
         <div class="acts">
           ${pill(b.status)}
           ${b.mode === "lave_collects" && me.role !== "driver" ? `<select data-driver="${b.id}" aria-label="Driver"><option value="">Unassigned</option>${drivers.map((x) => `<option value="${x.id}" ${b.driver?.id === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>` : b.driver ? `<span class="small">${esc(b.driver.name)}</span>` : ""}
-          ${["scheduled", "en_route"].includes(b.status) ? `<div class="row">
+          ${b.atelier ? `<span class="small muted">${b.bags_checked.length} of ${b.bags} bag${b.bags === 1 ? "" : "s"} in</span>` : ""}
+          ${!b.atelier && ["scheduled", "en_route"].includes(b.status) ? `<div class="row">
             ${b.status === "scheduled" && b.mode === "lave_collects" ? `<button class="btn sm" data-bstatus="en_route" data-id="${b.id}">En route</button>` : ""}
             <button class="btn sm primary" data-bstatus="completed" data-id="${b.id}">Done</button>
             <button class="btn sm ghost" data-bstatus="missed" data-id="${b.id}">Missed</button></div>` : ""}
@@ -195,6 +197,17 @@
         ${d.ready_unpaid ? `<a class="alert" href="#/orders?status=ready">${d.ready_unpaid} ready but unpaid</a>` : ""}
         ${d.vault_retrievals ? `<a class="alert" href="#/vault?status=retrieval_requested">${d.vault_retrievals} Vault items to retrieve</a>` : ""}
       </div>` : ""}
+      <section class="panel"><h2>Drop-off check-in</h2>
+        <form id="checkin" class="row"><input name="code" placeholder="Scan or type a bag code, e.g. LV-7K2M9P-1" aria-label="Bag code" style="min-width:280px"><button class="btn primary">Check in</button></form>
+        ${me.role !== "driver" ? `<details><summary class="small">Bags left without a booking</summary>
+          <form id="unbooked" class="form-grid" style="margin-top:10px">
+            <label>Member<input name="q" placeholder="Name, email or phone" autocomplete="off"></label>
+            <label>Found<select name="client_id" required><option value="">Search first</option></select></label>
+            <label>Atelier<select name="atelier_id" required></select></label>
+            <label>Bags<input name="bags" type="number" min="1" max="20" value="1"></label>
+            <label style="grid-column:span 2">Note<input name="note" placeholder="Left at the concierge desk"></label>
+            <button class="btn">Log drop-off</button></form></details>` : ""}
+      </section>
       <div class="cols">
         <section class="panel"><div class="row between"><h2>Collections</h2><span class="muted">${d.collections.length}</span></div>
           ${d.collections.length ? d.collections.map(run).join("") : `<p class="empty">No collections ${day === isoDay(new Date()) ? "today" : "on " + D.format(parse(day))}.</p>`}</section>
@@ -202,6 +215,38 @@
           ${d.deliveries.length ? d.deliveries.map(run).join("") : `<p class="empty">No deliveries ${day === isoDay(new Date()) ? "today" : "on " + D.format(parse(day))}.</p>`}</section>
       </div>`;
     c.querySelectorAll("[data-bstatus]").forEach((b) => b.addEventListener("click", act(() => api("PATCH", `/api/staff/bookings/${b.dataset.id}`, { status: b.dataset.bstatus }), "Updated")));
+    c.querySelector("#checkin").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const code = e.target.code.value.trim();
+      if (!code) return;
+      try {
+        const r = await api("POST", "/api/staff/dropoffs/check-in", { code });
+        toast(`${code.toUpperCase()} checked in · ${r.bags_checked.length} of ${r.bags} bag${r.bags === 1 ? "" : "s"} in for ${r.client.name}`);
+        route();
+      } catch (ex) { toast(ex.message, true); e.target.code.select(); }
+    });
+    const unbooked = c.querySelector("#unbooked");
+    if (unbooked) {
+      api("GET", "/api/staff/ateliers").then((list) => {
+        unbooked.atelier_id.innerHTML = list.filter((a) => a.status !== "retired").map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join("") || `<option value="">Add an atelier in Settings first</option>`;
+      });
+      let timer = null;
+      unbooked.q.addEventListener("input", () => {
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+          const q = unbooked.q.value.trim();
+          if (q.length < 2) return;
+          const found = await api("GET", "/api/staff/clients?q=" + encodeURIComponent(q));
+          unbooked.client_id.innerHTML = found.length ? found.map((x) => `<option value="${x.id}">${esc(x.full_name || x.email)} · ${esc(x.phone || x.email)}</option>`).join("") : `<option value="">No match</option>`;
+        }, 250);
+      });
+      unbooked.addEventListener("submit", act(async (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const o = await api("POST", "/api/staff/dropoffs/unbooked", { client_id: Number(f.client_id.value), atelier_id: Number(f.atelier_id.value), bags: Number(f.bags.value) || 1, note: f.note.value });
+        location.hash = "#/orders/" + o.id;
+      }, "Drop-off logged"));
+    }
     c.querySelectorAll("[data-driver]").forEach((s) => s.addEventListener("change", act(() => api("PATCH", `/api/staff/bookings/${s.dataset.driver}`, { driver_id: s.value ? Number(s.value) : null }), "Driver assigned")));
   }
 
@@ -282,7 +327,7 @@
                 <td>${removable ? `<button class="link small" data-item-del="${i.id}">Remove</button>` : ""}</td></tr>`).join("")}</tbody>
               <tfoot>
                 <tr><td colspan="5">Items</td><td class="num">${money(o.items_total_pence)}</td><td></td></tr>
-                <tr><td colspan="5">Slot fees</td><td class="num">${paid ? money(o.fees_pence) : `<input id="fees" value="${(o.fees_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Fees">`}</td><td></td></tr>
+                <tr><td colspan="5">Collection and delivery${o.delivery_basis?.manual ? ' <span class="small muted">set by hand</span>' : ""}</td><td class="num">${paid ? money(o.fees_pence) : `<input id="fees" value="${(o.fees_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Fees">`}</td><td></td></tr>
                 <tr><td colspan="5">Discount</td><td class="num">${paid ? "−" + money(o.discount_pence) : `<input id="discount" value="${(o.discount_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Discount">`}</td><td></td></tr>
                 <tr><td colspan="5">Total</td><td class="num">${money(o.total_pence)}</td><td></td></tr>
               </tfoot></table></div>` : `<p class="empty">No garments yet. Add each piece as you inspect the bag.</p>`}
@@ -312,9 +357,19 @@
         </div>
         <div class="stack">
           <section class="panel"><h2>Bookings</h2>
-            ${o.bookings.length ? o.bookings.map((b) => `<div class="stack" style="gap:2px"><div class="row between"><strong>${b.kind === "collection" ? "Collection" : "Return"}</strong>${pill(b.status)}</div>
-              <span class="small">${D.format(parse(b.starts_at))}, ${T.format(parse(b.starts_at))}–${T.format(parse(b.ends_at))} · ${b.mode === "lave_collects" ? "LAVE" : "Atelier counter"}</span>
+            ${o.return_preference ? `<p class="small notice">Some items need longer: ${o.return_preference === "split" ? "split return (48-hour items first)" : "return together once everything is ready"}.</p>` : ""}
+            ${o.bookings.length ? o.bookings.map((b) => `<div class="stack" style="gap:2px"><div class="row between"><strong>${b.atelier ? "Drop-off" : b.kind === "collection" ? "Collection" : "Return"}</strong>${pill(b.status)}</div>
+              <span class="small">${D.format(parse(b.starts_at))}, ${T.format(parse(b.starts_at))}–${T.format(parse(b.ends_at))} · ${b.atelier ? esc(b.atelier.name) : b.window_type === "hour" ? "One-hour" : "Saver"}</span>
+              ${b.bag_codes?.length ? `<span class="small">${b.bag_codes.map((code) => `<span class="tag">${esc(code)}</span>${b.bags_checked.includes(code) ? " ✓" : ""}`).join(" · ")}</span>` : ""}
               ${b.address ? `<span class="small muted">${esc(b.address.one_line)}</span>` : ""}</div>`).join("") : `<p class="muted small">Walk-in order, no bookings.</p>`}
+            ${!["delivered", "cancelled"].includes(o.status) && o.bookings.some((b) => b.kind === "collection" && b.status !== "cancelled") ? `<details id="ret"><summary class="small">Book a return</summary>
+              <form id="return-form" class="form-grid" style="margin-top:10px">
+                <p class="small muted" id="ret-ready" style="grid-column:1/-1"></p>
+                <label>Day<input type="date" name="day" required></label>
+                <label>Window<select name="window"><option value="saver">Saver</option><option value="hour">One-hour</option></select></label>
+                <label style="grid-column:span 2">Time<select name="slot" required><option value="">Choose a day</option></select></label>
+                <label style="grid-column:span 2">Address<select name="address" required></select></label>
+                <button class="btn primary">Book return</button></form></details>` : ""}
           </section>
           <section class="panel"><h2>Staff notes</h2>
             <textarea id="staff-notes" placeholder="Visible to staff only">${esc(o.staff_notes)}</textarea>
@@ -371,6 +426,31 @@
     c.querySelector("#charge")?.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/charge`), "Payment taken"));
     c.querySelectorAll("[data-manual]").forEach((b) => b.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/payment`, { status: b.dataset.manual }), "Payment recorded")));
     c.querySelector("#print")?.addEventListener("click", () => window.print());
+    const rf = c.querySelector("#return-form");
+    if (rf) {
+      let ready = null;
+      c.querySelector("#ret").addEventListener("toggle", async () => {
+        if (ready) return;
+        ready = await api("GET", `/api/staff/orders/${id}/earliest-return`).catch(() => ({}));
+        rf.querySelector("#ret-ready").textContent = ready.text || "";
+        if (ready.earliest_return) rf.day.value = rf.day.min = ready.earliest_return.slice(0, 10);
+        const client = await api("GET", "/api/staff/clients/" + o.client.id);
+        rf.address.innerHTML = client.addresses.map((a) => `<option value="${a.id}" ${a.in_zone === false ? "disabled" : ""}>${esc(a.one_line)}${a.in_zone === false ? " · not yet in our area" : ""}</option>`).join("") || `<option value="">No saved address</option>`;
+        loadSlots();
+      });
+      const loadSlots = async () => {
+        if (!rf.day.value) return;
+        const q = new URLSearchParams({ start: rf.day.value, days: "1", window: rf.window.value, ...(ready?.earliest_return ? { after: ready.earliest_return } : {}) });
+        const slots = await api("GET", "/api/slots?" + q);
+        rf.slot.innerHTML = slots.filter((s) => s.available).map((s) => `<option value="${s.template_id}">${T.format(parse(s.starts_at))}–${T.format(parse(s.ends_at))} · ${s.remaining} left</option>`).join("") || `<option value="">Nothing free that day</option>`;
+      };
+      rf.day.addEventListener("change", loadSlots);
+      rf.window.addEventListener("change", loadSlots);
+      rf.addEventListener("submit", act((e) => {
+        e.preventDefault();
+        return api("POST", `/api/staff/orders/${id}/return`, { slot: { template_id: Number(rf.slot.value), day: rf.day.value }, address_id: Number(rf.address.value) });
+      }, "Return booked"));
+    }
   }
 
   /* Clients */
@@ -1320,7 +1400,8 @@
     const tab = params.get("tab") || "slots";
     const isAdmin = me.role === "admin";
     const c = shell("settings", "Settings");
-    const tabs = [["slots", "Slots"], ["closures", "Closures"], ...(isAdmin ? [["team", "Team"], ["email", "Email"]] : [])];
+    const tabs = [["slots", "Slots"], ["closures", "Closures"], ["delivery", "Collection & delivery"], ["area", "Service area"], ["ateliers", "Ateliers"],
+      ...(isAdmin ? [["team", "Team"], ["email", "Email"]] : [])];
     c.innerHTML = `<div class="row">${tabs.map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/settings?tab=${k}">${l}</a>`).join("")}</div>
       ${isAdmin ? "" : `<p class="notice">Only admins can change settings.</p>`}<div id="pane"><p class="loading">Loading…</p></div>`;
     const pane = c.querySelector("#pane");
@@ -1368,25 +1449,158 @@
       const rows = await api("GET", "/api/staff/slots/templates");
       const groups = {};
       rows.forEach((t) => { (groups[`${t.mode}|${t.window_type}`] ||= []).push(t); });
-      const groupName = { "lave_collects|hour": "LAVE collects · 1 hour", "lave_collects|saver": "LAVE collects · Saver", "drop_off|hour": "Atelier counter" };
-      pane.innerHTML = `<p class="muted">Capacity is how many bookings each window can take. Changes apply to new bookings.</p>
-        ${Object.entries(groups).map(([k, list]) => {
+      const groupName = { "lave_collects|hour": "LAVE collects · 1 hour", "lave_collects|saver": "LAVE collects · Saver" };
+      pane.innerHTML = `<p class="muted">Capacity is how many bookings each window can take. Changes apply to new bookings. Charges are set under <a href="#/settings?tab=delivery">Collection &amp; delivery</a>.</p>
+        ${Object.entries(groups).filter(([k]) => groupName[k]).map(([k, list]) => {
           const times = [...new Set(list.map((t) => t.start + "–" + t.end))].sort();
           return `<section class="panel"><h2>${groupName[k] || k}</h2><div class="table-wrap"><table>
-            <thead><tr><th>Window</th>${WEEKDAYS.map((d) => `<th>${d}</th>`).join("")}<th class="num">Fee (£)</th></tr></thead>
+            <thead><tr><th>Window</th>${WEEKDAYS.map((d) => `<th>${d}</th>`).join("")}</tr></thead>
             <tbody>${times.map((tm) => {
               const cells = WEEKDAYS.map((_, wd) => list.find((t) => t.weekday === wd && t.start + "–" + t.end === tm));
               const any = cells.find(Boolean);
-              return `<tr><td class="tag">${tm}</td>${cells.map((t) => `<td>${t ? `<input data-tpl="${t.id}" data-f="capacity" value="${t.active ? t.capacity : 0}" size="2" ${dis} aria-label="Capacity">` : `<span class="muted">–</span>`}</td>`).join("")}
-                <td class="num"><input data-tpl-fee="${cells.filter(Boolean).map((t) => t.id).join(",")}" value="${(any.fee_pence / 100).toFixed(2)}" size="5" style="text-align:right" ${dis} aria-label="Fee"></td></tr>`;
+              return `<tr><td class="tag">${tm}</td>${cells.map((t) => `<td>${t ? `<input data-tpl="${t.id}" data-f="capacity" value="${t.active ? t.capacity : 0}" size="2" ${dis} aria-label="Capacity">` : `<span class="muted">–</span>`}</td>`).join("")}</tr>`;
             }).join("")}</tbody></table></div></section>`;
         }).join("")}`;
       pane.querySelectorAll("[data-tpl]").forEach((i) => i.addEventListener("change", act(() => {
         const n = Math.max(0, parseInt(i.value, 10) || 0);
         return api("PATCH", `/api/staff/slots/templates/${i.dataset.tpl}`, n ? { capacity: n, active: true } : { active: false });
       }, "Capacity saved")));
-      pane.querySelectorAll("[data-tpl-fee]").forEach((i) => i.addEventListener("change", act(() =>
-        Promise.all(i.dataset.tplFee.split(",").map((tid) => api("PATCH", `/api/staff/slots/templates/${tid}`, { fee_pence: toPence(i.value) }))), "Fee saved")));
+    }
+
+    if (tab === "delivery") {
+      const d = await api("GET", "/api/staff/delivery-settings");
+      const p = (k) => (d[k] / 100).toFixed(2);
+      const field = (k, label) => `<label>${label}<input name="${k}" value="${p(k)}" ${dis}></label>`;
+      pane.innerHTML = `<form id="delivery" class="panel stack">
+          <h2>Charges</h2>
+          <p class="small muted">One charge per booking covers collection and return. If either leg is one-hour, the one-hour charge applies, once.</p>
+          <div class="form-grid">
+            <label>Free Saver from (£, non-members)<input name="free_saver_threshold_pence" value="${p("free_saver_threshold_pence")}" ${dis}></label>
+            ${field("nonmember_saver_under_pence", "Non-member Saver, under that (£)")}
+            ${field("nonmember_one_hour_pence", "Non-member one-hour (£)")}
+            ${field("essence_saver_pence", "Essence Saver (£)")}
+            ${field("essence_one_hour_pence", "Essence one-hour (£)")}
+            ${field("elevate_eclat_saver_pence", "Elevate & Éclat Saver (£)")}
+            ${field("elevate_eclat_one_hour_pence", "Elevate & Éclat one-hour (£)")}
+          </div>
+          <h2>Turnaround</h2>
+          <div class="form-grid">
+            <label>Returns open after (hours)<input name="turnaround_hours" type="number" min="1" value="${d.turnaround_hours}" ${dis}></label>
+            <label style="grid-column:span 3">Categories confirmed per order (one per line; anything sold as a quote is always included)
+              <textarea name="confirmed_categories" rows="4" ${dis}>${esc(d.confirmed_categories.join("\n"))}</textarea></label>
+          </div>
+          <label class="check-label"><input type="checkbox" name="dropoff_enabled" ${d.dropoff_enabled ? "checked" : ""} ${dis}> Members can drop off at an atelier</label>
+          ${isAdmin ? `<div><button class="btn primary">Save</button></div>` : ""}
+        </form>
+        <section class="panel"><h2>Bank holidays</h2><p class="small muted">England &amp; Wales, from gov.uk (checked daily). No collections or returns on these days. Close other days under <a href="#/settings?tab=closures">Closures</a>.</p>
+          <p>${d.bank_holidays.map((x) => D.format(parse(x))).join(" · ") || "None listed"}</p></section>`;
+      pane.querySelector("#delivery").addEventListener("submit", act((e) => {
+        e.preventDefault();
+        const f = e.target, body = {};
+        ["free_saver_threshold_pence", "nonmember_saver_under_pence", "nonmember_one_hour_pence", "essence_saver_pence", "essence_one_hour_pence",
+          "elevate_eclat_saver_pence", "elevate_eclat_one_hour_pence"].forEach((k) => { body[k] = toPence(f[k].value); });
+        body.turnaround_hours = Number(f.turnaround_hours.value);
+        body.confirmed_categories = f.confirmed_categories.value.split("\n").map((x) => x.trim()).filter(Boolean);
+        body.dropoff_enabled = f.dropoff_enabled.checked;
+        return api("PUT", "/api/staff/delivery-settings", body);
+      }, "Collection & delivery saved"));
+    }
+
+    if (tab === "area") {
+      const [a, wl] = await Promise.all([api("GET", "/api/staff/area"), api("GET", "/api/staff/area/waitlist")]);
+      pane.innerHTML = `<section class="panel stack"><h2>Where we collect and deliver</h2>
+          <p>${a.postcodes.toLocaleString("en-GB")} postcodes: ${a.districts.map((x) => `${esc(x.district)} (${x.postcodes})`).join(", ")}${a.sectors.length ? `, plus whole sectors ${a.sectors.map((x) => esc(x.sector)).join(", ")}` : ""}.</p>
+          <form id="area-check" class="row"><input name="postcode" placeholder="Check a postcode" aria-label="Postcode"><button class="btn">Check</button><span class="small" id="area-result" role="status"></span></form>
+          ${isAdmin ? `<form id="area-add" class="stack"><label>Add postcodes or whole sectors (one per line, e.g. SW4 9AS or SW4 9)<textarea name="entries" rows="3"></textarea></label><div><button class="btn primary">Add to the area</button></div></form>` : ""}
+          ${a.sectors.length || a.added.length ? `<div class="table-wrap"><table><thead><tr><th>Added</th><th>By</th><th></th></tr></thead><tbody>
+            ${[...a.sectors.map((x) => [x.sector + " (whole sector)", x.added_by, x.sector]), ...a.added.map((x) => [x.postcode, x.added_by, x.postcode])].map(([l, by, key]) =>
+              `<tr><td>${esc(l)}</td><td class="small muted">${esc(by)}</td><td>${isAdmin ? `<button class="link small" data-area-del="${esc(key)}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table></div>` : ""}
+        </section>
+        <section class="panel stack"><h2>Waitlist</h2>
+          ${a.waitlist_by_district.length ? `<p>Demand by district: ${a.waitlist_by_district.map((x) => `<strong>${esc(x.district)}</strong> ${x.people}`).join(" · ")}</p>` : ""}
+          ${wl.length ? `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>Postcode</th><th>Wants</th></tr></thead><tbody>
+            ${wl.map((w) => `<tr><td class="small">${D.format(parse(w.created_at))}</td><td>${esc(w.name)}</td><td>${esc(w.email)}</td><td>${esc(w.phone)}</td><td>${esc(w.postcode)}</td><td class="small">${esc(w.services.join(", "))}</td></tr>`).join("")}</tbody></table></div>`
+            : `<p class="empty">No one on the waitlist yet.</p>`}
+        </section>`;
+      pane.querySelector("#area-check").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const r = await api("GET", "/api/staff/area/check?postcode=" + encodeURIComponent(e.target.postcode.value));
+        pane.querySelector("#area-result").textContent = `${r.postcode}: ${r.in_zone ? "in our area" : "not yet in our area"}`;
+      });
+      pane.querySelector("#area-add")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          const r = await api("POST", "/api/staff/area", { entries: e.target.entries.value });
+          toast(`Added ${r.postcodes.length} postcode${r.postcodes.length === 1 ? "" : "s"}${r.sectors.length ? ` and ${r.sectors.length} sector${r.sectors.length === 1 ? "" : "s"}` : ""}${r.skipped.length ? `. Not postcodes: ${r.skipped.join(", ")}` : ""}`, !!r.skipped.length);
+          route();
+        } catch (ex) { toast(ex.message, true); }
+      });
+      pane.querySelectorAll("[data-area-del]").forEach((b) => b.addEventListener("click", act(() => api("DELETE", "/api/staff/area/" + encodeURIComponent(b.dataset.areaDel)), "Removed from the area")));
+    }
+
+    if (tab === "ateliers") {
+      const list = await api("GET", "/api/staff/ateliers");
+      const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const form = (a = {}) => `
+        <div class="form-grid">
+          <label style="grid-column:span 2">Name<input name="name" required value="${esc(a.name || "")}" placeholder="LAVE Atelier, Battersea Power Station" ${dis}></label>
+          <label style="grid-column:span 2">Address<input name="address" value="${esc(a.address || "")}" ${dis}></label>
+          <label>Postcode<input name="postcode" value="${esc(a.postcode || "")}" ${dis}></label>
+          <label>Status<select name="status" ${dis}>${["active", "paused", "retired"].map((s) => `<option ${a.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+          <label>Open from<input type="date" name="available_from" value="${a.available_from || ""}" ${dis}></label>
+          <label>Open until<input type="date" name="available_to" value="${a.available_to || ""}" ${dis}></label>
+          <label>Drop-offs a day (blank: no limit)<input type="number" min="0" name="daily_capacity" value="${a.daily_capacity ?? ""}" ${dis}></label>
+          <label class="check-label"><input type="checkbox" name="members_only" ${a.members_only !== false ? "checked" : ""} ${dis}> Members only</label>
+          <label style="grid-column:span 2">Map link<input name="map_link" value="${esc(a.map_link || "")}" ${dis}></label>
+          <label style="grid-column:1/-1">Access instructions<input name="access_instructions" value="${esc(a.access_instructions || "")}" placeholder="Concierge desk, Building 3. Ask for the LAVE drop box." ${dis}></label>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Opening hours</th><th>Opens</th><th>Closes</th></tr></thead><tbody>
+          ${DAYS.map((d, i) => { const h = (a.weekly_hours || {})[i] || []; return `<tr><td>${d}</td><td><input type="time" name="open_${i}" value="${h[0] || ""}" ${dis}></td><td><input type="time" name="close_${i}" value="${h[1] || ""}" ${dis}></td></tr>`; }).join("")}
+        </tbody></table></div>
+        <label>Closed on (one date per line, YYYY-MM-DD)<textarea name="closure_dates" rows="2" ${dis}>${esc((a.closure_dates || []).join("\n"))}</textarea></label>`;
+      const body = (f) => {
+        const hours = {};
+        for (let i = 0; i < 7; i++) if (f["open_" + i].value && f["close_" + i].value) hours[i] = [f["open_" + i].value, f["close_" + i].value];
+        return { name: f.name.value, address: f.address.value, postcode: f.postcode.value, status: f.status.value,
+          available_from: f.available_from.value || null, available_to: f.available_to.value || null,
+          daily_capacity: f.daily_capacity.value ? Number(f.daily_capacity.value) : 0, members_only: f.members_only.checked,
+          map_link: f.map_link.value, access_instructions: f.access_instructions.value, weekly_hours: hours,
+          closure_dates: f.closure_dates.value.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean) };
+      };
+      pane.innerHTML = `<p class="muted">Members can drop items off at these ateliers instead of booking a home collection. Ateliers don't hand items back: everything comes home by delivery.</p>
+        ${list.map((a) => `<details class="panel"><summary><strong>${esc(a.name)}</strong> <span class="pill ${{ active: "ok", paused: "warn", retired: "err" }[a.status] || ""}">${esc(a.status)}</span> <span class="small muted">${esc(a.hours_text || "No opening hours")}</span></summary>
+          <form class="stack" data-atelier="${a.id}" style="margin-top:12px">${form(a)}
+            <div class="warn-box" hidden></div>
+            ${isAdmin ? `<div class="row"><button class="btn primary">Save</button><button class="btn ghost" type="button" data-history>Change history</button><button class="btn danger" type="button" data-delete>Delete</button></div>` : ""}
+            <div class="history small" hidden></div></form></details>`).join("") || `<p class="empty">No ateliers yet.</p>`}
+        ${isAdmin ? `<details class="panel"><summary><strong>+ Add an atelier</strong></summary><form id="atelier-add" class="stack" style="margin-top:12px">${form({ status: "active", members_only: true })}<div><button class="btn primary">Add atelier</button></div></form></details>` : ""}`;
+      pane.querySelector("#atelier-add")?.addEventListener("submit", act((e) => { e.preventDefault(); return api("POST", "/api/staff/ateliers", body(e.target)); }, "Atelier added"));
+      pane.querySelectorAll("form[data-atelier]").forEach((f) => {
+        const id = f.dataset.atelier, warn = f.querySelector(".warn-box");
+        const save = async (confirm) => {
+          try {
+            const r = await api("PATCH", `/api/staff/ateliers/${id}`, { ...body(f), confirm });
+            if (!r.applied) {
+              warn.hidden = false;
+              warn.innerHTML = `<p class="notice"><strong>${r.affected.length} booked drop-off${r.affected.length === 1 ? "" : "s"} would be affected.</strong> Offer these members another atelier or a home collection:</p>
+                <ul class="plain-list">${r.affected.map((x) => `<li>${esc(x.client)} · ${D.format(parse(x.day))} · ${esc(x.ref)} · ${esc(x.email)}${x.phone ? " · " + esc(x.phone) : ""}</li>`).join("")}</ul>
+                <div class="row"><button class="btn danger" type="button" data-apply>Save anyway</button></div>`;
+              warn.querySelector("[data-apply]").addEventListener("click", () => save(true));
+              return;
+            }
+            toast(r.affected.length ? `Saved. ${r.affected.length} members need another arrangement.` : "Atelier saved", !!r.affected.length);
+            route();
+          } catch (ex) { toast(ex.message, true); }
+        };
+        f.addEventListener("submit", (e) => { e.preventDefault(); save(false); });
+        f.querySelector("[data-delete]")?.addEventListener("click", act(() => api("DELETE", `/api/staff/ateliers/${id}`), "Atelier deleted"));
+        f.querySelector("[data-history]")?.addEventListener("click", async () => {
+          const h = f.querySelector(".history");
+          const rows = await api("GET", `/api/staff/ateliers/${id}/history`);
+          h.hidden = false;
+          h.innerHTML = rows.map((x) => `<p><span class="muted">${x.at ? DT.format(parse(x.at)) : ""} · ${esc(x.by)}</span><br>${esc(x.what)}</p>`).join("") || "No changes yet.";
+        });
+      });
     }
 
     if (tab === "closures") {

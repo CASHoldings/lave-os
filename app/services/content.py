@@ -99,6 +99,20 @@ OLD_BRAND_WORDING = [
      "Intentional care for the **people** and textiles you love."),
     ("Our values guide every choice: intentional care for people, planet, and the textiles you treasure.", f"{SERVICE_MESSAGE}."),
     ("Our values guide every choice: intentional care for people, planet and the textiles you treasure.", f"{SERVICE_MESSAGE}."),
+    # Collection & delivery rules v1.4: no "2-hour" or "standard" windows, no return faster than 48 hours promised.
+    ("A 2-hour collection and return window", "Saver collection and return included. One-hour windows £4.95."),
+    ("Standard return", "Drop off at any LAVE atelier"),
+    ("A 1-hour collection and return window", "Collection and return included, including one-hour windows"),
+    ("Priority return", "Drop off at any LAVE atelier"),
+    ("Fortnightly collection, 2-hour window", "Fortnightly collection, Saver window included"),
+    ("Weekly collection, 1-hour window", "Weekly collection, one-hour windows included"),
+    ("Fortnightly, 2-hour window", "Fortnightly, Saver window included"),
+    ("Weekly, 1-hour window, +1 extra a month", "Weekly, one-hour windows included, +1 extra a month"),
+    ('{"label": "Return", "values": ["Standard", "Priority", "Priority"]}',
+     '{"label": "Collection windows", "values": ["Saver included, one-hour £4.95", "Saver and one-hour included", '
+     '"Saver and one-hour included"]}'),
+    ("Choose a one-hour or Saver collection window, or drop off at the atelier.",
+     "Choose a one-hour or Saver collection window or, as a member, drop off at a LAVE atelier."),
 ]
 
 
