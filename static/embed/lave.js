@@ -376,7 +376,8 @@
         </div>
         <p class="center muted">${this.windowType === "hour"
           ? "Perfect if you need us within a one-hour window. On the day, we'll text you when the driver is close."
-          : "A wider three-hour window, free from £45. We'll text you when the driver is close."}</p>` : "";
+          : this.priced ? "A wider three-hour window, free from £45. We'll text you when the driver is close."
+            : "A wider three-hour window. We'll text you when the driver is close."}</p>` : "";
 
       const visibleDays = days.filter((d) => d <= horizon);
       if (!this.mobileDay || !visibleDays.some((d) => isoDay(d) === this.mobileDay)) {
