@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Calm and professional: warm neutral backgrounds, deep navy text,
+ * restrained teal accents. Colour pairs below meet WCAG AA contrast for body text.
+ */
+@theme {
+  --color-canvas: #f7f4ee;
+  --color-surface: #ffffff;
+  --color-surface-muted: #efe9df;
+  --color-line: #ddd4c6;
+  --color-line-strong: #b9ad9b;
+  --color-ink: #14213a;
+  --color-ink-muted: #4a5468;
+  --color-ink-soft: #5f6878;
+  --color-accent: #0f6b66;
+  --color-accent-strong: #0a4f4b;
+  --color-accent-soft: #e2efed;
+  --color-success: #1d6a3a;
+  --color-success-soft: #e3f1e7;
+  --color-warning: #7d5100;
+  --color-warning-soft: #fbefd6;
+  --color-danger: #a1271f;
+  --color-danger-soft: #fbe6e3;
+  --color-info: #1f3c74;
+  --color-info-soft: #e5ebf6;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+
+  --radius-card: 0.875rem;
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    color: var(--color-ink);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  a {
+    color: var(--color-accent-strong);
+    text-underline-offset: 3px;
+  }
+  /* Visible focus for keyboard users on every interactive element. */
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--color-accent-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .prose-profile p + p {
+    margin-top: 0.75rem;
+  }
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    z-index: 50;
+    background: var(--color-ink);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+  }
+  .skip-link:focus {
+    top: 1rem;
+  }
+}
