@@ -15,6 +15,8 @@ Visitors ──▶ lavelondon.com (this app, server-rendered pages)
 - **Staff** sign in at `/admin`. Roles: admin, operator, driver.
 - **Payments**: card saved at booking, charged after garments are itemised; memberships are Stripe subscriptions; the Apothecary uses Stripe Checkout.
 
+> **Also in this repository:** [`capability-exchange/`](capability-exchange/README.md) is a separate, self-contained application (African Capability Exchange, a talent platform built with Next.js). It shares no code, database or deployment with LAVE OS.
+
 ## What it does
 
 | Area | Clients (on the website) | Staff (`/admin`) |
