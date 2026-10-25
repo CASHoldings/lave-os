@@ -1,0 +1,7 @@
+{# Breadcrumb trail: every step a link; the last is this page. Built in routes.breadcrumbs(). #}
+{% if crumbs %}
+<nav class="crumbs" aria-label="Breadcrumb">
+  <ol>{% for label, href in crumbs %}<li><a href="{{ href }}"{% if loop.last %} aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}</ol>
+</nav>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{% for label, href in crumbs %}{"@type": "ListItem", "position": {{ loop.index }}, "name": {{ label|tojson }}, "item": {{ (site_url ~ href)|tojson }}}{{ "," if not loop.last }}{% endfor %}]}</script>
+{% endif %}

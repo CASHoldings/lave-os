@@ -135,7 +135,7 @@ TOPICS = ["Booking or an order", "Membership", "LAVE Privé", "Business enquiry"
 @router.get("/contact/", response_class=HTMLResponse)
 def contact_form(request: Request, topic: str = "", sent: str = ""):
     preset = "LAVE Privé" if topic == "prive" else ""
-    return render(request, "site/contact.html", topics=TOPICS, preset=preset, sent=bool(sent), error="", form={})
+    return render(request, "site/contact.html", crumb="Contact", topics=TOPICS, preset=preset, sent=bool(sent), error="", form={})
 
 
 @router.post("/contact/", response_class=HTMLResponse)
@@ -146,11 +146,11 @@ def contact_send(request: Request, name: str = Form(""), email: str = Form(""), 
         return RedirectResponse("/contact/?sent=1", status_code=303)
     email = email.strip().lower()
     if not name.strip() or not valid_email(email) or len(message.strip()) < 5:
-        return render(request, "site/contact.html", status_code=400, topics=TOPICS, preset=topic, sent=False, form=form,
+        return render(request, "site/contact.html", crumb="Contact", status_code=400, topics=TOPICS, preset=topic, sent=False, form=form,
                       error="Enter your name, a valid email and a message.")
     ip = request.client.host if request.client else "unknown"
     if not allow(f"contact:{ip}", limit=5, window_seconds=3600):
-        return render(request, "site/contact.html", status_code=429, topics=TOPICS, preset=topic, sent=False, form=form,
+        return render(request, "site/contact.html", crumb="Contact", status_code=429, topics=TOPICS, preset=topic, sent=False, form=form,
                       error="You've sent several messages already. We'll be in touch soon.")
     db.add(ContactMessage(name=name.strip()[:120], email=email[:255], topic=(topic if topic in TOPICS else "Something else"),
                           message=message.strip()[:5000]))
@@ -163,7 +163,7 @@ def contact_send(request: Request, name: str = Form(""), email: str = Form(""), 
 @router.get("/policies/", response_class=HTMLResponse)
 def policies(request: Request, db: Session = Depends(get_db)):
     page = cms.page(db, "/policies/")
-    return render(request, "site/content_page.html", section=None, subnav=None, page=page, policies_fallback=page is None, **_ctx())
+    return render(request, "site/content_page.html", section=None, subnav=None, page=page, crumb=page.title if page else "Policies", policies_fallback=page is None, **_ctx())
 
 
 @router.get("/memberships/{sub_slug}/{item_slug}/")

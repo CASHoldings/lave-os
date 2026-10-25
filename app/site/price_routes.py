@@ -72,7 +72,7 @@ def packs_short():
 def prices(request: Request, lave_list: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     atelier, clean = _atelier(request)
     entries = _list_entries(lave_list)
-    return render(request, "site/prices.html", section=atelier, subnav=clean, departments=repo.catalogue(db),
+    return render(request, "site/prices.html", section=atelier, subnav=clean, crumb="Prices", departments=repo.catalogue(db),
                   price_of=repo.client_price, rules=repo.rules(db), terms=delivery.public_terms(db), in_list=entries, summary=repo.summarise(db, entries))
 
 
@@ -81,7 +81,7 @@ def packs(request: Request, lave_list: str | None = Cookie(default=None), db: Se
     atelier, clean = _atelier(request)
     groups, in_season = pack_view(db)
     entries = _list_entries(lave_list)
-    return render(request, "site/packs.html", section=atelier, subnav=clean, groups=groups, in_season=in_season,
+    return render(request, "site/packs.html", section=atelier, subnav=clean, crumb="Packs", groups=groups, in_season=in_season,
                   rules=repo.rules(db), terms=delivery.public_terms(db), in_list=entries, summary=repo.summarise(db, entries),
                   month_name=date.today().strftime("%B"))
 
@@ -90,7 +90,7 @@ def packs(request: Request, lave_list: str | None = Cookie(default=None), db: Se
 def my_list(request: Request, lave_list: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     atelier, clean = _atelier(request)
     summary = repo.summarise(db, _list_entries(lave_list))
-    return render(request, "site/list.html", section=atelier, subnav=clean, summary=summary, rules=repo.rules(db), terms=delivery.public_terms(db))
+    return render(request, "site/list.html", section=atelier, subnav=clean, crumb="Your list", summary=summary, rules=repo.rules(db), terms=delivery.public_terms(db))
 
 
 @router.post("/atelier/list/")

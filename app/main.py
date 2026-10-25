@@ -155,7 +155,7 @@ def create_app() -> FastAPI:
             request.state.site = store.load(db)
         finally:
             sessions.close()
-        return render(request, "site/not_found.html", status_code=404)
+        return render(request, "site/not_found.html", status_code=404, crumb="Page not found")
 
     # Last: the website's /{section}/ routes would otherwise shadow the paths above.
     app.include_router(site_accounts.router)

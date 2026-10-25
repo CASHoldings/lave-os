@@ -173,6 +173,9 @@ p { margin: 0; }
 /* Sub pages */
 .crumbs { padding: 22px var(--gutter) 0; font-size: 0.75rem; color: var(--muted); max-width: 1500px; margin: 0 auto; }
 .crumbs a { color: var(--ink); }
+.crumbs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 0; }
+.crumbs li + li::before { content: "/"; padding: 0 .4em; color: var(--muted); }
+.crumbs a[aria-current="page"] { color: var(--muted); }
 .feature { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: clamp(24px, 5vw, 80px); align-items: center;
   padding: 40px var(--gutter); max-width: 1500px; margin: 0 auto; }
 .feature:nth-of-type(even) img { order: 2; }

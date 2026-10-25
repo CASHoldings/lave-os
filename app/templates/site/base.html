@@ -54,7 +54,7 @@
 {% include "site/_drawer.html" %}
 {% endblock %}
 
-<main id="main">{% block main %}{% endblock %}</main>
+<main id="main">{% include "site/_crumbs.html" %}{% block main %}{% endblock %}</main>
 
 {% block footer %}{% include "site/_footer.html" %}{% endblock %}
 <script src="/static/site/site.js?v={{ asset_version }}" defer></script>

@@ -17,6 +17,12 @@ from app.site.store import site_dependency
 
 router = APIRouter(include_in_schema=False, dependencies=[Depends(site_dependency)])
 
+def _account_crumbs(request: Request, label: str | None = None) -> list[tuple[str, str]]:
+    """Home / Account / this page."""
+    trail = [("Home", "/"), ("Account", "/account/")]
+    return trail + [(label, request.url.path)] if label else trail
+
+
 ACCOUNT_TABS = [("orders", "Orders"), ("bookings", "Bookings"), ("vault", "Vault"), ("profile", "Profile"),
                 ("membership", "Membership"), ("wardrobe", "Wardrobe")]
 STAGES = ["awaiting_collection", "collected", "inspected", "in_care", "quality_check", "ready", "delivered"]
@@ -54,7 +60,7 @@ def current_site_client(lave_client: str | None = Cookie(default=None), db: Sess
 def login_form(request: Request, next: str = "/account/", client: Client | None = Depends(current_site_client)):
     if client:
         return RedirectResponse(safe_next(next), status_code=303)
-    return render(request, "site/auth_login.html", next=safe_next(next), email="", error="")
+    return render(request, "site/auth_login.html", crumbs=_account_crumbs(request, "Sign in"), next=safe_next(next), email="", error="")
 
 
 @router.post("/account/login/", response_class=HTMLResponse)
@@ -63,12 +69,12 @@ def login(request: Request, email: str = Form(""), password: str = Form(""), nex
     next_path = safe_next(next)
     key = f"login:{_client_ip(request)}:{accounts.normalise_email(email)}"
     if not accounts.allow(key, limit=8, window_seconds=15 * 60):
-        return render(request, "site/auth_login.html", status_code=429, next=next_path, email=email,
+        return render(request, "site/auth_login.html", crumbs=_account_crumbs(request, "Sign in"), status_code=429, next=next_path, email=email,
                       error="Too many attempts. Wait 15 minutes, or sign in with an emailed link.")
     try:
         client = accounts.authenticate(db, email, password)
     except AccountError as e:
-        return render(request, "site/auth_login.html", status_code=400, next=next_path, email=email, error=str(e),
+        return render(request, "site/auth_login.html", crumbs=_account_crumbs(request, "Sign in"), status_code=400, next=next_path, email=email, error=str(e),
                       dev_email=_dev_email(email))
     return _signed_in(RedirectResponse(next_path, status_code=303), client)
 
@@ -84,7 +90,7 @@ def logout():
 
 @router.get("/account/register/", response_class=HTMLResponse)
 def register_form(request: Request, next: str = "/account/"):
-    return render(request, "site/auth_register.html", next=safe_next(next), form={}, error="")
+    return render(request, "site/auth_register.html", crumbs=_account_crumbs(request, "Create an account"), next=safe_next(next), form={}, error="")
 
 
 @router.post("/account/register/", response_class=HTMLResponse)
@@ -93,13 +99,13 @@ def register(request: Request, first_name: str = Form(""), last_name: str = Form
     next_path = safe_next(next)
     form = {"first_name": first_name, "last_name": last_name, "email": email}
     if not accounts.allow(f"register:{_client_ip(request)}", limit=10, window_seconds=60 * 60):
-        return render(request, "site/auth_register.html", status_code=429, next=next_path, form=form,
+        return render(request, "site/auth_register.html", crumbs=_account_crumbs(request, "Create an account"), status_code=429, next=next_path, form=form,
                       error="Too many sign-ups from this connection. Try again in an hour.")
     try:
         accounts.register(db, first_name, last_name, email, password, next_path)
     except AccountError as e:
-        return render(request, "site/auth_register.html", status_code=400, next=next_path, form=form, error=str(e))
-    return render(request, "site/auth_check_email.html", email=accounts.normalise_email(email),
+        return render(request, "site/auth_register.html", crumbs=_account_crumbs(request, "Create an account"), status_code=400, next=next_path, form=form, error=str(e))
+    return render(request, "site/auth_check_email.html", crumbs=_account_crumbs(request, "Check your email"), email=accounts.normalise_email(email),
                   heading="Check your email", message="We've sent you a link to confirm your account. It expires in 24 hours.",
                   dev_email=_dev_email(email))
 
@@ -109,7 +115,7 @@ def register(request: Request, first_name: str = Form(""), last_name: str = Form
 @router.get("/account/link/", response_class=HTMLResponse)
 def link_form(request: Request, purpose: str = "signin", next: str = "/account/"):
     purpose = "reset" if purpose == "reset" else "signin"
-    return render(request, "site/auth_link.html", purpose=purpose, next=safe_next(next), email="")
+    return render(request, "site/auth_link.html", crumbs=_account_crumbs(request, "Reset your password" if purpose == "reset" else "Email me a sign-in link"), purpose=purpose, next=safe_next(next), email="")
 
 
 @router.post("/account/link/", response_class=HTMLResponse)
@@ -120,7 +126,7 @@ def send_link(request: Request, email: str = Form(""), purpose: str = Form("sign
     if accounts.valid_email(email) and accounts.allow(f"link:{email}", limit=5, window_seconds=60 * 60):
         accounts.send_signin_link(db, email, safe_next(next), purpose)
     # Same answer whether or not the account exists.
-    return render(request, "site/auth_check_email.html", email=email, heading="Check your email",
+    return render(request, "site/auth_check_email.html", crumbs=_account_crumbs(request, "Check your email"), email=email, heading="Check your email",
                   message="If there's a LAVE account for this email, we've sent a link. It works once and expires in 30 minutes.",
                   dev_email=_dev_email(email))
 
@@ -129,7 +135,7 @@ def send_link(request: Request, email: str = Form(""), purpose: str = Form("sign
 def use_link(request: Request, token: str, next: str = "/account/", db: Session = Depends(get_db)):
     result = accounts.consume_link(db, token)
     if not result:
-        return render(request, "site/auth_check_email.html", status_code=400, email="", heading="This link has expired",
+        return render(request, "site/auth_check_email.html", crumbs=_account_crumbs(request, "Check your email"), status_code=400, email="", heading="This link has expired",
                       message="Links work once and expire after a short time. Request a new one to continue.",
                       show_retry=True)
     client, purpose = result
@@ -141,7 +147,7 @@ def use_link(request: Request, token: str, next: str = "/account/", db: Session 
 def password_form(request: Request, client: Client | None = Depends(current_site_client)):
     if not client:
         return _to_login("/account/password/")
-    return render(request, "site/auth_password.html", client=client, error="", saved=False)
+    return render(request, "site/auth_password.html", crumbs=_account_crumbs(request, "Password"), client=client, error="", saved=False)
 
 
 @router.post("/account/password/", response_class=HTMLResponse)
@@ -153,8 +159,8 @@ def password_save(request: Request, password: str = Form(""), lave_client: str |
     try:
         accounts.set_password(db, client, password)
     except AccountError as e:
-        return render(request, "site/auth_password.html", status_code=400, client=client, error=str(e), saved=False)
-    return render(request, "site/auth_password.html", client=client, error="", saved=True)
+        return render(request, "site/auth_password.html", crumbs=_account_crumbs(request, "Password"), status_code=400, client=client, error=str(e), saved=False)
+    return render(request, "site/auth_password.html", crumbs=_account_crumbs(request, "Password"), client=client, error="", saved=True)
 
 
 # Account pages
@@ -180,7 +186,7 @@ def account_home(request: Request, client: Client | None = Depends(current_site_
     def stage(o: Order) -> int:
         return 5 if o.status == OrderStatus.out_for_delivery else STAGES.index(o.status.value)
 
-    return render(request, "site/account_home.html", client=client, tabs=ACCOUNT_TABS, active_tab="",
+    return render(request, "site/account_home.html", crumbs=_account_crumbs(request), client=client, tabs=ACCOUNT_TABS, active_tab="",
                   upcoming=upcoming, active=active, stage=stage, stage_labels=STAGE_LABELS, vault_count=vault_count,
                   last_delivered=last_delivered, awaiting_payment=awaiting_payment, wardrobe=wardrobe)
 
@@ -192,7 +198,7 @@ def account_tab(request: Request, tab: str, client: Client | None = Depends(curr
         raise HTTPException(404)
     if not client:
         return _to_login(f"/account/{tab}/")
-    return render(request, "site/account_tab.html", client=client, tabs=ACCOUNT_TABS, active_tab=tab,
+    return render(request, "site/account_tab.html", crumbs=_account_crumbs(request, dict(ACCOUNT_TABS)[tab]), client=client, tabs=ACCOUNT_TABS, active_tab=tab,
                   heading=dict(ACCOUNT_TABS)[tab])
 
 
@@ -205,4 +211,4 @@ def book(request: Request, mode: str = "", items: str = "", client: Client | Non
         return _to_login("/book/" + (f"?{query}" if query else ""))
     from app.services import repository as repo
     planned = repo.summarise(db, repo.parse_list(request.cookies.get(repo.LIST_COOKIE)))
-    return render(request, "site/book.html", client=client, mode="drop_off" if mode == "drop_off" else "", items=items, planned=planned)
+    return render(request, "site/book.html", crumbs=[("Home", "/"), ("Atelier", "/atelier/"), ("Book a collection", "/book/")], client=client, mode="drop_off" if mode == "drop_off" else "", items=items, planned=planned)

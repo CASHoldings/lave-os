@@ -36,7 +36,7 @@ def _bold(text: str):
 TEMPLATES.env.filters["bold"] = _bold
 TEMPLATES.env.filters["small"] = small_url  # the light copy of a photo, for cards, menus and tiles
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "43"
+ASSET_VERSION = "45"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -49,6 +49,33 @@ HOME_INTROS = {
 
 router = APIRouter(include_in_schema=False, dependencies=[Depends(site_dependency)])
 SOCIAL_ICONS = {name: icon for name, _url, icon in content.FOOTER["social"]}
+
+
+def breadcrumbs(request: Request, ctx: dict) -> list[tuple[str, str]]:
+    """Home / section / menu / page: every step is a link, and the last one is the page itself.
+
+    Built from the page's section, sub-menu and title; a route can pass `crumb` (the page's own label) or a full
+    `crumbs` list for pages outside the menus. The home page has none.
+    """
+    path = request.url.path
+    if path == "/":
+        return []
+    if ctx.get("crumbs"):
+        trail = list(ctx["crumbs"])
+    else:
+        trail = [("Home", "/")]
+        section, sub = ctx.get("section"), ctx.get("subnav")
+        if section:
+            trail.append((section.title, section.path))
+            if sub:
+                trail.append((sub.title, f"{section.path}{sub.slug}/"))
+    if trail[-1][1] != path:
+        page = ctx.get("post") or ctx.get("product") or ctx.get("page")
+        leaf = (ctx.get("crumb") or ctx.get("item") or ctx.get("heading")
+                or getattr(page, "title", None) or getattr(page, "name", None))
+        if leaf:
+            trail.append((str(leaf), path))
+    return trail
 
 
 def render(request: Request, template: str, status_code: int = 200, **ctx) -> HTMLResponse:
@@ -67,8 +94,11 @@ def render(request: Request, template: str, status_code: int = 200, **ctx) -> HT
         "logo_navy": site.brand["logo_navy"], "logo_white": site.brand["logo_white"], "favicon": site.brand["favicon"],
         "year": date.today().year,
         "asset_version": ASSET_VERSION, "image_url": catalogue.image_url,
+        "site_url": get_settings().site_url.rstrip("/"),
     }
-    return TEMPLATES.TemplateResponse(request, template, {**base, **ctx}, status_code=status_code)
+    base["crumbs"] = breadcrumbs(request, ctx)
+    return TEMPLATES.TemplateResponse(request, template, {**base, **{k: v for k, v in ctx.items() if k != "crumbs"}},
+                                      status_code=status_code)
 
 
 def _section(request: Request, key: str):
@@ -131,7 +161,7 @@ def search(request: Request, q: str = "", db: Session = Depends(get_db)):
                     for label, href in col.items(sec.path, sub.slug):
                         if needle in label.lower() or needle in col.title.lower():
                             pages.append((f"{sec.title} · {sub.title}", label, href))
-    return render(request, "site/search.html", q=q, services=services, pages=pages[:12])
+    return render(request, "site/search.html", q=q, services=services, pages=pages[:12], crumb="Search")
 
 
 @router.post("/waitlist/")
