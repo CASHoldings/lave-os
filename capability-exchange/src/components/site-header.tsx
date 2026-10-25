@@ -38,7 +38,7 @@ export function SiteHeader({ actor }: { actor: Actor | null }) {
   const items = navFor(actor);
   return (
     <header className="border-b border-line bg-surface/90">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href={actor ? (actor.profileId ? "/talent" : actor.isAdmin && !actor.memberships.length ? "/admin" : "/employer") : "/"} className="flex items-center gap-2 no-underline">
           <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-lg bg-ink font-serif text-lg font-bold text-white">
             {brand.shortName.slice(0, 1)}
@@ -47,8 +47,8 @@ export function SiteHeader({ actor }: { actor: Actor | null }) {
         </Link>
         {actor ? (
           <>
-            <nav aria-label="Main" className="hidden lg:block">
-              <ul className="flex flex-wrap items-center gap-1 text-sm">
+            <nav aria-label="Main" className="hidden xl:block">
+              <ul className="flex items-center gap-0.5 whitespace-nowrap text-sm">
                 {items.map((i) => (
                   <li key={i.href}>
                     <Link href={i.href} className="rounded-md px-2.5 py-2 font-medium text-ink no-underline hover:bg-surface-muted">
@@ -63,7 +63,7 @@ export function SiteHeader({ actor }: { actor: Actor | null }) {
                 </li>
               </ul>
             </nav>
-            <details className="relative lg:hidden">
+            <details className="relative xl:hidden">
               <summary className="cursor-pointer list-none rounded-lg border border-line-strong px-3 py-2 text-sm font-semibold">Menu</summary>
               <nav aria-label="Main" className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-line bg-surface p-2 shadow-lg">
                 <ul className="text-sm">

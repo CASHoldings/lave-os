@@ -29,9 +29,8 @@ export const bool = () => z.preprocess((v) => v === true || v === "on" || v === 
 export const stringList = (max = 30, itemMax = 80) =>
   z
     .preprocess((v) => {
-      if (Array.isArray(v)) return v;
-      if (typeof v === "string") return v.split(",");
-      return [];
+      const items = Array.isArray(v) ? v : typeof v === "string" ? [v] : [];
+      return items.flatMap((i) => (typeof i === "string" ? i.split(",") : []));
     }, z.array(z.string()))
     .transform((arr) => Array.from(new Set(arr.map((s) => s.trim()).filter(Boolean))))
     .pipe(z.array(z.string().max(itemMax)).max(max));

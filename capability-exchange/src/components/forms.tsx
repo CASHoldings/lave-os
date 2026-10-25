@@ -57,6 +57,10 @@ export function SubmitButton({ children, pendingLabel = "Saving…", variant = "
   );
 }
 
+export function FormErrorsProvider({ errors, children }: { errors: Record<string, string>; children: ReactNode }) {
+  return <FormContext.Provider value={{ errors }}>{children}</FormContext.Provider>;
+}
+
 export function useFieldError(name: string) {
   return useContext(FormContext).errors[name];
 }
@@ -99,7 +103,7 @@ function describedBy(id: string, hint?: ReactNode, error?: string) {
   return [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
 }
 
-export function TextField(props: FieldProps & { type?: string; defaultValue?: string | number | null; placeholder?: string; autoComplete?: string; inputMode?: "numeric" | "decimal" | "email" | "url" | "tel" | "text"; maxLength?: number }) {
+export function TextField(props: FieldProps & { type?: string; defaultValue?: string | number | null; placeholder?: string; autoComplete?: string; inputMode?: "numeric" | "decimal" | "email" | "url" | "tel" | "text"; maxLength?: number; list?: string }) {
   const id = useId();
   const error = useFieldError(props.name) ?? props.error;
   return (
@@ -113,6 +117,7 @@ export function TextField(props: FieldProps & { type?: string; defaultValue?: st
         autoComplete={props.autoComplete}
         inputMode={props.inputMode}
         maxLength={props.maxLength}
+        list={props.list}
         required={props.required}
         aria-invalid={!!error}
         aria-describedby={describedBy(id, props.hint, error)}

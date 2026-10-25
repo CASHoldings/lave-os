@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
+import { mkdirSync } from "node:fs";
 import { Pool } from "pg";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { PGlite } from "@electric-sql/pglite";
@@ -31,6 +32,7 @@ export function getDb(): Database {
     holder.close = () => pool.end();
   } else {
     if (env.NODE_ENV === "production") throw new Error("DATABASE_URL is required in production.");
+    mkdirSync(env.PGLITE_DIR, { recursive: true });
     const client = new PGlite(env.PGLITE_DIR);
     holder.db = drizzlePglite(client, { schema }) as unknown as Database;
     holder.close = () => client.close();
