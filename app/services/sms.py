@@ -51,7 +51,7 @@ def send_explained(phone: str, body: str) -> str | None:
         if r.status_code >= 300:
             try:
                 detail = r.json().get("message") or r.text[:200]
-            except ValueError:
+            except Exception:  # not JSON: use the plain reply
                 detail = r.text[:200]
             raise SmsError(f"Twilio said: {detail}")
     except httpx.HTTPError as exc:
