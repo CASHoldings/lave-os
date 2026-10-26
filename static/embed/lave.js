@@ -528,6 +528,12 @@
   class LaveBooking extends LaveBase {
     async start() {
       await this.loadTerms();
+      if (this.terms.pack_short) {
+        const n = this.terms.pack_short;
+        this.view.innerHTML = `<div class="card stack center"><p class="notice">Add ${n} more item${n === 1 ? "" : "s"} to complete your pack. Everyday staples are booked in packs of 5 or more.</p>
+          <div class="row center"><a class="btn primary" href="/atelier/list/">Complete your pack</a></div></div>`;
+        return;
+      }
       this.ateliers = this.terms.dropoff ? await this.call("GET", "/api/me/ateliers?days=" + this.config.booking_horizon_days).catch(() => []) : [];
       const usable = this.client.addresses.filter(inZone);
       const def = usable.find((a) => a.is_default) || usable[0];
@@ -586,11 +592,12 @@
             <textarea id="notes" maxlength="2000" placeholder="Stains, delicate trims, a date you need something back by…">${esc(s.notes)}</textarea></label>
         </section>
         <section class="stack" id="pay" ${this.collected && needsCard ? "" : "hidden"}>
-          <div class="section-head"><p class="eyebrow">Payment</p><p>Add a card. We only charge once we've counted and priced your items, and we'll show you the total first.</p></div>
+          <div class="section-head"><p class="eyebrow">Payment</p><p>Add a card for your booking. We keep it safely with Stripe for any difference after our atelier has checked your items.</p></div>
           <div id="card-mount"></div>
         </section>
         <section class="stack" id="confirm" ${this.collected ? "" : "hidden"}>
           <dl class="summary" id="summary"></dl>
+          <p class="center muted small" style="max-width:640px;margin:0 auto">${esc(t.booking_wording || "")}</p>
           <p class="error" id="book-error" hidden></p>
           <div class="row center"><button class="btn primary" id="book">Confirm booking</button></div>
         </section>`;
@@ -721,16 +728,28 @@
       }
     }
 
-    chargeText() {
+    chargePence() {
       const s = this.state, t = this.terms;
       const oneHour = (s.mode === "lave_collects" && s.collection?.window_type === "hour") || s.delivery?.window_type === "hour";
-      const fee = t.amounts?.[oneHour ? "hour" : "saver"] || 0;
-      return fee ? money(fee) : t.level ? "Included with your membership" : "Free";
+      return t.amounts?.[oneHour ? "hour" : "saver"] || 0;
+    }
+
+    chargeText() {
+      const fee = this.chargePence();
+      return fee ? money(fee) : this.terms.level ? "Included with your membership" : "Free";
+    }
+
+    /* Paid at booking: fixed-price items and the collection & delivery charge, less any LAVE account credit. */
+    dueNow() {
+      const t = this.terms, due = (t.items_fixed_pence || 0) + this.chargePence();
+      const credit = Math.min(t.credit_pence || 0, due);
+      return { credit, pay: due - credit };
     }
 
     drawSummary() {
-      const s = this.state, el = this.$("#summary");
+      const s = this.state, t = this.terms, el = this.$("#summary");
       if (!el || !this.collected) return;
+      const due = this.dueNow();
       const addr = this.client.addresses.find((a) => a.id === s.addressId && inZone(a));
       const loc = this.ateliers.find((a) => a.id === s.dropoff?.atelier_id);
       const date = loc?.dates.find((d) => d.day === s.dropoff?.day);
@@ -740,8 +759,13 @@
         : `<dt>Collection</dt><dd>${esc(DAY_LONG.format(parse(s.collection.day)))}, ${range(s.collection.starts_at, s.collection.ends_at)}<br><span class="muted small">${esc(addr?.one_line || "Choose an address above")}</span></dd>`;
       el.innerHTML += `
         <dt>Return</dt><dd>${together ? "Together, once everything is ready" : s.arrangeLater ? "Arrange later" : s.delivery ? `${esc(DAY_LONG.format(parse(s.delivery.day)))}, ${range(s.delivery.starts_at, s.delivery.ends_at)}<br><span class="muted small">${esc(s.mode === "atelier" ? (addr?.one_line || "Choose an address above") : "Delivered to the same address")}</span>` : `<span class="muted">Choose a time above</span>`}</dd>
+        ${t.items_fixed_pence || t.priced_later ? `<dt>Your items</dt><dd>${money(t.items_fixed_pence || 0)}${t.priced_later ? `<br><span class="muted small">plus ${t.priced_later} priced after inspection</span>` : ""}</dd>` : ""}
         <dt>Collection and delivery</dt><dd>${esc(this.chargeText())}</dd>
+        ${due.credit ? `<dt>Account credit</dt><dd>−${money(due.credit)}</dd>` : ""}
+        <dt>To pay now</dt><dd><strong>${money(due.pay)}</strong></dd>
         ${this.client.membership?.status === "active" ? `<dt>Membership</dt><dd>${esc(this.client.membership.plan_name)}</dd>` : ""}`;
+      const btn = this.$("#book");
+      if (btn && !btn.disabled) btn.textContent = due.pay ? `Pay ${money(due.pay)} and book` : "Confirm booking";
     }
 
     async submit() {
@@ -765,11 +789,21 @@
           address_id: s.addressId, return_preference: s.returnPref, requested_services: s.bag, notes: s.notes,
           wardrobe_item_ids: s.pieces.map((p) => p.id),
         });
+        let done = order;
+        if (order.payment?.status === "requires_action") {
+          // The bank wants to confirm the payment (3D Secure).
+          btn.textContent = "Confirming with your bank…";
+          const stripe = await this.loadStripe();
+          const { error } = await stripe.handleNextAction({ clientSecret: order.payment.client_secret });
+          done = await this.call("POST", `/api/me/orders/${encodeURIComponent(order.ref)}/booking-payment`);
+          if (error && done.payment?.status !== "paid") throw new Error(error.message);
+        }
         this.card?.unmount();
         this.card = null;
-        this.renderDone(order);
+        this.renderDone(done);
       } catch (e) {
-        btn.disabled = false; btn.textContent = "Confirm booking";
+        btn.disabled = false;
+        this.drawSummary();
         fail(e.message);
         if (e.status === 409 && this.collectPicker) this.collectPicker.load();
       }
@@ -789,6 +823,8 @@
             : `<dt>Collection</dt><dd>${esc(when(coll))}</dd>`}
           <dt>Return</dt><dd>${del ? esc(when(del)) : order.return_preference === "together" ? "Together, once everything is ready" : "To arrange from your account"}</dd>
           <dt>Collection and delivery</dt><dd>${order.fees_pence ? money(order.fees_pence) : this.terms.level ? "Included with your membership" : "Free"}</dd>
+          ${order.paid_pence ? `<dt>Paid now</dt><dd>${money(order.paid_pence)}</dd>` : ""}
+          ${order.credit_used_pence ? `<dt>Account credit used</dt><dd>${money(order.credit_used_pence)}</dd>` : ""}
         </dl>
         <p class="muted">${coll.atelier ? `Label each bag with its code. ${ready ? esc(ready.text.replace(" Choose any time from then.", "")) : ""}`
           : "We'll text you on the day when the driver is close. You can follow every item from your account."}</p>
@@ -802,7 +838,7 @@
     ["awaiting_collection", "Booked"], ["collected", "Collected"], ["inspected", "Inspected"], ["in_care", "In care"],
     ["quality_check", "Quality check"], ["ready", "Ready"], ["delivered", "Delivered"],
   ];
-  const stageIndex = (st) => st === "out_for_delivery" ? 5 : STAGES.findIndex(([k]) => k === st);
+  const stageIndex = (st) => st === "out_for_delivery" ? 5 : st === "awaiting_customer_call" ? 1 : STAGES.findIndex(([k]) => k === st);
   const statusClass = (st) => st === "delivered" ? "done" : st === "cancelled" ? "warn" : "";
   const PREFS = [
     ["shirts", "Shirts", ["Hung", "Folded"]],
@@ -845,12 +881,13 @@
     }
 
     async tab_orders(panel) {
-      const orders = await this.call("GET", "/api/me/orders");
+      const [orders, credit] = await Promise.all([this.call("GET", "/api/me/orders"), this.call("GET", "/api/me/credit").catch(() => null)]);
+      const creditLine = credit?.balance_pence ? `<p class="notice center">LAVE account credit: <strong>${money(credit.balance_pence)}</strong>. We use it automatically on your next booking, or refund it to your card if you ask.</p>` : "";
       if (!orders.length) {
-        panel.innerHTML = `<div class="notice center">You haven't sent us anything yet. Book a collection and your orders will appear here.</div>`;
+        panel.innerHTML = creditLine + `<div class="notice center">You haven't sent us anything yet. Book a collection and your orders will appear here.</div>`;
         return;
       }
-      panel.innerHTML = `<div class="orders">${orders.map((o) => `
+      panel.innerHTML = creditLine + `<div class="orders">${orders.map((o) => `
         <button class="order-row" data-ref="${esc(o.ref)}">
           <span><strong>${esc(o.ref)}</strong><br><span class="muted small">${DAY.format(parse(o.created_at))}</span></span>
           <span class="hide-sm">${o.item_count ? o.item_count + (o.item_count === 1 ? " item" : " items") : "<span class='muted'>Not yet itemised</span>"}</span>
@@ -875,9 +912,13 @@
           <tfoot>
             ${o.fees_pence ? `<tr><td colspan="4">Collection and delivery</td><td class="num">${money(o.fees_pence)}</td></tr>` : ""}
             ${o.discount_pence ? `<tr><td colspan="4">Discount</td><td class="num">−${money(o.discount_pence)}</td></tr>` : ""}
-            <tr><td colspan="4"><strong>Total</strong> <span class="muted small">${o.payment_status === "paid" ? "Paid" : o.payment_status === "waived" ? "No charge" : "Charged to your card on file once confirmed"}</span></td><td class="num"><strong>${money(o.total_pence)}</strong></td></tr>
+            <tr><td colspan="4"><strong>Total</strong> <span class="muted small">${o.payment_status === "paid" ? "Settled" : o.payment_status === "waived" ? "No charge" : "Settled once our atelier has checked everything"}</span></td><td class="num"><strong>${money(o.total_pence)}</strong></td></tr>
+            ${o.paid_pence ? `<tr><td colspan="4">Paid by card</td><td class="num">${money(o.paid_pence)}</td></tr>` : ""}
+            ${o.credit_used_pence ? `<tr><td colspan="4">Account credit used</td><td class="num">${money(o.credit_used_pence)}</td></tr>` : ""}
+            ${o.credited_pence ? `<tr><td colspan="4">Credited to your LAVE account</td><td class="num">${money(o.credited_pence)}</td></tr>` : ""}
           </tfoot></table></div>`
-        : `<p class="notice">We'll list every item here, with its tag and price, once we've inspected your order.</p>`}
+        : `<p class="notice">We'll list every item here, with its tag and price, once we've inspected your order.${o.paid_pence ? ` You've paid ${money(o.paid_pence)} so far.` : ""}</p>`}
+        ${o.status === "awaiting_customer_call" ? `<p class="notice">Something in your order differs from your booking. We'll call you to agree it before anything else is charged.</p>` : ""}
         <div class="stack"><p class="eyebrow">Bookings</p>${o.bookings.map((b) => `<p>${b.atelier ? `Drop-off at ${esc(b.atelier.name)}` : b.kind === "collection" ? "Collection" : "Return"}: ${esc(when(b))} <span class="status ${b.status === "completed" ? "done" : b.status === "cancelled" ? "warn" : ""}">${esc(b.status)}</span>${b.bag_codes?.length ? `<br><span class="muted small">Bag labels: ${b.bag_codes.map(esc).join(", ")}</span>` : ""}</p>`).join("")}
           ${this.canBookReturn(o) ? `<div class="row"><button class="btn" id="book-return">Book your return</button></div><div id="return-box" class="stack" hidden></div>` : ""}</div>
         <div class="stack"><p class="eyebrow">History</p><ul class="timeline">${o.timeline.slice().reverse().map((e) => `<li><span class="muted small">${DAY.format(parse(e.at))}, ${hour(e.at)}</span><span>${esc(e.label)}${e.note ? ` <span class="muted">· ${esc(e.note)}</span>` : ""}</span></li>`).join("")}</ul></div>`;

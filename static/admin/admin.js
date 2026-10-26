@@ -15,12 +15,12 @@
   const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const STATUS_LABEL = {
-    awaiting_collection: "Awaiting collection", collected: "Collected", inspected: "Inspected", in_care: "In care",
+    awaiting_collection: "Awaiting collection", collected: "Collected", awaiting_customer_call: "Awaiting customer call", inspected: "Inspected", in_care: "In care",
     quality_check: "Quality check", ready: "Ready", out_for_delivery: "Out for delivery", delivered: "Delivered", cancelled: "Cancelled",
   };
   // Mirrors app/services/orders.py TRANSITIONS; the server is the authority.
   const NEXT = {
-    awaiting_collection: ["collected", "cancelled"], collected: ["inspected", "cancelled"], inspected: ["in_care"],
+    awaiting_collection: ["collected", "cancelled"], collected: ["inspected", "cancelled"], awaiting_customer_call: ["cancelled"], inspected: ["in_care"],
     in_care: ["quality_check"], quality_check: ["ready", "in_care"], ready: ["out_for_delivery", "delivered"],
     out_for_delivery: ["delivered", "ready"], delivered: [], cancelled: [],
   };
@@ -28,11 +28,11 @@
     collected: "Mark collected", inspected: "Mark inspected", in_care: "Start care", quality_check: "Send to quality check",
     ready: "Mark ready", out_for_delivery: "Out for delivery", delivered: "Mark delivered", cancelled: "Cancel order",
   };
-  const PIPE = ["awaiting_collection", "collected", "inspected", "in_care", "quality_check", "ready", "out_for_delivery"];
+  const PIPE = ["awaiting_collection", "collected", "awaiting_customer_call", "inspected", "in_care", "quality_check", "ready", "out_for_delivery"];
 
   const pill = (status) => {
     const cls = { delivered: "ok", paid: "ok", completed: "ok", stored: "ok", waived: "ok", cancelled: "err", failed: "err", missed: "err",
-      unpaid: "warn", retrieval_requested: "warn", ready: "ink", en_route: "ink", dispatched: "ok", collected: "ok",
+      unpaid: "warn", retrieval_requested: "warn", awaiting_customer_call: "warn", ready: "ink", en_route: "ink", dispatched: "ok", collected: "ok",
       pending_payment: "warn" }[status] || "";
     return `<span class="pill ${cls}">${esc(STATUS_LABEL[status] || human(status))}</span>`;
   };
@@ -306,6 +306,12 @@
           ${NEXT[o.status].map((s) => `<button class="btn ${s === "cancelled" ? "danger" : "primary"}" data-next="${s}">${ACTION_LABEL[s]}</button>`).join("")}
         </div>
       </div>
+      ${o.status === "awaiting_customer_call" ? `<section class="panel stack"><h2>Call the client before charging</h2>
+        <p class="small">The review differs from what was booked. Call ${esc(o.client.name)} to agree the change, then note what you agreed.</p>
+        <pre class="small" style="white-space:pre-wrap;margin:0">${esc(o.call_notes)}</pre>
+        <form id="call-done" class="stack"><label>What did you agree?<textarea name="note" required placeholder="Client agreed the sixth shirt at £6.99"></textarea></label>
+          <div><button class="btn primary">Agreed: settle the difference</button></div></form></section>`
+        : o.call_notes ? `<div class="notice"><strong>Call notes:</strong> <span style="white-space:pre-wrap">${esc(o.call_notes)}</span></div>` : ""}
       ${o.requested_wardrobe?.length ? `<div class="notice"><strong>Sending again from their Wardrobe:</strong> ${o.requested_wardrobe.map((w) => esc(w.title)).join(", ")}</div>` : ""}
       ${o.requested_items?.length ? `<div class="notice"><strong>Client's list${o.estimate_pence != null ? ` · estimate ${money(o.estimate_pence)}` : ""}:</strong>
         <ul class="plain-list">${o.requested_items.map((l) => `<li>${l.qty} × ${esc(l.name)}${l.kind === "pack" ? ` <span class="small muted">pack: ${esc(l.detail)}</span>` : ""}${l.priced_later ? ` <span class="small muted">(quote)</span>` : ""}
@@ -347,10 +353,14 @@
           </section>
           <section class="panel">
             <h2>Payment</h2>
-            <dl class="kv"><dt>Total</dt><dd><strong>${money(o.total_pence)}</strong></dd><dt>Status</dt><dd>${pill(o.payment_status)}${o.paid_at ? ` <span class="small muted">${DT.format(parse(o.paid_at))}</span>` : ""}</dd>
+            <dl class="kv"><dt>Total</dt><dd><strong>${money(o.total_pence)}</strong>${o.items.length ? "" : ' <span class="small muted">not counted yet</span>'}</dd><dt>Status</dt><dd>${pill(o.payment_status)}${o.paid_at ? ` <span class="small muted">${DT.format(parse(o.paid_at))}</span>` : ""}</dd>
+              ${o.payments.filter((p) => p.status === "succeeded").map((p) => `<dt>${{ booking: "Paid at booking", adjustment: "Paid after review", refund: "Credit refunded" }[p.kind]}</dt><dd>${money(p.amount_pence)}</dd>`).join("")}
+              ${o.credit_used_pence ? `<dt>Account credit used</dt><dd>${money(o.credit_used_pence)}</dd>` : ""}
+              ${o.credited_pence ? `<dt>Credited to account</dt><dd>${money(o.credited_pence)}</dd>` : ""}
+              <dt>${o.balance_pence < 0 ? "We owe" : "Still to pay"}</dt><dd><strong>${money(Math.abs(o.balance_pence))}</strong></dd>
               <dt>Card</dt><dd>${o.client.has_card_on_file ? "On file" : '<span class="muted">None. Ask the client to add one from their account.</span>'}</dd></dl>
             ${!paid ? `<div class="row">
-              <button class="btn primary" id="charge" ${o.items.length && o.client.has_card_on_file ? "" : "disabled"}>Charge ${money(o.total_pence)} to card</button>
+              <button class="btn primary" id="charge" ${o.items.length && o.status !== "awaiting_customer_call" && (o.balance_pence <= 0 || o.client.has_card_on_file) ? "" : "disabled"}>${o.balance_pence > 0 ? `Charge ${money(o.balance_pence)} to card` : o.balance_pence < 0 ? `Credit ${money(-o.balance_pence)} to their account` : "Settle"}</button>
               ${me.role === "admin" ? `<button class="btn" data-manual="paid">Record paid in person</button><button class="btn ghost" data-manual="waived">Waive</button>` : ""}
             </div>` : ""}
           </section>
@@ -380,7 +390,26 @@
       </div>
       <div class="tags-print">${o.items.map((i) => `<div><strong>${esc(i.tag_code)}</strong>${esc(o.client.name)}<br>${esc(i.description)}<br>${esc(i.service?.name || "")}</div>`).join("")}</div>`;
 
-    c.querySelectorAll("[data-next]").forEach((b) => b.addEventListener("click", () => {
+    const reviewToast = (r) => {
+      const v = r.review || {};
+      if (v.on_hold) toast("On hold: call the client to agree the change before charging.", true);
+      else if (v.error) toast(v.error, true);
+      else if (v.charged) toast(`Inspected. ${money(v.charged)} charged to the saved card.`);
+      else if (v.credited) toast(`Inspected. ${money(v.credited)} credited to the client's LAVE account.`);
+      else toast("Inspected. Nothing more to charge.");
+      route();
+    };
+    c.querySelector("#call-done")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try { reviewToast(await api("POST", `/api/staff/orders/${id}/status`, { status: "inspected", note: e.target.note.value })); }
+      catch (ex) { toast(ex.message, true); }
+    });
+    c.querySelectorAll("[data-next]").forEach((b) => b.addEventListener("click", async () => {
+      if (b.dataset.next === "inspected") {
+        try { reviewToast(await api("POST", `/api/staff/orders/${id}/status`, { status: "inspected" })); }
+        catch (ex) { toast(ex.message, true); }
+        return;
+      }
       if (b.dataset.next === "cancelled") {
         b.outerHTML = `<span class="row"><span class="small">Cancel this order?</span><button class="btn danger" id="confirm-cancel">Yes, cancel</button></span>`;
         c.querySelector("#confirm-cancel").addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/status`, { status: "cancelled" }), "Order cancelled"));
@@ -516,6 +545,7 @@
             ${prefs.length ? `<dl class="kv">${prefs.map(([k, v]) => `<dt>${esc(human(k))}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : `<p class="muted small">None set. Clients set these from their account.</p>`}</section>
           <section class="panel"><h2>Addresses</h2>
             ${x.addresses.length ? x.addresses.map((a) => `<p class="small"><strong>${esc(a.label)}</strong>${a.is_default ? " (default)" : ""}<br>${esc(a.one_line)}${a.instructions ? `<br><span class="muted">${esc(a.instructions)}</span>` : ""}</p>`).join("") : `<p class="muted small">No addresses.</p>`}</section>
+          <section class="panel" id="credit"><h2>LAVE account credit</h2><p class="loading">Loading…</p></section>
           <section class="panel"><h2>Account</h2><dl class="kv">
             <dt>Card</dt><dd>${x.has_card_on_file ? "On file" : "None"}</dd>
             <dt>Website</dt><dd>${x.wp_user_id ? "Linked (user " + x.wp_user_id + ")" : "Not linked yet"}</dd>
@@ -533,6 +563,13 @@
         try { const r = await api("POST", `/api/staff/clients/${id}/membership/end`); toast(r.note); route(); } catch (e) { toast(e.message, true); }
       });
     });
+    api("GET", `/api/staff/clients/${id}/credit`).then((cr) => {
+      const box = c.querySelector("#credit");
+      box.innerHTML = `<h2>LAVE account credit</h2><p><strong>${money(cr.balance_pence)}</strong> <span class="small muted">used automatically on their next booking</span></p>
+        ${cr.history.length ? `<ul class="timeline">${cr.history.slice(0, 10).map((h) => `<li><span class="small muted">${h.at ? DT.format(parse(h.at)) : ""}</span><span>${h.amount_pence > 0 ? "+" : "−"}${money(Math.abs(h.amount_pence))} · ${esc(h.reason)}${h.expires_at ? ` <span class="muted">(expires ${D.format(parse(h.expires_at))})</span>` : ""}</span></li>`).join("")}</ul>` : ""}
+        ${me.role === "admin" && cr.balance_pence ? `<button class="btn sm" id="refund-credit">Refund ${money(cr.balance_pence)} to their card</button>` : ""}`;
+      box.querySelector("#refund-credit")?.addEventListener("click", act(() => api("POST", `/api/staff/clients/${id}/credit/refund`, {}), "Credit refunded to card"));
+    }).catch(() => { c.querySelector("#credit").remove(); });
     c.querySelector("#walk-in").addEventListener("click", async () => {
       try { const o = await api("POST", "/api/staff/orders", { client_id: Number(id) }); location.hash = "#/orders/" + o.id; }
       catch (e) { toast(e.message, true); }
@@ -1492,10 +1529,18 @@
           <label class="check-label"><input type="checkbox" name="dropoff_enabled" ${d.dropoff_enabled ? "checked" : ""} ${dis}> Members can drop off at an atelier</label>
           ${isAdmin ? `<div><button class="btn primary">Save</button></div>` : ""}
         </form>
+        <form id="credit-expiry" class="panel stack"><h2>LAVE account credit</h2>
+          <p class="small muted">Money we owe a client after review goes to their LAVE account and is used on their next booking (or refunded to their card if they ask).</p>
+          <label style="max-width:320px">Credit expires after (days; blank: never)<input name="days" type="number" min="1" value="${d.credit_expiry_days ?? ""}" ${dis}></label>
+          ${isAdmin ? `<div><button class="btn">Save</button></div>` : ""}</form>
         <section class="panel"><h2>Driver on the way</h2><p class="small">When a visit is marked <strong>En route</strong> on Today, the client is told their driver is on the way:
           ${d.texts ? "by text message, or by email if they have no mobile number or the text fails." : "by email. To send text messages instead, add the LAVE_TWILIO_ settings in Render → lave-os → Environment."}</p></section>
         <section class="panel"><h2>Bank holidays</h2><p class="small muted">England &amp; Wales, from gov.uk (checked daily). No collections or returns on these days. Close other days under <a href="#/settings?tab=closures">Closures</a>.</p>
           <p>${d.bank_holidays.map((x) => D.format(parse(x))).join(" · ") || "None listed"}</p></section>`;
+      pane.querySelector("#credit-expiry").addEventListener("submit", act((e) => {
+        e.preventDefault();
+        return api("PUT", "/api/staff/credit-expiry", { days: e.target.days.value ? Number(e.target.days.value) : null });
+      }, "Credit expiry saved"));
       pane.querySelector("#delivery").addEventListener("submit", act((e) => {
         e.preventDefault();
         const f = e.target, body = {};

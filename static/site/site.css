@@ -42,6 +42,7 @@ p { margin: 0; }
 .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; pointer-events: none; }
 .quick-add { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 12px 0 4px; }
 .quick-add form { margin: 0; }
+.quick-add .btn .muted { margin-left: 8px; font-weight: 400; letter-spacing: 0; }
 .btn.ghost { background: transparent; border: 1px solid var(--line); }
 
 /* Header */
