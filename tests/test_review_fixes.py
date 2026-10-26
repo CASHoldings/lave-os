@@ -4,7 +4,7 @@ import pytest
 from app.config import Settings
 from app.models import ProductVariant
 from app.services import mailer, shop
-from tests.conftest import wp_token
+from tests.conftest import form_fields, wp_token
 
 
 def test_wordpress_login_cannot_claim_existing_account(api, client_headers):
@@ -14,7 +14,7 @@ def test_wordpress_login_cannot_claim_existing_account(api, client_headers):
     # A website-only account can't be taken over through WordPress either.
     from app.services import accounts
     accounts.reset_limits()
-    api.post("/account/register/", data={"first_name": "Site", "email": "site@example.com", "password": "a-long-password"})
+    api.post("/account/register/", data={**form_fields(), "first_name": "Site", "email": "site@example.com", "password": "a-long-password"})
     assert api.post("/api/auth/wp-exchange", json={"token": wp_token(wp_id=100, email="site@example.com")}).status_code == 409
 
 

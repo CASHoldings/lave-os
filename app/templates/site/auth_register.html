@@ -10,7 +10,12 @@
   <label>Last name<input name="last_name" value="{{ form.last_name or '' }}" autocomplete="family-name"></label></div>
   <label>Email<input name="email" type="email" value="{{ form.email or '' }}" required autocomplete="email"></label>
   <label>Password<input name="password" type="password" required minlength="10" autocomplete="new-password"><span class="hint">At least 10 characters.</span></label>
+  {# Bot checks: a field people never see, when the form was shown, and Cloudflare Turnstile if switched on. #}
+  <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <input type="hidden" name="t" value="{{ form_token() }}">
+  {% if turnstile_key() %}<div class="cf-turnstile" data-sitekey="{{ turnstile_key() }}" data-appearance="interaction-only"></div>{% endif %}
   <button class="btn dark" type="submit">Create account</button>
 </form>
 <div class="auth-links"><a href="/account/login/?next={{ next|urlencode }}">Already have an account? Sign in</a></div>
 {% endblock %}
+{% block scripts %}{% if turnstile_key() %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}{% endblock %}

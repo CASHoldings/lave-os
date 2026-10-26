@@ -3,6 +3,7 @@ import re
 import pytest
 
 from app.services import accounts, mailer
+from tests.conftest import form_fields
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +21,7 @@ def _link(email):
 
 
 def _register(api, email="new@example.com", password="a-long-password"):
-    return api.post("/account/register/", data={"first_name": "Nia", "last_name": "Cole", "email": email,
+    return api.post("/account/register/", data={**form_fields(), "first_name": "Nia", "last_name": "Cole", "email": email,
                                                 "password": password, "next": "/account/"})
 
 
@@ -83,9 +84,9 @@ def test_signin_link_and_reset(api):
     _register(api)
     api.get(_link("new@example.com"))
     api.cookies.clear()
-    r = api.post("/account/link/", data={"email": "nobody@example.com", "purpose": "signin"})
+    r = api.post("/account/link/", data={**form_fields(), "email": "nobody@example.com", "purpose": "signin"})
     assert "we&#39;ve sent a link" in r.text and mailer.last_to("nobody@example.com") is None
-    api.post("/account/link/", data={"email": "new@example.com", "purpose": "reset"})
+    api.post("/account/link/", data={**form_fields(), "email": "new@example.com", "purpose": "reset"})
     r = api.get(_link("new@example.com"), follow_redirects=False)
     assert r.headers["location"] == "/account/password/"
     assert "Password saved" in api.post("/account/password/", data={"password": "brand-new-password"}).text

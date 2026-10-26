@@ -546,7 +546,20 @@
       try { const cl = await api("POST", "/api/staff/clients", Object.fromEntries(new FormData(e.target).entries())); location.hash = "#/clients/" + cl.id; }
       catch (ex) { toast(ex.message, true); }
     });
-    const rows = await api("GET", "/api/staff/clients" + (q ? "?q=" + encodeURIComponent(q) : ""));
+    const showAll = params.get("unconfirmed") === "1";
+    const qs = new URLSearchParams({ ...(q ? { q } : {}), ...(showAll ? { unconfirmed: "true" } : {}) });
+    const [rows, unconf] = await Promise.all([api("GET", "/api/staff/clients?" + qs), api("GET", "/api/staff/clients/unconfirmed")]);
+    if (unconf.count) {
+      c.querySelector("#list").insertAdjacentHTML("beforebegin", `<p class="notice small">${unconf.count} website sign-up${unconf.count === 1 ? "" : "s"} never confirmed their email (mostly bots using other people's addresses) ${showAll ? "are shown below" : "are hidden"}.
+        <a href="#/clients?${showAll ? "" : "unconfirmed=1"}">${showAll ? "Hide them" : "Show them"}</a>${me.role === "admin" ? ` · <button class="link small" id="purge">Remove those older than 2 days</button>` : ""}</p>`);
+      c.querySelector("#purge")?.addEventListener("click", (e) => {
+        e.target.outerHTML = `<span class="small">Delete unconfirmed sign-ups older than 2 days that have no orders, bookings, membership or address? This can't be undone. <button class="btn danger sm" id="purge-yes">Remove</button></span>`;
+        c.querySelector("#purge-yes").addEventListener("click", async () => {
+          try { const r = await api("POST", "/api/staff/clients/remove-unconfirmed", { days: 2 }); toast(`Removed ${r.removed} unconfirmed sign-up${r.removed === 1 ? "" : "s"}`); route(); }
+          catch (ex) { toast(ex.message, true); }
+        });
+      });
+    }
     c.querySelector("#list").innerHTML = rows.length ? `<div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Membership</th><th>Card</th><th>Joined</th></tr></thead>
       <tbody>${rows.map((x) => `<tr class="click" data-href="#/clients/${x.id}"><td><strong>${esc(x.full_name)}</strong></td><td>${esc(x.email)}</td><td>${esc(x.phone)}</td>

@@ -10,6 +10,7 @@ from app.db import get_db
 from app.models import Booking, BookingStatus, Client, Order, OrderStatus, VaultItem, VaultStatus
 from app.services import accounts, mailer
 from app.services import wardrobe as wardrobe_svc
+from app.services import bot_guard
 from app.services.accounts import AccountError, safe_next
 from app.services.clock import local_now
 from app.site.routes import render
@@ -95,9 +96,15 @@ def register_form(request: Request, next: str = "/account/"):
 
 @router.post("/account/register/", response_class=HTMLResponse)
 def register(request: Request, first_name: str = Form(""), last_name: str = Form(""), email: str = Form(""),
-             password: str = Form(""), next: str = Form("/account/"), db: Session = Depends(get_db)):
+             password: str = Form(""), next: str = Form("/account/"), website: str = Form(""), t: str = Form(""),
+             cf_turnstile_response: str = Form("", alias="cf-turnstile-response"), db: Session = Depends(get_db)):
     next_path = safe_next(next)
     form = {"first_name": first_name, "last_name": last_name, "email": email}
+    check_email = dict(crumbs=_account_crumbs(request, "Check your email"), email=accounts.normalise_email(email),
+                       heading="Check your email", message="We've sent you a link to confirm your account. It expires in 24 hours.")
+    if bot_guard.caught(honeypot=website, token=t, names=(first_name, last_name), turnstile=cf_turnstile_response,
+                        ip=_client_ip(request)):
+        return render(request, "site/auth_check_email.html", **check_email, dev_email=None)  # looks normal; nothing sent
     if not accounts.allow(f"register:{_client_ip(request)}", limit=10, window_seconds=60 * 60):
         return render(request, "site/auth_register.html", crumbs=_account_crumbs(request, "Create an account"), status_code=429, next=next_path, form=form,
                       error="Too many sign-ups from this connection. Try again in an hour.")
@@ -105,9 +112,7 @@ def register(request: Request, first_name: str = Form(""), last_name: str = Form
         accounts.register(db, first_name, last_name, email, password, next_path)
     except AccountError as e:
         return render(request, "site/auth_register.html", crumbs=_account_crumbs(request, "Create an account"), status_code=400, next=next_path, form=form, error=str(e))
-    return render(request, "site/auth_check_email.html", crumbs=_account_crumbs(request, "Check your email"), email=accounts.normalise_email(email),
-                  heading="Check your email", message="We've sent you a link to confirm your account. It expires in 24 hours.",
-                  dev_email=_dev_email(email))
+    return render(request, "site/auth_check_email.html", **check_email, dev_email=_dev_email(email))
 
 
 # Emailed links
@@ -120,10 +125,11 @@ def link_form(request: Request, purpose: str = "signin", next: str = "/account/"
 
 @router.post("/account/link/", response_class=HTMLResponse)
 def send_link(request: Request, email: str = Form(""), purpose: str = Form("signin"), next: str = Form("/account/"),
-              db: Session = Depends(get_db)):
+              website: str = Form(""), t: str = Form(""), db: Session = Depends(get_db)):
     purpose = "reset" if purpose == "reset" else "signin"
     email = accounts.normalise_email(email)
-    if accounts.valid_email(email) and accounts.allow(f"link:{email}", limit=5, window_seconds=60 * 60):
+    bot = bot_guard.caught(honeypot=website, token=t, ip=_client_ip(request))
+    if not bot and accounts.valid_email(email) and accounts.allow(f"link:{email}", limit=5, window_seconds=60 * 60):
         accounts.send_signin_link(db, email, safe_next(next), purpose)
     # Same answer whether or not the account exists.
     return render(request, "site/auth_check_email.html", crumbs=_account_crumbs(request, "Check your email"), email=email, heading="Check your email",

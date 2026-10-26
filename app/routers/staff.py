@@ -2,7 +2,7 @@
 from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app import serializers as ser
@@ -365,9 +365,39 @@ def lookup_tag(code: str, staff: StaffUser = anyone, db: Session = Depends(get_d
 
 # Clients
 
+def _unconfirmed():
+    """Signed up on the website but never confirmed their email: mostly bots using other people's addresses."""
+    return (Client.password_hash.is_not(None)) & (Client.email_verified_at.is_(None))
+
+
+@router.get("/clients/unconfirmed")
+def unconfirmed_signups(staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    return {"count": db.scalar(select(func.count()).select_from(Client).where(_unconfirmed())) or 0}
+
+
+@router.post("/clients/remove-unconfirmed")
+def remove_unconfirmed(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """Delete website sign-ups that never confirmed their email, are older than `days` (default 2) and have
+    nothing attached: no orders, bookings, membership, addresses or credit."""
+    from datetime import timedelta
+    from app.models import Address, ClientCredit, LoginToken, Membership
+    cutoff = local_now() - timedelta(days=max(1, int(body.get("days") or 2)))
+    removed = 0
+    for c in db.scalars(select(Client).where(_unconfirmed(), Client.created_at < cutoff)).all():
+        attached = any(db.scalar(select(func.count()).select_from(m).where(m.client_id == c.id))
+                       for m in (Order, Booking, Membership, Address, ClientCredit))
+        if attached:
+            continue
+        db.execute(delete(LoginToken).where(LoginToken.client_id == c.id))
+        db.delete(c)
+        removed += 1
+    db.commit()
+    return {"removed": removed}
+
+
 @router.get("/clients")
-def list_clients(q: str | None = None, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
-    query = select(Client)
+def list_clients(q: str | None = None, unconfirmed: bool = False, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    query = select(Client) if unconfirmed else select(Client).where(~_unconfirmed())
     if q:
         like = f"%{q.strip()}%"
         query = query.where(or_(Client.email.ilike(like), Client.first_name.ilike(like), Client.last_name.ilike(like),

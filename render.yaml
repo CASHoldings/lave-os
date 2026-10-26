@@ -58,6 +58,11 @@ services:
         sync: false
       - key: LAVE_SMTP_PASSWORD
         sync: false
+      # Cloudflare Turnstile on the sign-up form (optional, free): stops bot sign-ups.
+      - key: LAVE_TURNSTILE_SITE_KEY
+        sync: false
+      - key: LAVE_TURNSTILE_SECRET
+        sync: false
       # Text messages: "your driver is on the way" (Twilio). Without them, it goes by email.
       - key: LAVE_TWILIO_ACCOUNT_SID
         sync: false

@@ -94,3 +94,17 @@ def photo_folder(tmp_path_factory, monkeypatch):
     """Every test keeps its photos in a fresh folder, never in this machine's media folder."""
     from app.services import storage
     monkeypatch.setattr(storage, "_store", storage.Folder(tmp_path_factory.mktemp("media")))
+
+
+
+@pytest.fixture(autouse=True)
+def human_speed(monkeypatch):
+    """Tests fill forms in instantly; the bot check's 3-second minimum is tested on its own (test_bots.py)."""
+    from app.services import bot_guard
+    monkeypatch.setattr(bot_guard, "MIN_SECONDS", 0)
+
+
+def form_fields() -> dict:
+    """What a person's browser sends with the sign-up and sign-in-link forms."""
+    from app.services import bot_guard
+    return {"website": "", "t": bot_guard.form_token()}

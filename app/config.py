@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # Cloudflare Turnstile on the sign-up form (optional; free at dash.cloudflare.com → Turnstile).
+    turnstile_site_key: str = ""
+    turnstile_secret: str = ""
     # Text messages (Twilio). Without them, "driver on the way" messages go by email instead.
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""

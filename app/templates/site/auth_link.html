@@ -6,6 +6,9 @@
 <form method="post" action="/account/link/" class="auth-form">
   <input type="hidden" name="next" value="{{ next }}"><input type="hidden" name="purpose" value="{{ purpose }}">
   <label>Email<input name="email" type="email" value="{{ email }}" required autocomplete="email" autofocus></label>
+  {# Bot checks: a field people never see, and when the form was shown. #}
+  <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <input type="hidden" name="t" value="{{ form_token() }}">
   <button class="btn dark" type="submit">Email me a link</button>
 </form>
 <div class="auth-links"><a href="/account/login/?next={{ next|urlencode }}">Back to sign in</a></div>

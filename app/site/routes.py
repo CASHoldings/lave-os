@@ -35,6 +35,10 @@ def _bold(text: str):
 
 TEMPLATES.env.filters["bold"] = _bold
 TEMPLATES.env.filters["small"] = small_url  # the light copy of a photo, for cards, menus and tiles
+# Bot checks on the sign-up and sign-in-link forms (services/bot_guard.py).
+from app.services import bot_guard  # noqa: E402
+TEMPLATES.env.globals["form_token"] = bot_guard.form_token
+TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 ASSET_VERSION = "50"
 

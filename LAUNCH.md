@@ -111,6 +111,14 @@ The rules from "LAVE_Collection_Delivery_Spec" are built in; everything below is
   only appears for members once at least one atelier is active. Retire (don't delete) a location that has bookings.
 - **Today**: scan or type bag codes (`LV-7K2M9P-1`) to check drop-offs in; log bags left without a booking.
 
+### Bot sign-ups
+
+The sign-up and sign-in-link forms quietly stop bots (a hidden field, a time check, random-letter names): they see
+the normal "check your email" page, but nothing is created or sent. For the strongest protection, add Cloudflare
+Turnstile (free, usually invisible): dash.cloudflare.com → **Turnstile → Add widget**, hostname `lavelondon.com`,
+mode **Managed**. Then in Render → `lave-os` → Environment add `LAVE_TURNSTILE_SITE_KEY` and `LAVE_TURNSTILE_SECRET`.
+/admin → Clients hides sign-ups that never confirmed their email, and can remove those older than two days.
+
 ### "Your driver is on the way" (text or email)
 
 When a collection or delivery is marked **En route** on Today, the client is told their driver is on the way: by text
