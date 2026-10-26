@@ -1416,3 +1416,13 @@ def save_client_about(client_id: int, body: dict, staff: StaffUser = Depends(ops
     if not c:
         raise HTTPException(404, "Client not found.")
     return members.save_about(db, c, {**members.about(db, c), **body}, by_member=False)
+
+
+@router.post("/sms/test")
+def test_text(body: dict, staff: StaffUser = Depends(admin_only)):
+    """Admin → Settings → Collection & delivery: send a test text to check Twilio is set up."""
+    from app.services import sms
+    problem = sms.send_explained(str(body.get("phone") or ""), "LAVE: this is a test text from LAVE OS. Texts are working.")
+    if problem:
+        raise HTTPException(502, problem)
+    return {"sent_to": sms.uk_mobile(str(body.get("phone")))}

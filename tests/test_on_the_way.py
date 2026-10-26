@@ -67,3 +67,27 @@ def test_uk_mobile_numbers():
     assert sms.uk_mobile("+44 (0)7700 900123") == "+447700900123"
     assert sms.uk_mobile("0044 7700 900123") == "+447700900123"
     assert sms.uk_mobile("020 7946 0000") is None  # a landline can't take a text
+
+
+def test_admin_test_text(api, staff_headers, monkeypatch):
+    r = api.post("/api/staff/sms/test", headers=staff_headers, json={"phone": "07700 900123"})
+    assert r.status_code == 502 and "aren't set up" in r.json()["detail"]
+    s = get_settings()
+    for k, v in (("twilio_account_sid", "AC1"), ("twilio_auth_token", "t"), ("twilio_from", "LAVE")):
+        monkeypatch.setattr(s, k, v)
+
+    class Refused:
+        status_code = 400
+        text = ""
+        def json(self): return {"message": "Permission to send an SMS has not been enabled for the region"}
+
+    monkeypatch.setattr(sms.httpx, "post", lambda *a, **k: Refused())
+    r = api.post("/api/staff/sms/test", headers=staff_headers, json={"phone": "07700 900123"})
+    assert r.status_code == 502 and "has not been enabled for the region" in r.json()["detail"]
+
+    class Ok:
+        status_code = 201
+        text = ""
+
+    monkeypatch.setattr(sms.httpx, "post", lambda *a, **k: Ok())
+    assert api.post("/api/staff/sms/test", headers=staff_headers, json={"phone": "07700 900123"}).json() == {"sent_to": "+447700900123"}

@@ -1616,9 +1616,15 @@
           <label style="max-width:320px">Credit expires after (days; blank: never)<input name="days" type="number" min="1" value="${d.credit_expiry_days ?? ""}" ${dis}></label>
           ${isAdmin ? `<div><button class="btn">Save</button></div>` : ""}</form>
         <section class="panel"><h2>Driver on the way</h2><p class="small">When a visit is marked <strong>En route</strong> on Today, the client is told their driver is on the way:
-          ${d.texts ? "by text message, or by email if they have no mobile number or the text fails." : "by email. To send text messages instead, add the LAVE_TWILIO_ settings in Render → lave-os → Environment."}</p></section>
+          ${d.texts ? "by text message, or by email if they have no mobile number or the text fails." : "by email. To send text messages instead, add the LAVE_TWILIO_ settings in Render → lave-os → Environment."}</p>
+          ${isAdmin ? `<form id="sms-test" class="row"><input name="phone" placeholder="Your mobile, e.g. 07700 900123" aria-label="Mobile number"><button class="btn">Send a test text</button></form>` : ""}</section>
         <section class="panel"><h2>Bank holidays</h2><p class="small muted">England &amp; Wales, from gov.uk (checked daily). No collections or returns on these days. Close other days under <a href="#/settings?tab=closures">Closures</a>.</p>
           <p>${d.bank_holidays.map((x) => D.format(parse(x))).join(" · ") || "None listed"}</p></section>`;
+      pane.querySelector("#sms-test")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try { const r = await api("POST", "/api/staff/sms/test", { phone: e.target.phone.value }); toast(`Test text sent to ${r.sent_to}`); }
+        catch (ex) { toast(ex.message, true); }
+      });
       pane.querySelector("#credit-expiry").addEventListener("submit", act((e) => {
         e.preventDefault();
         return api("PUT", "/api/staff/credit-expiry", { days: e.target.days.value ? Number(e.target.days.value) : null });
