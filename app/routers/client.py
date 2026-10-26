@@ -41,7 +41,7 @@ from app.services import orders as order_svc
 from app.services import payments
 from app.services import wardrobe as wardrobe_svc
 from app.services.clock import local_now
-from app.services import ateliers, billing, delivery, notices
+from app.services import ateliers, billing, delivery, members, notices
 from app.services import bookings as bookings_svc
 from app.services.slots import reserve_slot
 
@@ -393,3 +393,40 @@ def membership_resume(client: Client = Depends(current_client), db: Session = De
 @router.post("/membership/portal")
 def membership_portal(body: ReturnUrl, client: Client = Depends(current_client), db: Session = Depends(get_db)):
     return {"url": payments.billing_portal(db, client, body.return_url)}
+
+
+# "Tell us about you" (members' experience)
+
+@router.get("/about")
+def my_about(client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    return members.about(db, client)
+
+
+@router.put("/about")
+def save_my_about(body: dict, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    return members.save_about(db, client, body)
+
+
+@router.delete("/about", status_code=204)
+def forget_my_about(client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    members.forget_about(db, client)
+
+
+@router.post("/occasions", status_code=201)
+def add_my_occasion(body: dict, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    try:
+        day = date.fromisoformat(str(body.get("day")))
+    except ValueError:
+        raise HTTPException(400, "Choose the date of the occasion.")
+    members.add_occasion(db, client, day, str(body.get("title") or ""), str(body.get("note") or ""))
+    return members.about(db, client)
+
+
+@router.delete("/occasions/{occasion_id}", status_code=204)
+def remove_my_occasion(occasion_id: int, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    from app.models import ClientOccasion
+    o = db.get(ClientOccasion, occasion_id)
+    if not o or o.client_id != client.id:
+        raise HTTPException(404, "Occasion not found.")
+    db.delete(o)
+    db.commit()

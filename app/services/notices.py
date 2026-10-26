@@ -176,6 +176,20 @@ def driver_on_the_way(db: Session, b: Booking) -> str | None:
     return how
 
 
+def welcome_member(client, plan: str) -> None:
+    """A new member: welcome, and an invitation to "Tell us about you"."""
+    from app.plans import NAMES
+    if not client.email:
+        return
+    letters.send(client.email, f"Welcome to LAVE {NAMES.get(plan, 'membership')}", client.first_name, [
+        f"How lovely to welcome you as a LAVE {NAMES.get(plan, '')} member.".replace("  ", " "),
+        "To make your membership yours, tell us a little about you: your birthday, how you like us to be in touch, "
+        "the pieces that matter most and anything you're preparing for. Every answer is optional, and you can change "
+        "or delete them at any time.",
+        letters.Button("Tell us about you", f"{get_settings().site_url}/account/about/"),
+    ], letters.SOON)
+
+
 def items_counted(order: Order) -> None:
     """Once the atelier has counted an order (marked inspected), tell the client how many pieces arrived."""
     if not order.client.email or not order.items:
@@ -261,6 +275,8 @@ def reminder_loop() -> None:
                 billing.sweep_unfinished(db)  # bookings whose card check was abandoned release their slots
                 if holidays_checked != local_now().date():
                     holidays_checked = local_now().date()
+                    from app.services import members
+                    members.celebrate(db)  # members' birthdays: suggestions, reminders, and approved gestures on the day
                     delivery.refresh_bank_holidays(db)  # gov.uk; the bundled list stays if it can't be reached
         except Exception:  # never let one bad night stop the reminders for good
             log.exception("Booking reminders or bank holiday refresh failed")

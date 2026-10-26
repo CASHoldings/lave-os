@@ -1349,3 +1349,40 @@ def put_credit_expiry(body: dict, staff: StaffUser = Depends(admin_only), db: Se
     days = body.get("days")
     billing.set_credit_expiry_days(db, int(days) if days not in (None, "", 0, "0") else None)
     return {"days": billing.credit_expiry_days(db)}
+
+
+# Members' experience: what's coming up, birthday gestures, and what members have told us
+
+@router.get("/coming-up")
+def coming_up(days: int = 14, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import members
+    return members.upcoming(db, days=max(1, min(days, 60)))
+
+
+@router.post("/gestures/{gesture_id}")
+def decide_gesture(gesture_id: int, body: dict, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.models import ClientGesture
+    from app.services import members
+    g = db.get(ClientGesture, gesture_id)
+    if not g:
+        raise HTTPException(404, "Not found.")
+    return members.describe(members.decide(db, g, str(body.get("action")), staff.name, body))
+
+
+@router.get("/clients/{client_id}/about")
+def client_about(client_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import members
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    return members.about(db, c)
+
+
+@router.put("/clients/{client_id}/about")
+def save_client_about(client_id: int, body: dict, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Staff record what a member tells them on a call or at a handover."""
+    from app.services import members
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    return members.save_about(db, c, {**members.about(db, c), **body}, by_member=False)

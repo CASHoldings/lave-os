@@ -23,7 +23,7 @@ def _account_crumbs(request: Request, label: str | None = None) -> list[tuple[st
     return trail + [(label, request.url.path)] if label else trail
 
 
-ACCOUNT_TABS = [("orders", "Orders"), ("bookings", "Bookings"), ("vault", "Vault"), ("profile", "Profile"),
+ACCOUNT_TABS = [("orders", "Orders"), ("bookings", "Bookings"), ("vault", "Vault"), ("profile", "Profile"), ("about", "About you"),
                 ("membership", "Membership"), ("wardrobe", "Wardrobe")]
 STAGES = ["awaiting_collection", "collected", "inspected", "in_care", "quality_check", "ready", "delivered"]
 STAGE_LABELS = ["Booked", "Collected", "Inspected", "In care", "Quality check", "Ready", "Delivered"]

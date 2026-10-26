@@ -849,7 +849,7 @@
 
   class LaveAccount extends LaveBase {
     async start() {
-      this.tab = this.getAttribute("tab") || (location.hash.match(/^#lave-(orders|bookings|vault|profile|membership|wardrobe)$/) || [])[1] || "orders";
+      this.tab = this.getAttribute("tab") || (location.hash.match(/^#lave-(orders|bookings|vault|profile|about|membership|wardrobe)$/) || [])[1] || "orders";
       if (this.hasAttribute("hide-tabs")) {
         // The website draws its own account navigation around the embed.
         this.view.innerHTML = `<div id="panel" class="stack"></div>`;
@@ -859,7 +859,7 @@
     }
 
     renderShell() {
-      const tabs = [["orders", "Orders"], ["bookings", "Bookings"], ["vault", "Vault"], ["profile", "Profile"], ["membership", "Membership"], ["wardrobe", "Wardrobe"]];
+      const tabs = [["orders", "Orders"], ["bookings", "Bookings"], ["vault", "Vault"], ["profile", "Profile"], ["about", "About you"], ["membership", "Membership"], ["wardrobe", "Wardrobe"]];
       this.view.innerHTML = `
         <div class="section-head"><p class="eyebrow">My LAVE</p><h2>${esc(this.client.first_name ? "Welcome back, " + this.client.first_name : "Your account")}</h2></div>
         <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${this.tab === k}">${l}</button>`).join("")}</div>
@@ -1138,6 +1138,78 @@
         try { await this.card.confirm(); this.card.unmount(); this.card = null; this.show(); }
         catch (e) { const el = this.$("#card-error"); el.textContent = e.message; el.hidden = false; }
       });
+    }
+
+    /* "Tell us about you": everything optional, each with why we ask; theirs to change or delete. */
+    async tab_about(panel) {
+      const a = await this.call("GET", "/api/me/about");
+      const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const why = (t) => `<span class="muted small" style="text-transform:none;letter-spacing:0;font-weight:400">${t}</span>`;
+      const person = (h = {}, i) => `<div class="full grid-3" data-person="${i}" style="display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:10px;align-items:end">
+          <label>Name<input name="h_name" value="${esc(h.name || "")}"></label>
+          <label>Relation<input name="h_relation" value="${esc(h.relation || "")}" placeholder="Partner, daughter…"></label>
+          <label>Age<input name="h_age" value="${esc(h.age || "")}" placeholder="Optional"></label>
+          <button class="btn link" type="button" data-unperson>Remove</button></div>`;
+      panel.innerHTML = `
+        <div class="section-head"><p class="eyebrow">About you</p><h2>Tell us about you</h2>
+          <p class="muted">So we can make your membership yours. Every answer is optional, and you can change or delete them at any time.</p></div>
+        <form class="grid" id="about" novalidate>
+          <label>What should we call you? ${why("The name we use when we write or call.")}<input name="preferred_name" value="${esc(a.preferred_name)}" autocomplete="nickname"></label>
+          <div class="stack" style="gap:6px"><span class="small" style="font-weight:600;letter-spacing:.05em;text-transform:uppercase">Birthday ${why("Day and month only, so we can mark your day.")}</span>
+            <div class="row"><select name="birthday_day" aria-label="Day"><option value="">Day</option>${[...Array(31)].map((_, i) => `<option ${a.birthday_day === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("")}</select>
+            <select name="birthday_month" aria-label="Month"><option value="">Month</option>${MONTHS.map((m, i) => `<option value="${i + 1}" ${a.birthday_month === i + 1 ? "selected" : ""}>${m}</option>`).join("")}</select></div></div>
+          <label>How should we get in touch? ${why("For calls about your order and anything else.")}<select name="contact_channel">${Object.entries(a.channel_options).map(([k, l]) => `<option value="${k}" ${a.contact_channel === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+          <label>Best times ${why("When it suits you to hear from us.")}<input name="contact_times" value="${esc(a.contact_times)}" placeholder="Weekday evenings"></label>
+          <label class="full">Pieces that matter most ${why("Heirlooms, couture, a favourite coat: we'll take extra care.")}<textarea name="special_pieces" placeholder="My mother's silk wedding dress; a vintage Burberry trench">${esc(a.special_pieces)}</textarea></label>
+          <label class="full">Allergies or sensitive skin ${why("Only used to choose how we clean your pieces.")}<input name="allergies" value="${esc(a.allergies)}" placeholder="Fragrance-sensitive"></label>
+          <div class="full stack"><span class="small" style="font-weight:600;letter-spacing:.05em;text-transform:uppercase">What you enjoy ${why("So we invite you to the member experiences you'll love.")}</span>
+            <div class="chips" style="justify-content:flex-start">${a.interest_options.map((i) => `<button type="button" class="chip" data-interest="${esc(i)}" aria-pressed="${a.interests.includes(i)}">${esc(i)}</button>`).join("")}</div></div>
+          <label class="full">Dietary needs ${why("For member events with food.")}<input name="dietary" value="${esc(a.dietary)}"></label>
+          <div class="full stack"><span class="small" style="font-weight:600;letter-spacing:.05em;text-transform:uppercase">Your household ${why("So family experiences feel personal.")}</span>
+            <div id="people" class="stack">${(a.household.length ? a.household : []).map(person).join("")}</div>
+            <div><button class="btn link" type="button" id="add-person">+ Add someone</button></div></div>
+          <label class="full" style="flex-direction:row;display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:400"><input type="checkbox" name="feature_ok" ${a.feature_ok ? "checked" : ""} style="width:auto"> I'm happy to be featured in LAVE's Journal (we'll always ask first)</label>
+          <div class="full row"><button class="btn primary" type="submit">Save</button><span class="muted small" id="about-saved" hidden>Saved. Thank you.</span>
+            <button class="btn link" type="button" id="forget">Delete everything here</button></div>
+          <p class="full error" hidden></p>
+        </form>
+        <div class="stack"><p class="eyebrow">Something coming up?</p>
+          <p class="muted small">A wedding, a gala, a move: tell us and we'll have your pieces ready.</p>
+          ${a.occasions.length ? `<ul class="piece-list">${a.occasions.map((o) => `<li><span>${esc(o.title)}<br><span class="muted small">${esc(DAY_LONG.format(parse(o.day)))}${o.note ? " · " + esc(o.note) : ""}</span></span><button class="btn link" data-unoccasion="${o.id}">Remove</button></li>`).join("")}</ul>` : ""}
+          <form class="grid" id="occasion" novalidate>
+            <label>What is it?<input name="title" placeholder="Sister's wedding"></label>
+            <label>Date<input name="day" type="date"></label>
+            <label class="full">Anything we should know?<input name="note" placeholder="Navy suit and the silk dress"></label>
+            <div class="full"><button class="btn" type="submit">Add occasion</button></div>
+            <p class="full error" hidden></p>
+          </form></div>`;
+      const form = this.$("#about"), people = this.$("#people");
+      const interests = new Set(a.interests);
+      this.on("[data-interest]", "click", (_, b) => { const v = b.dataset.interest; interests.has(v) ? interests.delete(v) : interests.add(v); b.setAttribute("aria-pressed", String(interests.has(v))); });
+      const wireRemove = () => people.querySelectorAll("[data-unperson]").forEach((b) => { b.onclick = () => b.closest("[data-person]").remove(); });
+      wireRemove();
+      this.$("#add-person").addEventListener("click", () => { people.insertAdjacentHTML("beforeend", person({}, people.children.length)); wireRemove(); });
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(form).entries());
+        const household = [...people.querySelectorAll("[data-person]")].map((row) => ({
+          name: row.querySelector("[name=h_name]").value, relation: row.querySelector("[name=h_relation]").value, age: row.querySelector("[name=h_age]").value }));
+        try {
+          await this.call("PUT", "/api/me/about", { ...f, feature_ok: form.feature_ok.checked, interests: [...interests], household,
+            birthday_day: f.birthday_day ? Number(f.birthday_day) : null, birthday_month: f.birthday_month ? Number(f.birthday_month) : null });
+          this.$("#about-saved").hidden = false;
+        } catch (ex) { const el = form.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
+      });
+      this.$("#forget").addEventListener("click", async (e) => {
+        e.target.outerHTML = `<span class="small">Delete everything you've told us here? <button class="btn link" type="button" id="forget-yes">Yes, delete</button></span>`;
+        this.$("#forget-yes").addEventListener("click", async () => { await this.call("DELETE", "/api/me/about"); this.show(); });
+      });
+      this.$("#occasion").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try { await this.call("POST", "/api/me/occasions", Object.fromEntries(new FormData(e.target).entries())); this.show(); }
+        catch (ex) { const el = e.target.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
+      });
+      this.on("[data-unoccasion]", "click", async (_, b) => { await this.call("DELETE", `/api/me/occasions/${b.dataset.unoccasion}`); this.show(); });
     }
 
     async tab_membership(panel) {

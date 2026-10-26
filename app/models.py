@@ -152,6 +152,11 @@ class Client(Timestamped, Base):
     # Website sign-in. Clients who arrive through WordPress or are created by staff have no password.
     password_hash: Mapped[str | None] = mapped_column(String(255))
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # "Tell us about you" (members, all optional; services/members.py). Birthday is day and month only, no year.
+    birthday_day: Mapped[int | None] = mapped_column(Integer)
+    birthday_month: Mapped[int | None] = mapped_column(Integer)
+    about: Mapped[dict] = mapped_column(JSON, default=dict)
+    about_completed_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     addresses: Mapped[list["Address"]] = relationship(back_populates="client", cascade="all, delete-orphan")
     membership: Mapped["Membership | None"] = relationship(back_populates="client", uselist=False)
@@ -733,3 +738,37 @@ class ClientCredit(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime)
     by: Mapped[str] = mapped_column(String(120), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ClientOccasion(Base):
+    """Something a member is preparing for (a wedding, a gala, a move), so LAVE can have their pieces ready."""
+    __tablename__ = "client_occasions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"), index=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ClientGesture(Base):
+    """A birthday gesture for a member: suggested by LAVE OS, then approved, changed or skipped by the founder."""
+    __tablename__ = "client_gestures"
+    __table_args__ = (UniqueConstraint("client_id", "occasion", "year"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"), index=True)
+    occasion: Mapped[str] = mapped_column(String(20), default="birthday")
+    year: Mapped[int] = mapped_column(Integer)
+    on_day: Mapped[date] = mapped_column(Date)
+    kind: Mapped[str] = mapped_column(String(12), default="credit")  # credit | gift | experience | note
+    title: Mapped[str] = mapped_column(String(200), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    value_pence: Mapped[int] = mapped_column(Integer, default=0)
+    reasons: Mapped[list] = mapped_column(JSON, default=list)
+    alternatives: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(12), default="suggested")  # suggested | approved | skipped
+    decided_by: Mapped[str] = mapped_column(String(120), default="")
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime)  # founder told it's coming up
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime)  # member's birthday email
+    client: Mapped[Client] = relationship()

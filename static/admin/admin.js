@@ -197,6 +197,7 @@
         ${d.ready_unpaid ? `<a class="alert" href="#/orders?status=ready">${d.ready_unpaid} ready but unpaid</a>` : ""}
         ${d.vault_retrievals ? `<a class="alert" href="#/vault?status=retrieval_requested">${d.vault_retrievals} Vault items to retrieve</a>` : ""}
       </div>` : ""}
+      ${me.role !== "driver" ? `<section class="panel" id="coming-up"><h2>Coming up for members</h2><p class="loading">Loading…</p></section>` : ""}
       <section class="panel"><h2>Drop-off check-in</h2>
         <form id="checkin" class="row"><input name="code" placeholder="Scan or type a bag code, e.g. LV-7K2M9P-1" aria-label="Bag code" style="min-width:280px"><button class="btn primary">Check in</button></form>
         ${me.role !== "driver" ? `<details><summary class="small">Bags left without a booking</summary>
@@ -215,6 +216,50 @@
           ${d.deliveries.length ? d.deliveries.map(run).join("") : `<p class="empty">No deliveries ${day === isoDay(new Date()) ? "today" : "on " + D.format(parse(day))}.</p>`}</section>
       </div>`;
     c.querySelectorAll("[data-bstatus]").forEach((b) => b.addEventListener("click", act(() => api("PATCH", `/api/staff/bookings/${b.dataset.id}`, { status: b.dataset.bstatus }), "Updated")));
+    const coming = c.querySelector("#coming-up");
+    if (coming) api("GET", "/api/staff/coming-up?days=14").then((events) => {
+      const KIND = { credit: "LAVE credit", gift: "Gift", experience: "Experience", note: "Note" };
+      const when = (d) => D.format(parse(d));
+      const gesture = (e) => {
+        const g = e.gesture;
+        const state = g.sent ? pill("completed").replace(/>[^<]+</, ">Sent<") : g.status === "approved" ? `<span class="pill ok">Approved by ${esc(g.decided_by)}</span>` : g.status === "skipped" ? `<span class="pill">Skipped</span>` : `<span class="pill warn">To review</span>`;
+        return `<div class="stack" style="gap:6px;padding:12px 0;border-top:1px solid var(--line)">
+          <div class="row between"><strong>🎂 ${esc(e.client.name)}'s birthday · ${when(e.day)}</strong>${state}</div>
+          <span class="small"><a href="#/clients/${e.client.id}">${esc(e.client.full_name)}</a> · ${esc({ essence: "Essence", elevate: "Elevate", eclat: "Éclat" }[e.client.plan] || "")} member</span>
+          <div class="notice"><strong>${esc(g.title)}</strong>${g.value_pence ? ` · ${money(g.value_pence)}` : ""} <span class="small muted">(${KIND[g.kind]})</span><br><span class="small">${esc(g.detail)}</span>
+            ${g.reasons.length ? `<br><span class="small muted">Why: ${g.reasons.map(esc).join(" · ")}</span>` : ""}</div>
+          ${!g.sent && g.status !== "approved" ? `<div class="row"><button class="btn sm primary" data-g-approve="${g.id}">Approve</button>
+            <button class="btn sm" data-g-change="${g.id}">Choose another</button><button class="btn sm ghost" data-g-skip="${g.id}">Skip this year</button></div>
+            <form class="stack" data-g-form="${g.id}" hidden>
+              ${g.alternatives.length ? `<div class="stack small">${g.alternatives.map((alt, i) => `<label class="check-label"><input type="radio" name="pick" value="${i}"> <strong>${esc(alt.title)}</strong>${alt.value_pence ? " · " + money(alt.value_pence) : ""} <span class="muted">${esc(alt.detail)}</span></label>`).join("")}
+                <label class="check-label"><input type="radio" name="pick" value="own" checked> My own idea:</label></div>` : ""}
+              <div class="form-grid"><label>Gesture<input name="title" value="${esc(g.title)}"></label>
+                <label>Type<select name="kind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}" ${k === g.kind ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+                <label>Value (£)<input name="value" value="${(g.value_pence / 100).toFixed(2)}"></label>
+                <label style="grid-column:1/-1">Details for the birthday note<input name="detail" value="${esc(g.detail)}"></label></div>
+              <div><button class="btn sm primary">Approve this instead</button></div></form>` : ""}
+        </div>`;
+      };
+      const line = (e) => e.kind === "birthday" ? gesture(e)
+        : `<div class="row between" style="padding:10px 0;border-top:1px solid var(--line)"><span>${e.kind === "anniversary" ? `✨ <a href="#/clients/${e.client.id}">${esc(e.client.full_name)}</a>: ${e.years} year${e.years === 1 ? "" : "s"} a member`
+            : `📅 <a href="#/clients/${e.client.id}">${esc(e.client.full_name)}</a>: ${esc(e.title)}${e.note ? ` <span class="small muted">· ${esc(e.note)}</span>` : ""}`}</span><span class="small muted">${when(e.day)}</span></div>`;
+      coming.innerHTML = `<h2>Coming up for members</h2><p class="small muted">Birthdays, anniversaries and occasions in the next two weeks. Approved gestures go out on the day; nothing reaches a member until you approve it.</p>
+        ${events.length ? events.map(line).join("") : `<p class="empty">Nothing in the next two weeks.</p>`}`;
+      const decide = (id, body, msg) => act(() => api("POST", `/api/staff/gestures/${id}`, body), msg)();
+      coming.querySelectorAll("[data-g-approve]").forEach((b) => b.addEventListener("click", () => decide(b.dataset.gApprove, { action: "approve" }, "Approved: it goes out on their birthday")));
+      coming.querySelectorAll("[data-g-skip]").forEach((b) => b.addEventListener("click", () => decide(b.dataset.gSkip, { action: "skip" }, "Skipped this year")));
+      coming.querySelectorAll("[data-g-change]").forEach((b) => b.addEventListener("click", () => { coming.querySelector(`[data-g-form="${b.dataset.gChange}"]`).hidden = false; }));
+      coming.querySelectorAll("[data-g-form]").forEach((f) => {
+        const ev = events.find((e) => e.gesture?.id === Number(f.dataset.gForm));
+        f.querySelectorAll("[name=pick]").forEach((r) => r.addEventListener("change", () => {
+          const alt = ev.gesture.alternatives[Number(r.value)];
+          if (!alt) return;
+          f.title.value = alt.title; f.kind.value = alt.kind; f.value.value = (alt.value_pence / 100).toFixed(2); f.detail.value = alt.detail;
+        }));
+        f.addEventListener("submit", (e) => { e.preventDefault(); decide(f.dataset.gForm, { action: "approve", title: f.title.value, kind: f.kind.value,
+          value_pence: toPence(f.value.value || "0"), detail: f.detail.value }, "Approved: it goes out on their birthday"); });
+      });
+    }).catch((ex) => { coming.innerHTML = `<h2>Coming up for members</h2><p class="error">${esc(ex.message)}</p>`; });
     c.querySelector("#checkin").addEventListener("submit", async (e) => {
       e.preventDefault();
       const code = e.target.code.value.trim();
@@ -545,6 +590,7 @@
             ${prefs.length ? `<dl class="kv">${prefs.map(([k, v]) => `<dt>${esc(human(k))}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : `<p class="muted small">None set. Clients set these from their account.</p>`}</section>
           <section class="panel"><h2>Addresses</h2>
             ${x.addresses.length ? x.addresses.map((a) => `<p class="small"><strong>${esc(a.label)}</strong>${a.is_default ? " (default)" : ""}<br>${esc(a.one_line)}${a.instructions ? `<br><span class="muted">${esc(a.instructions)}</span>` : ""}</p>`).join("") : `<p class="muted small">No addresses.</p>`}</section>
+          <section class="panel" id="about-them"><h2>About them</h2><p class="loading">Loading…</p></section>
           <section class="panel" id="credit"><h2>LAVE account credit</h2><p class="loading">Loading…</p></section>
           <section class="panel"><h2>Account</h2><dl class="kv">
             <dt>Card</dt><dd>${x.has_card_on_file ? "On file" : "None"}</dd>
@@ -563,6 +609,29 @@
         try { const r = await api("POST", `/api/staff/clients/${id}/membership/end`); toast(r.note); route(); } catch (e) { toast(e.message, true); }
       });
     });
+    api("GET", `/api/staff/clients/${id}/about`).then((ab) => {
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const rows = [["Call them", ab.preferred_name], ["Birthday", ab.birthday_day ? `${ab.birthday_day} ${MONTHS[ab.birthday_month - 1]}` : ""],
+        ["Contact", [ab.channel_options[ab.contact_channel] !== "No preference" ? ab.channel_options[ab.contact_channel] : "", ab.contact_times].filter(Boolean).join(", ")],
+        ["Special pieces", ab.special_pieces], ["Allergies", ab.allergies], ["Enjoys", ab.interests.join(", ")], ["Dietary", ab.dietary],
+        ["Household", ab.household.map((h) => [h.name, h.relation, h.age].filter(Boolean).join(", ")).join("; ")],
+        ["Journal", ab.feature_ok ? "Happy to be featured (ask first)" : ""]].filter(([, v]) => v);
+      c.querySelector("#about-them").innerHTML = `<h2>About them</h2>
+        ${rows.length ? `<dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : `<p class="muted small">Nothing yet. Members fill this in under Account → About you.</p>`}
+        ${ab.occasions.length ? `<p class="small"><strong>Coming up:</strong> ${ab.occasions.map((o) => `${esc(o.title)} (${D.format(parse(o.day))})`).join(", ")}</p>` : ""}
+        <details><summary class="small">Add what they told you</summary><form id="about-edit" class="form-grid" style="margin-top:8px">
+          <label>Birthday day<input name="birthday_day" type="number" min="1" max="31" value="${ab.birthday_day ?? ""}"></label>
+          <label>Month<input name="birthday_month" type="number" min="1" max="12" value="${ab.birthday_month ?? ""}"></label>
+          <label style="grid-column:span 2">Call them<input name="preferred_name" value="${esc(ab.preferred_name)}"></label>
+          <label style="grid-column:1/-1">Special pieces<input name="special_pieces" value="${esc(ab.special_pieces)}"></label>
+          <button class="btn sm">Save</button></form></details>`;
+      c.querySelector("#about-edit").addEventListener("submit", act((e) => {
+        e.preventDefault();
+        const f = e.target;
+        return api("PUT", `/api/staff/clients/${id}/about`, { birthday_day: f.birthday_day.value ? Number(f.birthday_day.value) : null,
+          birthday_month: f.birthday_month.value ? Number(f.birthday_month.value) : null, preferred_name: f.preferred_name.value, special_pieces: f.special_pieces.value });
+      }, "Saved"));
+    }).catch(() => c.querySelector("#about-them")?.remove());
     api("GET", `/api/staff/clients/${id}/credit`).then((cr) => {
       const box = c.querySelector("#credit");
       box.innerHTML = `<h2>LAVE account credit</h2><p><strong>${money(cr.balance_pence)}</strong> <span class="small muted">used automatically on their next booking</span></p>

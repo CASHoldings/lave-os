@@ -10,6 +10,10 @@
     {% if not client.membership or client.membership.status.value == "cancelled" %}<a class="btn" href="/account/membership/">Explore membership</a>{% endif %}
   </div>
 
+  {% if client.membership and client.membership.status.value == "active" and not client.about_completed_at %}
+  <div class="notice-bar"><p><strong>Tell us about you.</strong> Your birthday, how you like us to be in touch and the pieces that matter most help us make your membership yours. <a href="/account/about/">Tell us about you</a></p></div>
+  {% endif %}
+
   {% if awaiting_payment %}
   <div class="notice-bar">{% for o in awaiting_payment %}<p>Order <a href="/account/orders/#{{ o.ref }}">{{ o.ref }}</a> has been itemised: {{ o.items|length }} pieces, £{{ "%.2f"|format(o.total_pence / 100) }}. We'll charge your card on file before it's returned.</p>{% endfor %}</div>
   {% endif %}

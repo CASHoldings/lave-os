@@ -271,6 +271,7 @@ def handle_webhook(db: Session, payload: bytes, signature: str | None) -> str:
             plan = price_plan
         if client_id and plan and (client := db.get(Client, int(client_id))):
             m = client.membership or Membership(client_id=client.id, plan=MembershipPlan(plan))
+            was_active = m.status == MembershipStatus.active and m.id is not None
             m.plan = MembershipPlan(plan)
             m.stripe_subscription_id = obj.get("id")
             m.status = MembershipStatus.cancelled if kind.endswith("deleted") else SUB_STATUS.get(obj.get("status"), MembershipStatus.pending)
@@ -284,6 +285,9 @@ def handle_webhook(db: Session, payload: bytes, signature: str | None) -> str:
             if period_end:
                 m.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc).replace(tzinfo=None)
             db.add(m)
+            if m.status == MembershipStatus.active and not was_active:
+                from app.services import notices
+                notices.welcome_member(client, m.plan.value)
 
     db.add(ProcessedWebhook(event_id=event.id))
     db.commit()
