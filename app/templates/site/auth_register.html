@@ -13,7 +13,7 @@
   {# Bot checks: a field people never see, when the form was shown, and Cloudflare Turnstile if switched on. #}
   <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
   <input type="hidden" name="t" value="{{ form_token() }}">
-  {% if turnstile_key() %}<div class="cf-turnstile" data-sitekey="{{ turnstile_key() }}" data-appearance="interaction-only"></div>{% endif %}
+  {% if turnstile_key() %}<div class="cf-turnstile" data-sitekey="{{ turnstile_key() }}" data-appearance="interaction-only" data-theme="light"></div>{% endif %}
   <button class="btn dark" type="submit">Create account</button>
 </form>
 <div class="auth-links"><a href="/account/login/?next={{ next|urlencode }}">Already have an account? Sign in</a></div>
