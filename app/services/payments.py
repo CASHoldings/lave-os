@@ -19,6 +19,7 @@ from app.models import (
     MembershipPlan,
     MembershipStatus,
     Order,
+    OrderPayment,
     PaymentStatus,
     ProcessedWebhook,
 )
@@ -76,58 +77,16 @@ def _default_payment_method(sc: stripe.StripeClient, customer_id: str) -> str | 
 
 
 def charge_order(db: Session, order: Order, staff_id: int | None) -> Order:
-    if order.payment_status == PaymentStatus.paid:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This order is already paid.")
+    """Settle the order's balance: charge what's still owed to the saved card, or credit any excess (billing.py)."""
+    from app.services import billing
     if not order.items:
         raise HTTPException(status.HTTP_409_CONFLICT, "Add and price the garments before charging.")
-    # The collection & delivery charge follows the counted order value (it can cross £45 either way).
-    from app.services import delivery
-    delivery.settle(db, order)
-    db.flush()
-    amount = order.total_pence
-    if amount <= 0:
-        order.payment_status = PaymentStatus.waived
-        order_svc.log(db, order, "payment", "Nothing to charge", staff_id, visible=False)
-        db.commit()
-        return order
-
-    sc = _stripe()
-    client = order.client
-    if not client.stripe_customer_id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This client has no card on file. Ask them to add one from their account.")
-    pm = _default_payment_method(sc, client.stripe_customer_id)
-    if not pm:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This client has no card on file. Ask them to add one from their account.")
-
-    try:
-        intent = sc.v1.payment_intents.create(
-            params={
-                "amount": amount,
-                "currency": "gbp",
-                "customer": client.stripe_customer_id,
-                "payment_method": pm,
-                "off_session": True,
-                "confirm": True,
-                "description": f"LAVE order {order.ref}",
-                "metadata": {"lave_order_id": str(order.id), "lave_order_ref": order.ref},
-            },
-            # Same order + same amount never charges twice, even on a retried click.
-            # Same order, amount and card never charge twice; a new card (after a decline) gets a fresh attempt.
-            options={"idempotency_key": f"order-{order.id}-{amount}-{pm}"},
-        )
-    except stripe.CardError as exc:
-        order.payment_status = PaymentStatus.failed
-        order_svc.log(db, order, "payment_failed", exc.user_message or "Card declined", staff_id, visible=False)
-        db.commit()
-        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, f"Card declined: {exc.user_message or 'no reason given'}. Ask the client to update their card.") from exc
-
-    order.stripe_payment_intent_id = intent.id
-    if intent.status == "succeeded":
-        _mark_paid(db, order, staff_id)
-    else:
-        order.payment_status = PaymentStatus.failed
-        order_svc.log(db, order, "payment_failed", f"Stripe status: {intent.status}", staff_id, visible=False)
+    if order.payment_status == PaymentStatus.paid and order.balance_pence == 0:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This order is already paid.")
+    result = billing.settle(db, order, staff_id)
     db.commit()
+    if result.get("error"):
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, result["error"])
     return order
 
 
@@ -288,7 +247,12 @@ def handle_webhook(db: Session, payload: bytes, signature: str | None) -> str:
 
     elif kind == "payment_intent.succeeded":
         order_id = meta.get("lave_order_id")
-        if order_id and (order := db.get(Order, int(order_id))):
+        if meta.get("lave_payment_id") and (payment := db.get(OrderPayment, int(meta["lave_payment_id"]))):
+            if payment.status == "pending":
+                from app.services import billing
+                payment.stripe_id = payment.stripe_id or obj.get("id", "")
+                billing._record(db, db.get(Order, payment.order_id), payment)
+        elif order_id and (order := db.get(Order, int(order_id))):
             _mark_paid(db, order)
 
     elif kind == "payment_intent.payment_failed":

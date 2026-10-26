@@ -41,7 +41,7 @@ from app.services import orders as order_svc
 from app.services import payments
 from app.services import wardrobe as wardrobe_svc
 from app.services.clock import local_now
-from app.services import ateliers, delivery, notices
+from app.services import ateliers, billing, delivery, notices
 from app.services import bookings as bookings_svc
 from app.services.slots import reserve_slot
 
@@ -123,21 +123,51 @@ def book(body: BookingRequest, response: Response, lave_list: str | None = Cooki
     # The client's list from the price list goes with the booking as an estimate, then the list is cleared.
     from app.services import repository as repo
     planned = repo.summarise(db, repo.parse_list(lave_list))
+    booked = repo.snapshot(planned) + wardrobe_svc.as_booked_lines(pieces)
+    estimate = sum(line["unit_pence"] * line["qty"] for line in booked if not line["priced_later"])
     order = bookings_svc.place(
         db, client, address=address,
         collection=(body.collection.template_id, body.collection.day) if body.collection else None,
         dropoff=(body.dropoff.atelier_id, body.dropoff.day, body.dropoff.bags) if body.dropoff else None,
         delivery_slot=(body.delivery.template_id, body.delivery.day) if body.delivery else None,
-        requested_items=repo.snapshot(planned), estimate_pence=planned.estimate_pence if planned.lines else None,
+        requested_items=booked, estimate_pence=estimate if booked else None,
         return_preference=body.return_preference,
         requested_services=body.requested_services, client_notes=body.notes, requested_wardrobe=[p.id for p in pieces])
     order_svc.log(db, order, OrderStatus.awaiting_collection.value)
+    # Pay now for the fixed-price items and the collection & delivery charge. A declined card undoes the booking.
+    try:
+        payment = billing.take_booking_payment(db, order)
+    except HTTPException:
+        db.rollback()
+        raise
     db.commit()
     db.refresh(order)
-    notices.booking_confirmed(db, order)
+    if payment["status"] != "requires_action":
+        notices.booking_confirmed(db, order)
     if lave_list:
         response.delete_cookie(repo.LIST_COOKIE, path="/")
-    return ser.order(order, detail=True)
+    return {**ser.order(order, detail=True), "payment": payment}
+
+
+@router.post("/orders/{ref}/booking-payment")
+def confirm_booking_payment(ref: str, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """After the card check (3D Secure) at booking: confirm the payment, or release the booking if it failed."""
+    order = db.scalar(select(Order).where(Order.ref == ref.upper(), Order.client_id == client.id))
+    if not order:
+        raise HTTPException(404, "Order not found.")
+    result = billing.confirm_booking_payment(db, order)
+    db.commit()
+    if result == "failed":
+        raise HTTPException(402, "Your card check didn't go through, so the booking wasn't made. Try again, or use another card.")
+    if result == "paid":
+        db.refresh(order)
+        notices.booking_confirmed(db, order)
+    return {**ser.order(order, detail=True), "payment": {"status": result}}
+
+
+@router.get("/credit")
+def my_credit(client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    return {"balance_pence": billing.credit_balance(db, client), "history": billing.credit_history(db, client)}
 
 
 @router.get("/delivery-terms")
@@ -159,6 +189,12 @@ def delivery_terms(lave_list: str | None = Cookie(default=None), client: Client 
         "one_charge_note": delivery.ONE_CHARGE_NOTE,
         "dropoff": bool(cfg["dropoff_enabled"] and level),
         "turnaround_hours": cfg["turnaround_hours"],
+        # Paid at booking: fixed-price items now (quotes after inspection), after any LAVE account credit.
+        "items_fixed_pence": estimate,
+        "priced_later": sum(line.qty for line in planned.lines if line.priced_later),
+        "credit_pence": billing.credit_balance(db, client),
+        "pack_short": planned.pack_short,
+        "booking_wording": billing.BOOKING_WORDING,
     }
 
 

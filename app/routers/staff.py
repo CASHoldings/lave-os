@@ -248,13 +248,28 @@ def patch_order(order_id: int, body: OrderPatch, staff: StaffUser = Depends(ops)
 
 @router.post("/orders/{order_id}/status")
 def change_status(order_id: int, body: OrderStatusChange, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Marking an order inspected is the review: if anything differs from the booking it waits for a call to the client
+    ("Awaiting customer call"); otherwise, or once the call is recorded, the difference is charged or credited."""
+    from app.services import billing, notices
     o = _order(db, order_id)
+    result = {}
+    if body.status == OrderStatus.inspected:
+        if o.status == OrderStatus.awaiting_customer_call:
+            if not body.note.strip():
+                raise HTTPException(400, "Note what you agreed with the client on the call.")
+            o.call_notes = (o.call_notes + "\n" if o.call_notes else "") + f"Agreed ({staff.name}): {body.note.strip()}"
+        elif (changes := billing.revisions(db, o)):
+            order_svc.advance(db, o, OrderStatus.awaiting_customer_call, staff.id, "; ".join(changes))
+            o.call_notes = (o.call_notes + "\n" if o.call_notes else "") + "To agree: " + "; ".join(changes)
+            db.commit()
+            return {**ser.order(o, staff_view=True, detail=True), "review": {"on_hold": True, "changes": changes}}
     order_svc.advance(db, o, body.status, staff.id, body.note)
+    if body.status == OrderStatus.inspected:
+        result = billing.settle(db, o, staff.id)
     db.commit()
     if body.status == OrderStatus.inspected:
-        from app.services import notices
         notices.items_counted(o)
-    return ser.order(o, staff_view=True, detail=True)
+    return {**ser.order(o, staff_view=True, detail=True), "review": result}
 
 
 @router.post("/orders/{order_id}/charge")
@@ -1149,8 +1164,9 @@ from app.services import bookings as bookings_svc  # noqa: E402
 @router.get("/delivery-settings")
 def get_delivery_settings(staff: StaffUser = anyone, db: Session = Depends(get_db)):
     hols = sorted(d for d in delivery_svc.bank_holidays(db) if d >= local_now().date())
-    from app.services import sms
-    return {**delivery_svc.config(db), "bank_holidays": [d.isoformat() for d in hols[:12]], "texts": sms.configured()}
+    from app.services import billing, sms
+    return {**delivery_svc.config(db), "bank_holidays": [d.isoformat() for d in hols[:12]], "texts": sms.configured(),
+            "credit_expiry_days": billing.credit_expiry_days(db)}
 
 
 @router.put("/delivery-settings")
@@ -1302,3 +1318,34 @@ def staff_book_return(order_id: int, body: ReturnRequest, staff: StaffUser = Dep
     db.commit()
     db.refresh(o)
     return ser.order(o, staff_view=True, detail=True)
+
+
+# LAVE account credit
+
+@router.get("/clients/{client_id}/credit")
+def client_credit(client_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import billing
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    return {"balance_pence": billing.credit_balance(db, c), "history": billing.credit_history(db, c)}
+
+
+@router.post("/clients/{client_id}/credit/refund")
+def refund_client_credit(client_id: int, body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """The client asked for their account credit back on their card."""
+    from app.services import billing
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    amount = int(body.get("amount_pence") or billing.credit_balance(db, c))
+    refunded = billing.refund_credit(db, c, amount, staff.email)
+    return {"refunded_pence": refunded, "balance_pence": billing.credit_balance(db, c)}
+
+
+@router.put("/credit-expiry")
+def put_credit_expiry(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import billing
+    days = body.get("days")
+    billing.set_credit_expiry_days(db, int(days) if days not in (None, "", 0, "0") else None)
+    return {"days": billing.credit_expiry_days(db)}

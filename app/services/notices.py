@@ -72,7 +72,11 @@ def booking_confirmed(db: Session, order: Order) -> None:
                                                            "Confirmed after we've inspected your items")]
     rows.append(("Collection and delivery", delivery.charge_text(order)))
     if order.estimate_pence:
-        rows.append(("Estimate for your list", _pounds(order.estimate_pence)))
+        rows.append(("Your items (fixed prices)", _pounds(order.estimate_pence)))
+    if order.credit_used_pence:
+        rows.append(("LAVE account credit used", "−" + _pounds(order.credit_used_pence)))
+    if order.paid_pence:
+        rows.append(("Paid today", _pounds(order.paid_pence)))
     rows.append(("Booking reference", order.ref))
     ready = delivery.earliest_return(db, bookings.collected_by(db, first))
     letters.send(order.client.email, "Your LAVE collection is confirmed", order.client.first_name, [
@@ -82,9 +86,15 @@ def booking_confirmed(db: Session, order: Order) -> None:
         "Please have your pieces ready in a bag. When they reach the atelier, we tag and itemise each one and confirm "
         f"the price with you before we charge. Your items are ready to come back from {bookings.when_text(ready)}.",
         "We'll send you a gentle reminder the evening before.",
+        *([billing_wording()] if order.paid_pence or order.credit_used_pence else []),
         letters.Button("View your booking", _bookings_url()),
         _change_line(),
     ], letters.SOON)
+
+
+def billing_wording() -> str:
+    from app.services.billing import BOOKING_WORDING
+    return BOOKING_WORDING.replace("You'll pay for your items now.", "You've paid for your items.")
 
 
 def dropoff_confirmed(db: Session, order: Order, b: Booking, returns: list[Booking]) -> None:
@@ -247,6 +257,8 @@ def reminder_loop() -> None:
             with SessionLocal() as db:
                 if sent := send_reminders(db):
                     log.info("Sent %d booking reminders", sent)
+                from app.services import billing
+                billing.sweep_unfinished(db)  # bookings whose card check was abandoned release their slots
                 if holidays_checked != local_now().date():
                     holidays_checked = local_now().date()
                     delivery.refresh_bank_holidays(db)  # gov.uk; the bundled list stays if it can't be reached

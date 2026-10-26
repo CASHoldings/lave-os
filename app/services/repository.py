@@ -387,6 +387,8 @@ class ListLine:
     sale_mode: str = "single"
     priced_later: bool = False
     detail: str = ""
+    staples: int = 0   # per one of this line: staples ("Packs only" items) in it
+    eligible: int = 0  # per one of this line: pieces that count toward a pack
 
     @property
     def total_pence(self) -> int:
@@ -400,10 +402,53 @@ class ListSummary:
     warnings: list[str] = field(default_factory=list)
     free_delivery_from_pence: int = 4500
     count: int = 0
+    pack_short: int = 0  # pack-eligible pieces still needed before this list can be booked
+    quick_add: list[dict] = field(default_factory=list)
 
     @property
     def to_free_delivery_pence(self) -> int:
         return max(0, self.free_delivery_from_pence - self.estimate_pence)
+
+
+# Pack rule: an order with staples ("Packs only") needs at least `pack_minimum` pack-eligible pieces. Staples of any
+# type mix, and "Single or pack" items (knitwear, suits, dresses, coats, bed linen…) count too. Quotes, pressing
+# only, alterations, repairs, wash & fold bags, curtains and rugs don't. An order with no staples has no minimum.
+STAPLE = "pack"
+PACK_ELIGIBLE = {"pack", "single_or_pack"}
+# Quick-add buttons offered when a pack is short: (label, price-list item).
+QUICK_ADD = [("Shirt", "Shirt, non-member hung"), ("Trousers", "Trousers, standard"), ("T-shirt", "T-shirt, washable"),
+             ("Knitwear", "Knitwear, light")]
+
+
+def unit_counts(service_or_pack, by_id: dict[int, Service] | None = None) -> tuple[int, int]:
+    """(staples, eligible) in one of an item or a curated pack."""
+    if isinstance(service_or_pack, Service):
+        mode = service_or_pack.sale_mode
+        return int(mode == STAPLE), int(mode in PACK_ELIGIBLE)
+    lines = pack_lines(service_or_pack, by_id or {})
+    return (sum(q for s, q in lines if s.sale_mode == STAPLE), sum(q for s, q in lines if s.sale_mode in PACK_ELIGIBLE))
+
+
+def pack_shortfall(staples: int, eligible: int, minimum: int) -> int:
+    return max(0, minimum - eligible) if staples else 0
+
+
+def booked_shortfall(db: Session, lines: list[dict]) -> int:
+    """For the server's check at booking: how many pack-eligible pieces a booked list is short, from the database."""
+    item_ids = [line["id"] for line in lines if line.get("kind") == "item"]
+    pack_ids = [line["id"] for line in lines if line.get("kind") == "pack"]
+    services = {s.id: s for s in db.scalars(select(Service).where(Service.id.in_(item_ids)))} if item_ids else {}
+    packs_ = {p.id: p for p in db.scalars(select(Pack).where(Pack.id.in_(pack_ids)))} if pack_ids else {}
+    if packs_:
+        member_ids = {x["service_id"] for p in packs_.values() for x in p.items or []}
+        services.update({s.id: s for s in db.scalars(select(Service).where(Service.id.in_(member_ids)))})
+    staples = eligible = 0
+    for line in lines:
+        thing = services.get(line["id"]) if line.get("kind") == "item" else packs_.get(line["id"])
+        if thing is not None:
+            s, e = unit_counts(thing, services)
+            staples, eligible = staples + s * line["qty"], eligible + e * line["qty"]
+    return pack_shortfall(staples, eligible, rules(db)["pack_minimum"])
 
 
 def summarise(db: Session, entries: dict[str, int]) -> ListSummary:
@@ -419,18 +464,26 @@ def summarise(db: Session, entries: dict[str, int]) -> ListSummary:
     for key, qty in entries.items():
         kind, ident = key[0], int(key[1:])
         if kind == "i" and (s := by_id.get(ident)) and s.active and s.show_online:
-            out.lines.append(ListLine(key, "item", s.id, s.name, qty, s.price_pence, s.sale_mode, s.sale_mode in PRICED_LATER))
+            out.lines.append(ListLine(key, "item", s.id, s.name, qty, s.price_pence, s.sale_mode, s.sale_mode in PRICED_LATER,
+                                      "", *unit_counts(s)))
         elif kind == "p" and (p := pack_map.get(ident)) and p.active and p.show_online:
             fig = pack_figures(p, by_id)
             if not fig["unavailable"]:
                 out.lines.append(ListLine(key, "pack", p.id, p.name, qty, fig["price_pence"], "pack_bundle", False,
-                                          "; ".join(f"{q} × {s.name}" for s, q in fig["lines"])))
+                                          "; ".join(f"{q} × {s.name}" for s, q in fig["lines"]), *unit_counts(p, by_id)))
     out.estimate_pence = sum(line.total_pence for line in out.lines)
     out.count = sum(line.qty for line in out.lines)
-    staples = sum(line.qty for line in out.lines if line.kind == "item" and line.sale_mode == "pack")
-    if 0 < staples < r["pack_minimum"]:
-        out.warnings.append(f"Everyday staples (shirts, tops, trousers, socks and underwear) go in packs of {r['pack_minimum']} "
-                            f"or more, and you can mix them. Add {r['pack_minimum'] - staples} more to make a pack.")
+    out.pack_short = pack_shortfall(sum(line.staples * line.qty for line in out.lines),
+                                    sum(line.eligible * line.qty for line in out.lines), r["pack_minimum"])
+    if out.pack_short:
+        n = out.pack_short
+        out.warnings.append(f"Add {n} more item{'s' if n != 1 else ''} to complete your pack. Everyday staples are booked "
+                            f"in packs of {r['pack_minimum']} or more: mix them freely, or add knitwear, suits, dresses, "
+                            "coats or bed linen.")
+        by_name = {s.name: s for s in db.scalars(select(Service).where(Service.name.in_([n for _, n in QUICK_ADD]),
+                                                                      Service.active.is_(True)))}
+        out.quick_add = [{"label": label, "id": by_name[name].id, "price_pence": by_name[name].price_pence}
+                         for label, name in QUICK_ADD if name in by_name]
     if out.lines and all(by_id.get(line.id) and by_id[line.id].service_type == "Press only" for line in out.lines if line.kind == "item") \
             and not any(line.kind == "pack" for line in out.lines):
         out.warnings.append("Pressing on its own is an add-on to a cleaning order. Add at least one item to clean.")

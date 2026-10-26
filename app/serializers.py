@@ -106,6 +106,8 @@ def order(o: Order, staff_view: bool = False, detail: bool = False) -> dict:
         "bookings": [booking(b, staff_view) for b in o.bookings],
         "return_preference": o.return_preference or "",
         "delivery_basis": o.delivery_basis or {},
+        "paid_pence": o.paid_pence, "credit_used_pence": o.credit_used_pence, "credited_pence": o.credited_pence,
+        "balance_pence": o.balance_pence,
     }
     if detail:
         out["items"] = [garment(g) for g in o.items]
@@ -117,7 +119,9 @@ def order(o: Order, staff_view: bool = False, detail: bool = False) -> dict:
     if staff_view:
         out.update(client={"id": o.client.id, "name": o.client.full_name, "email": o.client.email,
                            "has_card_on_file": o.client.has_card_on_file},
-                   staff_notes=o.staff_notes, paid_at=iso(o.paid_at))
+                   staff_notes=o.staff_notes, paid_at=iso(o.paid_at), call_notes=o.call_notes,
+                   payments=[{"kind": p.kind, "amount_pence": p.amount_pence, "status": p.status, "at": iso(p.created_at)}
+                             for p in o.payments])
     return out
 
 

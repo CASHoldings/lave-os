@@ -39,6 +39,9 @@ p { margin: 0; }
 .btn:hover { background: #e4e4e7; }
 .btn.dark { background: var(--ink); color: #fff; }
 .btn.dark:hover { background: var(--ink-soft); }
+.btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; pointer-events: none; }
+.quick-add { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 12px 0 4px; }
+.quick-add form { margin: 0; }
 .btn.ghost { background: transparent; border: 1px solid var(--line); }
 
 /* Header */

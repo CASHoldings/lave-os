@@ -17,8 +17,9 @@ S = OrderStatus
 
 TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
     S.awaiting_collection: {S.collected, S.cancelled},
-    S.collected: {S.inspected, S.cancelled},
-    S.inspected: {S.in_care},
+    S.collected: {S.inspected, S.awaiting_customer_call, S.cancelled},
+    S.awaiting_customer_call: {S.inspected, S.cancelled},
+    S.inspected: {S.in_care, S.awaiting_customer_call},
     S.in_care: {S.quality_check},
     S.quality_check: {S.ready, S.in_care},
     S.ready: {S.out_for_delivery, S.delivered},
@@ -31,6 +32,7 @@ TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
 CLIENT_LABELS: dict[str, str] = {
     "awaiting_collection": "Booked",
     "collected": "Collected",
+    "awaiting_customer_call": "We'll call you",
     "inspected": "Inspected and itemised",
     "in_care": "In care",
     "quality_check": "Final quality check",

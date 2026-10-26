@@ -8,9 +8,32 @@ from app.db import Base, engine
 import app.models  # noqa: F401  (registers the models)
 
 
+def _enum_values() -> list[str]:
+    """Postgres keeps an enum's values in the database: add any new ones (e.g. a new order status)."""
+    if engine.dialect.name != "postgresql":
+        return []
+    added = []
+    with engine.connect() as conn:
+        conn = conn.execution_options(isolation_level="AUTOCOMMIT")  # ALTER TYPE … ADD VALUE can't run in a transaction
+        seen = set()
+        for table in Base.metadata.sorted_tables:
+            for col in table.columns:
+                name, values = getattr(col.type, "name", None), getattr(col.type, "enums", None)
+                if not name or not values or name in seen:
+                    continue
+                seen.add(name)
+                have = set(conn.execute(text("SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+                                             "WHERE t.typname = :n"), {"n": name}).scalars())
+                for v in values:
+                    if have and v not in have:
+                        conn.execute(text(f"ALTER TYPE {name} ADD VALUE IF NOT EXISTS '{v}'"))
+                        added.append(f"{name}.{v}")
+    return added
+
+
 def upgrade() -> list[str]:
     Base.metadata.create_all(engine)
-    added = []
+    added = _enum_values()
     insp = inspect(engine)
     with engine.begin() as conn:
         for table in Base.metadata.sorted_tables:

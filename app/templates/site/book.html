@@ -12,8 +12,15 @@
   <a class="link small" href="/atelier/list/">Review list</a>
 </div>
 {% endif %}
+{% if planned and planned.pack_short %}
+<section class="welcome tight">
+  <p class="notice-line" role="status">{{ planned.warnings[0] }}</p>
+  <div class="ctas"><a class="btn dark" href="/atelier/list/">Complete your pack</a></div>
+</section>
+{% else %}
 <section class="embed-page">
   <lave-booking same-origin {% if mode %}mode="{{ mode }}"{% endif %} {% if items %}items="{{ items }}"{% endif %} api="" login-url="/account/login/?next=/book/" account-url="/account/"></lave-booking>
 </section>
+{% endif %}
 {% endblock %}
 {% block scripts %}<script src="/embed/lave.js?v={{ asset_version }}"></script>{% endblock %}

@@ -36,7 +36,7 @@ def _bold(text: str):
 TEMPLATES.env.filters["bold"] = _bold
 TEMPLATES.env.filters["small"] = small_url  # the light copy of a photo, for cards, menus and tiles
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "47"
+ASSET_VERSION = "48"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]

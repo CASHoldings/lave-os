@@ -10,6 +10,14 @@
 <section class="list-page">
 {% if summary.lines %}
   {% for w in summary.warnings %}<p class="notice-line" role="status">{{ w }}</p>{% endfor %}
+  {% if summary.quick_add %}
+  <div class="quick-add" aria-label="Add to complete your pack">
+    {% for q in summary.quick_add %}<form method="post" action="/atelier/list/">
+      <input type="hidden" name="action" value="add"><input type="hidden" name="kind" value="item"><input type="hidden" name="id" value="{{ q.id }}">
+      <input type="hidden" name="qty" value="1"><input type="hidden" name="back" value="/atelier/list/">
+      <button class="btn">+ {{ q.label }} <span class="muted">{{ q.price_pence|gbp }}</span></button></form>{% endfor %}
+  </div>
+  {% endif %}
   <ul class="list-lines">
     {% for line in summary.lines %}
     <li class="list-line">
@@ -35,7 +43,8 @@
     {% if summary.to_free_delivery_pence %}<p class="small">Add {{ summary.to_free_delivery_pence|gbp }} more for free Saver collection and delivery.</p>
     {% else %}<p class="small ok">Free Saver collection and delivery.</p>{% endif %}
   </div>
-  <div class="ctas"><a class="btn dark" href="/book/">Book a collection with this list</a><a class="btn" href="/atelier/prices/">Keep browsing</a></div>
+  <div class="ctas">{% if summary.pack_short %}<span class="btn dark" role="link" aria-disabled="true" title="Complete your pack first">Book a collection with this list</span>
+    {%- else %}<a class="btn dark" href="/book/">Book a collection with this list</a>{% endif %}<a class="btn" href="/atelier/prices/">Keep browsing</a></div>
   <form method="post" action="/atelier/list/" class="center"><input type="hidden" name="action" value="clear"><button class="link small">Clear the list</button></form>
 {% else %}
   <p class="center">Your list is empty. Browse the <a href="/atelier/prices/">prices</a> or <a href="/atelier/packs/">packs</a> and add what you're sending, or simply <a href="/book/">book a collection</a> and we'll itemise everything when it arrives.</p>

@@ -64,6 +64,8 @@ class BookingStatus(str, enum.Enum):
 class OrderStatus(str, enum.Enum):
     awaiting_collection = "awaiting_collection"
     collected = "collected"
+    # Something in the reviewed order differs from the booking: on hold until staff have called the client.
+    awaiting_customer_call = "awaiting_customer_call"
     inspected = "inspected"
     in_care = "in_care"
     quality_check = "quality_check"
@@ -282,6 +284,11 @@ class Order(Timestamped, Base):
     # How the collection & delivery charge was set at booking (membership level then, one-hour leg, estimate);
     # see services/delivery.py. "manual" once staff override the charge by hand.
     delivery_basis: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Paid at booking and after review (OrderPayment), account credit used at booking, and credit given back after
+    # review (ClientCredit). balance_pence is what's still owed (negative: what we owe the client).
+    credit_used_pence: Mapped[int] = mapped_column(Integer, default=0)
+    credited_pence: Mapped[int] = mapped_column(Integer, default=0)
+    call_notes: Mapped[str] = mapped_column(Text, default="")  # what was agreed with the client on the phone
     # Orders with pieces outside the 48-hour promise: "together" (one return when all is ready) or "split".
     return_preference: Mapped[str] = mapped_column(String(10), default="")
     discount_pence: Mapped[int] = mapped_column(Integer, default=0)
@@ -293,6 +300,7 @@ class Order(Timestamped, Base):
     items: Mapped[list["Garment"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="Garment.id")
     bookings: Mapped[list["Booking"]] = relationship(back_populates="order", order_by="Booking.starts_at")
     events: Mapped[list["OrderEvent"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="OrderEvent.id")
+    payments: Mapped[list["OrderPayment"]] = relationship(cascade="all, delete-orphan", order_by="OrderPayment.id")
 
     @property
     def items_total_pence(self) -> int:
@@ -301,6 +309,22 @@ class Order(Timestamped, Base):
     @property
     def total_pence(self) -> int:
         return max(0, self.items_total_pence + self.fees_pence - self.discount_pence)
+
+    @property
+    def paid_pence(self) -> int:
+        # Refunds of account credit come out of the client's credit, not the order.
+        return sum(p.amount_pence for p in self.payments if p.status == "succeeded" and p.kind != "refund")
+
+    @property
+    def expected_total_pence(self) -> int:
+        """The counted total once the atelier has itemised the order; until then, what was booked."""
+        items = self.items_total_pence if self.items else sum(
+            line["unit_pence"] * line["qty"] for line in self.requested_items or [] if not line.get("priced_later"))
+        return max(0, items + self.fees_pence - self.discount_pence)
+
+    @property
+    def balance_pence(self) -> int:
+        return self.expected_total_pence - self.paid_pence - self.credit_used_pence + self.credited_pence
 
 
 class Booking(Timestamped, Base):
@@ -683,4 +707,29 @@ class AreaWaitlistEntry(Base):
     district: Mapped[str] = mapped_column(String(6), default="", index=True)
     services: Mapped[list] = mapped_column(JSON, default=list)
     client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class OrderPayment(Base):
+    """Money taken for an order (or refunded, as a negative amount): at booking, after review, refunds to card."""
+    __tablename__ = "order_payments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(12))  # booking | adjustment | refund
+    amount_pence: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(12), default="pending")  # pending | succeeded | failed
+    stripe_id: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ClientCredit(Base):
+    """A client's LAVE account credit: + credit given (e.g. an order came to less), − credit used or refunded."""
+    __tablename__ = "client_credits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"), index=True)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="SET NULL"))
+    amount_pence: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(String(300), default="")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    by: Mapped[str] = mapped_column(String(120), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

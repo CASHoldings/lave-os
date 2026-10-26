@@ -68,3 +68,11 @@ def owned(db: Session, client_id: int, ids: list[int]) -> list[WardrobeItem]:
     if not ids:
         return []
     return list(db.scalars(select(WardrobeItem).where(WardrobeItem.id.in_(ids), WardrobeItem.client_id == client_id)))
+
+
+def as_booked_lines(pieces: list[WardrobeItem]) -> list[dict]:
+    """Wardrobe pieces sent again, as booked list lines (so they're charged at booking like the price list)."""
+    from app.services.repository import PRICED_LATER
+    return [{"kind": "item", "id": p.service.id, "name": " ".join(x for x in [p.colour, p.brand, p.name] if x),
+             "qty": 1, "unit_pence": p.service.price_pence, "priced_later": p.service.sale_mode in PRICED_LATER,
+             "detail": "From your Wardrobe"} for p in pieces if p.service]
