@@ -75,6 +75,7 @@ class BookingRequest(BaseModel):
     requested_services: list[str] = []
     wardrobe_item_ids: list[int] = []
     notes: str = Field("", max_length=2000)
+    phone: str = Field("", max_length=40)  # required at booking if we don't have a mobile number yet
 
 
 class ReturnRequest(BaseModel):

@@ -30,6 +30,15 @@ def uk_mobile(phone: str) -> str | None:
     return digits if re.fullmatch(r"\+447\d{9}", digits) else None
 
 
+def valid_phone(phone: str) -> str | None:
+    """A number we can reach on the day: a UK mobile (normalised to +447…), or an international number in +… form.
+    None if it's neither."""
+    if mobile := uk_mobile(phone):
+        return mobile
+    digits = re.sub(r"[^\d+]", "", phone or "")
+    return digits if re.fullmatch(r"\+(?!44)\d{8,15}", digits) else None
+
+
 def send(phone: str, body: str) -> bool:
     """Send a text. Returns True if Twilio accepted it; never raises."""
     return send_explained(phone, body) is None

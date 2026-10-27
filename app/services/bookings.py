@@ -3,13 +3,13 @@
 The rules themselves live in delivery.py (charges, turnaround), area.py (service area) and ateliers.py (drop-off
 locations); this module applies them in one place for the website and for staff.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models import (Address, Booking, BookingKind, BookingMode, Client, Order, OrderStatus, SlotTemplate, WindowType,
-                        AtelierLocation)
+from app.models import (Address, Booking, BookingKind, BookingMode, BookingStatus, Client, Order, OrderStatus, SlotTemplate,
+                        WindowType, AtelierLocation)
 from app.services import area, ateliers, delivery
 from app.services.slots import reserve_slot
 
@@ -40,14 +40,14 @@ def collected_by(db: Session, first_leg: Booking) -> datetime:
 def place(db: Session, client: Client, *, address: Address | None, collection: tuple[int, date] | None = None,
           dropoff: tuple[int, date, int] | None = None, delivery_slot: tuple[int, date] | None = None,
           requested_items: list | None = None, estimate_pence: int | None = None, return_preference: str = "",
-          **order_fields) -> Order:
+          enforce_minimum: bool = True, **order_fields) -> Order:
     """Create the order with its collection (or drop-off) and, if chosen, its return. Caller commits."""
     if bool(collection) == bool(dropoff):
         raise HTTPException(400, "Choose a collection time, or an atelier and day to drop off.")
     from app.services import repository as repo
     mode = "dropoff" if dropoff else "home"
     minimum, short = repo.booked_minimum(db, requested_items or [], mode)
-    if short:
+    if short and enforce_minimum:  # staff booking by phone may go under; the minimum still applies at review
         raise HTTPException(409, repo.short_text(db, short, mode))
     level = delivery.member_level(client)
     longer = delivery.longer_items(db, requested_items or [])
@@ -110,6 +110,57 @@ def book_return(db: Session, order: Order, slot: tuple[int, date], address: Addr
     db.flush()
     db.refresh(order)
     delivery.recompute(db, order)
+    return b
+
+
+def move_after(db: Session, b: Booking) -> datetime | None:
+    """The earliest a return can move to: 48 hours after its collection. None for a collection."""
+    if b.kind != BookingKind.delivery or not b.order:
+        return None
+    first = next((x for x in b.order.bookings if x.kind == BookingKind.collection and x.status != BookingStatus.cancelled), None)
+    return delivery.earliest_return(db, collected_by(db, first)) if first else None
+
+
+def move(db: Session, b: Booking, slot: tuple[int, date], by: str = "client") -> Booking:
+    """Move a home collection or return to another time in the same kind of window (Saver or one-hour), so the charge
+    doesn't change. A collection can't move so late that a booked return would come back too soon. Caller commits."""
+    from app.config import get_settings
+    from app.services.clock import local_now
+    if b.status != BookingStatus.scheduled:
+        raise HTTPException(409, "This visit can no longer be moved.")
+    if b.atelier_id or b.mode != BookingMode.lave_collects:
+        raise HTTPException(409, "To change a drop-off, simply reply to your confirmation email and we'll help.")
+    if by == "client" and local_now() > b.starts_at - timedelta(minutes=get_settings().cancel_cutoff_minutes):
+        raise HTTPException(409, "It's too close to the visit to change it online. Call us and we'll help.")
+    t = _home_template(db, slot[0])
+    if t.window_type != b.window_type:
+        raise HTTPException(409, "Choose a time in the same kind of window. To change between Saver and one-hour, "
+                                 "call us and we'll help.")
+    not_before = move_after(db, b)
+    if not_before and datetime.combine(slot[1], t.start) < not_before:
+        raise HTTPException(409, f"Your items are ready from {when_text(not_before)}. Choose a return from then.")
+    # Check the new time has room by reserving it, then move this visit there (keeping its reference).
+    fresh = reserve_slot(db, template_id=slot[0], day=slot[1], client_id=b.client_id, kind=b.kind,
+                         address_id=b.address_id, order_id=None, not_before=not_before)
+    if b.kind == BookingKind.collection and b.order:
+        ready = delivery.earliest_return(db, fresh.ends_at)
+        clash = [r for r in b.order.bookings if r.kind == BookingKind.delivery and r.status == BookingStatus.scheduled
+                 and r.starts_at < ready]
+        if clash:
+            db.delete(fresh)
+            db.flush()
+            raise HTTPException(409, f"Your return is booked for {when_text(clash[0].starts_at)}, which would be too "
+                                     f"soon after this collection. Move your return to {when_text(ready)} or later first.")
+    before = b.starts_at
+    b.template_id, b.starts_at, b.ends_at = fresh.template_id, fresh.starts_at, fresh.ends_at
+    b.reminded_at = b.on_the_way_sent_at = None
+    db.delete(fresh)
+    db.flush()
+    if b.order:
+        from app.services import orders as order_svc
+        what = "Collection" if b.kind == BookingKind.collection else "Return"
+        order_svc.log(db, b.order, "moved", f"{what} moved from {when_text(before)} to {when_text(b.starts_at)}"
+                                            + ("" if by == "client" else f" (by {by})"))
     return b
 
 

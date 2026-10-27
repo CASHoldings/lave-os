@@ -47,8 +47,8 @@ def _bookings_url() -> str:
 
 def _change_line() -> str:
     hours = get_settings().cancel_cutoff_minutes // 60
-    return (f"Need to change something? You can cancel from your account up to {hours} hours before your slot, or "
-            "simply reply to this email and we'll help.")
+    return (f"Need to change something? You can move or cancel from your account up to {hours} hours before your slot, "
+            "or simply reply to this email and we'll help.")
 
 
 def _window(b: Booking) -> str:
@@ -88,6 +88,21 @@ def booking_confirmed(db: Session, order: Order) -> None:
         "We'll send you a gentle reminder the evening before.",
         *([billing_wording()] if order.paid_pence or order.credit_used_pence else []),
         letters.Button("View your booking", _bookings_url()),
+        _change_line(),
+    ], letters.SOON)
+
+
+def booking_moved(b: Booking) -> None:
+    """A collection or return moved to another time."""
+    if not b.client.email:
+        return
+    collecting = b.kind == BookingKind.collection
+    ref = b.order.ref if b.order else b.ref
+    letters.send(b.client.email, f"Your LAVE {'collection' if collecting else 'return'} has moved", b.client.first_name, [
+        f"Your {'collection' if collecting else 'return'} has moved to a new time.",
+        letters.Table([("Collection" if collecting else "Return", _window(b)), ("Address", place(b)), ("Booking reference", ref)]),
+        "We'll send you a gentle reminder the evening before.",
+        letters.Button("View your bookings", _bookings_url()),
         _change_line(),
     ], letters.SOON)
 
@@ -204,6 +219,83 @@ def items_counted(order: Order) -> None:
     ])
 
 
+def _claim(db: Session, order: Order, kind: str) -> bool:
+    """Record that a one-off email went out for this order. False if it already had."""
+    from app.models import OrderEvent
+    from app.services import orders as order_svc
+    if db.scalar(select(OrderEvent.id).where(OrderEvent.order_id == order.id, OrderEvent.status == kind).limit(1)):
+        return False
+    order_svc.log(db, order, kind, "", visible=False)
+    db.commit()
+    return True
+
+
+def receipt(db: Session, order: Order) -> bool:
+    """The receipt, once an order is settled after review. Once per order. Returns True if sent."""
+    from app.models import PaymentStatus
+    if order.payment_status != PaymentStatus.paid or not order.items or not order.client.email:
+        return False
+    if not _claim(db, order, "receipt_sent"):
+        return False
+    items = [(" ".join(x for x in (g.colour, g.brand, g.description) if x) or "Item", _pounds(g.price_pence)) for g in order.items]
+    if order.minimum_top_up_pence:
+        items.append((f"Minimum order {_pounds(order.minimum_pence)}", _pounds(order.minimum_top_up_pence)))
+    from app.services import delivery
+    items.append(("Collection and delivery", _pounds(order.fees_pence) if order.fees_pence else delivery.charge_text(order)))
+    if order.discount_pence:
+        items.append(("Discount", "−" + _pounds(order.discount_pence)))
+    items.append(("Total", _pounds(order.total_pence)))
+    paid = [("Paid at booking", sum(p.amount_pence for p in order.payments if p.kind == "booking" and p.status == "succeeded")),
+            ("Paid after review", sum(p.amount_pence for p in order.payments if p.kind == "adjustment" and p.status == "succeeded")),
+            ("LAVE account credit used", order.credit_used_pence),
+            ("Credited to your LAVE account", -order.credited_pence)]
+    rows = [(k, ("−" if v < 0 else "") + _pounds(abs(v))) for k, v in paid if v]
+    rows.append(("Still to pay", _pounds(max(0, order.balance_pence))))
+    paid_on = order.paid_at or local_now()
+    letters.send(order.client.email, f"Your LAVE receipt: order {order.ref}", order.client.first_name, [
+        f"Thank you. Here is your receipt for order {order.ref}, settled on {paid_on:%A} {paid_on.day} {paid_on:%B %Y}.",
+        letters.Table(items),
+        letters.Table(rows),
+        *(["The difference has been added to your LAVE account and is used automatically on your next booking. If "
+           "you'd rather have it back on your card, simply reply to this email."] if order.credited_pence else []),
+        letters.Button("View your order", f"{get_settings().site_url}/account/orders/"),
+        "LAVE isn't VAT-registered, so no VAT is charged. If anything doesn't look right, simply reply to this email.",
+    ])
+    return True
+
+
+def send_receipts(db: Session, now: datetime | None = None) -> int:
+    """Safety net for receipts: orders settled in the last two days (e.g. by a card payment confirmed later) that
+    haven't had theirs."""
+    from app.models import PaymentStatus
+    now = now or local_now()
+    due = db.scalars(select(Order).where(Order.payment_status == PaymentStatus.paid, Order.paid_at >= now - timedelta(days=2))).all()
+    return sum(1 for o in due if receipt(db, o))
+
+
+def order_ready(db: Session, order: Order) -> bool:
+    """Your pieces are ready: when the return is, or how to book it. Once per order."""
+    if not order.client.email or not _claim(db, order, "ready_sent"):
+        return False
+    returns = [b for b in order.bookings if b.kind == BookingKind.delivery and b.status == BookingStatus.scheduled]
+    vaulted = sum(1 for g in order.items if g.send_to_vault)
+    blocks = [f"Good news: your pieces from order {order.ref} are cleaned, finished and ready."]
+    if returns:
+        r = returns[0]
+        blocks += [letters.Table([("Return", _window(r)), ("Address", place(r))]),
+                   "We'll send you a gentle reminder the evening before."]
+        button = letters.Button("View your booking", _bookings_url())
+    else:
+        blocks.append("Choose a time for us to bring them home: it takes a moment in your account.")
+        button = letters.Button("Book your return", f"{get_settings().site_url}/account/orders/")
+    if vaulted:
+        blocks.append(f"As you asked, {vaulted} piece{'s are' if vaulted != 1 else ' is'} now resting in the LAVE Vault.")
+    letters.send(order.client.email, "Your LAVE pieces are ready", order.client.first_name, [
+        *blocks, button, f"If you'd like to change anything, simply reply to this email or call us on {letters.PHONE}.",
+    ])
+    return True
+
+
 def _reminder(b: Booking) -> None:
     to_door = b.mode == BookingMode.lave_collects
     if b.atelier_id:
@@ -273,6 +365,7 @@ def reminder_loop() -> None:
                     log.info("Sent %d booking reminders", sent)
                 from app.services import billing
                 billing.sweep_unfinished(db)  # bookings whose card check was abandoned release their slots
+                send_receipts(db)  # orders settled by a card payment confirmed after the review
                 if holidays_checked != local_now().date():
                     holidays_checked = local_now().date()
                     from app.services import members

@@ -78,7 +78,9 @@ def wp_token(wp_id=42, email="client@example.com", **extra):
 def client_headers(api):
     r = api.post("/api/auth/wp-exchange", json={"token": wp_token(first_name="Celia", last_name="Moss")})
     assert r.status_code == 200, r.text
-    return {"Authorization": f"Bearer {r.json()['token']}"}
+    headers = {"Authorization": f"Bearer {r.json()['token']}"}
+    api.patch("/api/me", headers=headers, json={"phone": "07700 900123"})  # needed to book
+    return headers
 
 
 @pytest.fixture

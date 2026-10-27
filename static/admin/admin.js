@@ -423,7 +423,8 @@
             ${o.bookings.length ? o.bookings.map((b) => `<div class="stack" style="gap:2px"><div class="row between"><strong>${b.atelier ? "Drop-off" : b.kind === "collection" ? "Collection" : "Return"}</strong>${pill(b.status)}</div>
               <span class="small">${D.format(parse(b.starts_at))}, ${T.format(parse(b.starts_at))}–${T.format(parse(b.ends_at))} · ${b.atelier ? esc(b.atelier.name) : b.window_type === "hour" ? "One-hour" : "Saver"}</span>
               ${b.bag_codes?.length ? `<span class="small">${b.bag_codes.map((code) => `<span class="tag">${esc(code)}</span>${b.bags_checked.includes(code) ? " ✓" : ""}`).join(" · ")}</span>` : ""}
-              ${b.address ? `<span class="small muted">${esc(b.address.one_line)}</span>` : ""}</div>`).join("") : `<p class="muted small">Walk-in order, no bookings.</p>`}
+              ${b.address ? `<span class="small muted">${esc(b.address.one_line)}</span>` : ""}
+              ${b.status === "scheduled" && !b.atelier && b.mode === "lave_collects" ? `<details data-move="${b.id}" data-kind="${b.kind}" data-window="${b.window_type}"><summary class="small">Move to another time</summary><div class="stack" style="margin-top:8px"><div data-chooser></div><div class="row"><button class="btn sm primary" data-move-go disabled>Move</button></div></div></details>` : ""}</div>`).join("") : `<p class="muted small">Walk-in order, no bookings.</p>`}
             ${!["delivered", "cancelled"].includes(o.status) && o.bookings.some((b) => b.kind === "collection" && b.status !== "cancelled") ? `<details id="ret"><summary class="small">Book a return</summary>
               <form id="return-form" class="form-grid" style="margin-top:10px">
                 <p class="small muted" id="ret-ready" style="grid-column:1/-1"></p>
@@ -503,6 +504,15 @@
     c.querySelectorAll("[data-item-del]").forEach((b) => b.addEventListener("click", act(() => api("DELETE", `/api/staff/items/${b.dataset.itemDel}`), "Removed")));
     c.querySelector("#fees")?.addEventListener("change", act((e) => api("PATCH", `/api/staff/orders/${id}`, { fees_pence: toPence(e.target.value) }), "Fees updated"));
     c.querySelector("#discount")?.addEventListener("change", act((e) => api("PATCH", `/api/staff/orders/${id}`, { discount_pence: toPence(e.target.value) }), "Discount updated"));
+    c.querySelectorAll("details[data-move]").forEach((d) => d.addEventListener("toggle", async () => {
+      if (!d.open || d.dataset.ready) return;
+      d.dataset.ready = "1";
+      let chosen = null;
+      const go = d.querySelector("[data-move-go]");
+      const after = d.dataset.kind === "delivery" ? (await api("GET", `/api/staff/orders/${id}/earliest-return`)).earliest_return : null;
+      slotChooser(d.querySelector("[data-chooser]"), { windowType: d.dataset.window, fixedWindow: true, after, onPick: (slot) => { chosen = slot; go.disabled = !slot; } });
+      go.addEventListener("click", act(() => api("POST", `/api/staff/bookings/${d.dataset.move}/move`, { template_id: chosen.template_id, day: chosen.day }), "Moved. The client has been emailed."));
+    }));
     c.querySelector("#minimum")?.addEventListener("change", act((e) => api("PATCH", `/api/staff/orders/${id}`, { minimum_pence: toPence(e.target.value) || 0 }), "Minimum order updated"));
     c.querySelector("#save-notes").addEventListener("click", act(() => api("PATCH", `/api/staff/orders/${id}`, { staff_notes: c.querySelector("#staff-notes").value }), "Notes saved"));
     c.querySelector("#charge")?.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/charge`), "Payment taken"));
@@ -570,7 +580,7 @@
     }
     c.querySelector("#list").innerHTML = rows.length ? `<div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Membership</th><th>Card</th><th>Joined</th></tr></thead>
-      <tbody>${rows.map((x) => `<tr class="click" data-href="#/clients/${x.id}"><td><strong>${esc(x.full_name)}</strong></td><td>${esc(x.email)}</td><td>${esc(x.phone)}</td>
+      <tbody>${rows.map((x) => `<tr class="click" data-href="#/clients/${x.id}"><td><strong>${esc(x.full_name)}</strong>${x.deletion_requested_at && !x.deleted_at ? ' <span class="pill warn">Asked to delete</span>' : ""}</td><td>${esc(x.email)}</td><td>${esc(x.phone)}</td>
         <td>${x.membership ? pill(x.membership.status === "active" ? x.membership.plan_name : x.membership.status) : "–"}</td><td>${x.has_card_on_file ? "On file" : "–"}</td>
         <td class="small muted">${D.format(parse(x.created_at))}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No clients found.</p>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
@@ -586,7 +596,10 @@
       <div class="row between"><div class="row">${x.membership ? pill(x.membership.status === "active" ? x.membership.plan_name + " member" : "Membership " + x.membership.status) : ""}
         <span class="muted small">${x.paid_orders} paid orders</span>
         ${me.role === "admin" && x.membership && x.membership.status !== "cancelled" ? `<span id="end-box"><button class="link small danger-text" id="end-membership">End membership</button></span>` : ""}</div>
-        <button class="btn primary" id="walk-in">New walk-in order</button></div>
+        <div class="row"><button class="btn primary" id="book-for">Book a collection</button><button class="btn" id="walk-in">New walk-in order</button></div></div>
+      <div id="book-for-box" hidden></div>
+      ${x.deleted_at ? `<p class="notice">This client was deleted on ${D.format(parse(x.deleted_at))}. Their orders are kept for the records, without personal details.</p>` : ""}
+      ${x.deletion_requested_at && !x.deleted_at ? `<div class="notice row between"><span><strong>Asked to delete their account</strong> on ${D.format(parse(x.deletion_requested_at))}. Respond within one month.</span>${me.role === "admin" ? `<span id="delete-box"><button class="btn danger sm" id="delete-client">Delete client…</button></span>` : ""}</div>` : ""}
       <div class="cols-3">
         <div class="stack">
           <section class="panel"><h2>Orders</h2>
@@ -616,7 +629,8 @@
           <section class="panel"><h2>Account</h2><dl class="kv">
             <dt>Card</dt><dd>${x.has_card_on_file ? "On file" : "None"}</dd>
             <dt>Website</dt><dd>${x.wp_user_id ? "Linked (user " + x.wp_user_id + ")" : "Not linked yet"}</dd>
-            <dt>Stripe</dt><dd class="small">${esc(x.stripe_customer_id || "–")}</dd></dl></section>
+            <dt>Stripe</dt><dd class="small">${esc(x.stripe_customer_id || "–")}</dd></dl>
+            ${me.role === "admin" && !x.deleted_at && !x.deletion_requested_at ? `<p class="small" id="delete-box-2"><button class="link small danger-text" id="delete-client-2">Delete this client…</button></p>` : ""}</section>
         </div>
       </div>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
@@ -660,9 +674,104 @@
         ${me.role === "admin" && cr.balance_pence ? `<button class="btn sm" id="refund-credit">Refund ${money(cr.balance_pence)} to their card</button>` : ""}`;
       box.querySelector("#refund-credit")?.addEventListener("click", act(() => api("POST", `/api/staff/clients/${id}/credit/refund`, {}), "Credit refunded to card"));
     }).catch(() => { c.querySelector("#credit").remove(); });
+    c.querySelector("#book-for").addEventListener("click", () => bookForClient(c.querySelector("#book-for-box"), x));
+    const askDelete = async () => {
+      const box = c.querySelector("#delete-box") || c.querySelector("#delete-box-2");
+      const chk = await api("GET", `/api/staff/clients/${id}/delete-check`);
+      box.innerHTML = chk.blockers.length
+        ? `<span class="small warn-text">Not yet: ${esc(chk.blockers.join("; "))}.</span>`
+        : `<span class="small">Remove their name, contact details, addresses, notes, About them and Wardrobe for good? Orders and payments stay, without personal details. Their saved card is removed from Stripe.</span>
+           <button class="btn danger sm" data-yes>Delete for good</button> <button class="btn ghost sm" data-no>Keep</button>`;
+      box.querySelector("[data-no]")?.addEventListener("click", () => route());
+      box.querySelector("[data-yes]")?.addEventListener("click", act(() => api("DELETE", `/api/staff/clients/${id}`), "Client deleted"));
+    };
+    c.querySelector("#delete-client")?.addEventListener("click", askDelete);
+    c.querySelector("#delete-client-2")?.addEventListener("click", askDelete);
     c.querySelector("#walk-in").addEventListener("click", async () => {
       try { const o = await api("POST", "/api/staff/orders", { client_id: Number(id) }); location.hash = "#/orders/" + o.id; }
       catch (e) { toast(e.message, true); }
+    });
+  }
+
+  /* Pick a home-visit time: a day, a window type, then one of that day's open slots. Used when staff book or move a
+     visit for a client. `after` (ISO) hides anything earlier, e.g. a return before the items are ready. */
+  function slotChooser(box, { windowType = "saver", fixedWindow = false, after = null, onPick }) {
+    const first = after ? after.slice(0, 10) : isoDay(new Date(Date.now() + 86400000));
+    box.innerHTML = `<div class="row"><label>Day<input type="date" data-day value="${first}" min="${first}"></label>
+        ${fixedWindow ? `<span class="small muted">${windowType === "hour" ? "One-hour" : "Saver"} window</span>` : `<label>Window<select data-window><option value="saver" ${windowType === "saver" ? "selected" : ""}>Saver (3 hours)</option><option value="hour" ${windowType === "hour" ? "selected" : ""}>One hour</option></select></label>`}</div>
+      <div class="chips" data-slots><p class="loading">Finding times…</p></div>`;
+    const load = async () => {
+      const day = box.querySelector("[data-day]").value, win = box.querySelector("[data-window]")?.value || windowType;
+      const list = box.querySelector("[data-slots]");
+      onPick(null);
+      if (!day) { list.innerHTML = ""; return; }
+      const q = new URLSearchParams({ start: day, days: "1", window: win, mode: "lave_collects" });
+      if (after) q.set("after", after);
+      try {
+        const slots = (await api("GET", "/api/slots?" + q)).filter((x) => x.day === day);
+        list.innerHTML = slots.length ? slots.map((x, i) => `<button type="button" class="btn sm" data-i="${i}" ${x.available ? "" : "disabled"}>${T.format(parse(x.starts_at))}–${T.format(parse(x.ends_at))}${x.available ? "" : " (full)"}</button>`).join("")
+          : `<p class="small muted">No times open that day.</p>`;
+        list.querySelectorAll("[data-i]").forEach((b) => b.addEventListener("click", () => {
+          list.querySelectorAll("[data-i]").forEach((x) => x.classList.toggle("primary", x === b));
+          onPick(slots[Number(b.dataset.i)]);
+        }));
+      } catch (e) { list.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+    };
+    box.querySelector("[data-day]").addEventListener("change", load);
+    box.querySelector("[data-window]")?.addEventListener("change", load);
+    load();
+  }
+
+  /* Book a collection for a client (by phone, for a concierge). Nothing is charged now: settled after review. */
+  function bookForClient(box, x) {
+    const id = x.id, usable = x.addresses.filter((a) => a.in_zone !== false);
+    const st = { collection: null, delivery: null };
+    box.hidden = false;
+    box.innerHTML = `<section class="panel stack"><h2>Book a collection for ${esc(x.first_name || x.full_name)}</h2>
+      <p class="small muted">We'll email them the confirmation. Nothing is charged now: the order is settled after the atelier's review (the minimum order still applies then).</p>
+      <div class="form-grid">
+        <label style="grid-column:span 2">Address<select data-address>${usable.map((a) => `<option value="${a.id}" ${a.is_default ? "selected" : ""}>${esc(a.label)}: ${esc(a.one_line)}</option>`).join("")}<option value="new">+ A new address…</option></select></label>
+        ${x.phone ? "" : `<label>Mobile (for the driver's text)<input data-phone placeholder="07700 900123"></label>`}
+      </div>
+      <form data-new-address class="form-grid" ${usable.length ? "hidden" : ""}>
+        <label>Label<input name="label" value="Home"></label><label style="grid-column:span 2">Address line 1<input name="line1" required></label>
+        <label>Line 2<input name="line2"></label><label>Postcode<input name="postcode" required></label>
+        <label style="grid-column:span 2">Access notes<input name="instructions" placeholder="Concierge, door code…"></label>
+        <button class="btn sm">Save address</button></form>
+      <h3>Collection</h3><div data-collect></div>
+      <h3>Return</h3>
+      <label class="check-label"><input type="checkbox" data-later checked> Arrange the return later</label>
+      <div data-return hidden></div>
+      <label>Notes for the atelier<textarea data-notes rows="2"></textarea></label>
+      <p class="error" hidden></p>
+      <div class="row"><button class="btn primary" data-book disabled>Book</button><button class="btn ghost" data-close type="button">Close</button></div></section>`;
+    const $ = (sel) => box.querySelector(sel), err = $(".error");
+    const ready = () => { $("[data-book]").disabled = !st.collection || (!$("[data-later]").checked && !st.delivery) || $("[data-address]").value === "new"; };
+    $("[data-close]").addEventListener("click", () => { box.hidden = true; box.innerHTML = ""; });
+    $("[data-address]").addEventListener("change", (e) => { $("[data-new-address]").hidden = e.target.value !== "new"; ready(); });
+    $("[data-new-address]").addEventListener("submit", act((e) => { e.preventDefault(); return api("POST", `/api/staff/clients/${id}/addresses`, Object.fromEntries(new FormData(e.target).entries())); }, "Address saved"));
+    const drawReturn = async () => {
+      st.delivery = null; ready();
+      const r = $("[data-return]");
+      r.hidden = $("[data-later]").checked;
+      if (r.hidden) return;
+      if (!st.collection) { r.innerHTML = `<p class="small muted">Choose the collection first.</p>`; return; }
+      const e = await api("GET", "/api/staff/earliest-return?collection_end=" + encodeURIComponent(st.collection.ends_at));
+      r.innerHTML = `<p class="small muted">${esc(e.text)}</p><div></div>`;
+      slotChooser(r.lastElementChild, { after: e.earliest_return, onPick: (slot) => { st.delivery = slot; ready(); } });
+    };
+    $("[data-later]").addEventListener("change", drawReturn);
+    slotChooser($("[data-collect]"), { onPick: (slot) => { st.collection = slot; ready(); if (!$("[data-later]").checked) drawReturn(); } });
+    $("[data-book]").addEventListener("click", async () => {
+      err.hidden = true; $("[data-book]").disabled = true;
+      try {
+        const o = await api("POST", `/api/staff/clients/${id}/bookings`, {
+          collection: { template_id: st.collection.template_id, day: st.collection.day },
+          delivery: st.delivery ? { template_id: st.delivery.template_id, day: st.delivery.day } : null,
+          address_id: Number($("[data-address]").value), notes: $("[data-notes]").value, phone: $("[data-phone]")?.value || "" });
+        toast(`Booked: ${o.ref}. Confirmation emailed.`);
+        location.hash = "#/orders/" + o.id;
+      } catch (e) { err.textContent = e.message; err.hidden = false; ready(); }
     });
   }
 

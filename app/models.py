@@ -157,6 +157,9 @@ class Client(Timestamped, Base):
     birthday_month: Mapped[int | None] = mapped_column(Integer)
     about: Mapped[dict] = mapped_column(JSON, default=dict)
     about_completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Data rights (services/privacy.py): when they asked us to delete their account, and when we did.
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     addresses: Mapped[list["Address"]] = relationship(back_populates="client", cascade="all, delete-orphan")
     membership: Mapped["Membership | None"] = relationship(back_populates="client", uselist=False)

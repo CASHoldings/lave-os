@@ -607,6 +607,9 @@
           <div class="section-head"><p class="eyebrow">Your items</p><p>What are you sending? This helps us prepare. We itemise and price everything when it arrives.</p></div>
           ${s.pieces.length ? `<div class="pieces" id="pieces"></div>` : ""}
           <div class="chips">${BAG.map(([k, l]) => `<button class="chip" data-bag="${k}" aria-pressed="${s.bag.includes(k)}">${l}</button>`).join("")}</div>
+          ${this.client.phone ? "" : `<label style="max-width:640px;margin:0 auto;width:100%">Your mobile number
+            <input id="phone" type="tel" autocomplete="tel" placeholder="07700 900123" value="${esc(s.phone || "")}" required></label>
+            <p class="center muted small">We text you when your driver is on the way.</p>`}
           <label style="max-width:640px;margin:0 auto;width:100%">Notes for the atelier
             <textarea id="notes" maxlength="2000" placeholder="Stains, delicate trims, a date you need something back by…">${esc(s.notes)}</textarea></label>
         </section>
@@ -645,6 +648,7 @@
         b.setAttribute("aria-pressed", String(s.bag.includes(k)));
       });
       this.$("#notes").addEventListener("input", (e) => { s.notes = e.target.value; });
+      this.$("#phone")?.addEventListener("input", (e) => { s.phone = e.target.value; });
       if (s.pieces.length) this.drawPieces();
       this.$("#book").addEventListener("click", () => this.submit());
 
@@ -799,6 +803,7 @@
       const together = s.returnPref === "together";
       const withReturn = !together && !s.arrangeLater;
       if (s.mode === "lave_collects" && !s.addressId) return fail("Add the address where we should collect your items.");
+      if (!this.client.phone && !(s.phone || "").trim()) return fail("Add your mobile number, so your driver can text you when they're on the way.");
       if (s.mode === "atelier" && !s.dropoff?.day) return fail("Choose an atelier and a day to drop off.");
       if (withReturn && !s.delivery) return fail("Choose a return time, or pick “Arrange later”.");
       if (withReturn && !s.addressId) return fail("Add the address for your delivery.");
@@ -811,7 +816,7 @@
           dropoff: s.mode === "atelier" ? { atelier_id: s.dropoff.atelier_id, day: s.dropoff.day, bags: s.dropoff.bags || 1 } : null,
           delivery: withReturn ? { template_id: s.delivery.template_id, day: s.delivery.day } : null,
           address_id: s.addressId, return_preference: s.returnPref, requested_services: s.bag, notes: s.notes,
-          wardrobe_item_ids: s.pieces.map((p) => p.id),
+          wardrobe_item_ids: s.pieces.map((p) => p.id), phone: this.client.phone ? "" : (s.phone || ""),
         });
         let done = order;
         if (order.payment?.status === "requires_action") {
@@ -996,8 +1001,28 @@
           <span><strong>${b.atelier ? "Drop-off" : b.kind === "collection" ? "Collection" : "Return"}</strong><br><span class="muted small">${esc(b.order_ref || b.ref)}</span></span>
           <span class="hide-sm">${esc(when(b))}</span>
           <span class="hide-sm muted small">${b.atelier ? esc(b.atelier.name) + (b.bag_codes?.length ? "<br>Bags: " + b.bag_codes.map(esc).join(", ") : "") : b.address ? esc(b.address.one_line) : "At the atelier"}</span>
-          <span class="row" data-cancel-wrap="${b.id}">${b.status === "scheduled" ? `<button class="btn ghost" data-cancel="${b.id}">Cancel</button>` : `<span class="status">${esc(b.status.replace("_", " "))}</span>`}</span>
-        </div>`).join("")}</div><p class="error" id="cancel-error" hidden></p>`;
+          <span class="row" data-cancel-wrap="${b.id}">${b.status === "scheduled" ? `${b.movable ? `<button class="btn ghost" data-move="${b.id}">Change time</button>` : ""}<button class="btn ghost" data-cancel="${b.id}">Cancel</button>` : `<span class="status">${esc(b.status.replace("_", " "))}</span>`}</span>
+        </div>
+        <div class="stack" data-move-panel="${b.id}" hidden></div>`).join("")}</div><p class="error" id="cancel-error" hidden></p>`;
+      this.on("[data-move]", "click", (_, btn) => {
+        const b = list.find((x) => String(x.id) === btn.dataset.move);
+        const box = this.$(`[data-move-panel="${b.id}"]`);
+        this.$$("[data-move-panel]").forEach((x) => { if (x !== box) { x.hidden = true; x.innerHTML = ""; } });
+        box.hidden = false;
+        box.innerHTML = `<p class="center muted">Choose a new ${b.kind === "collection" ? "collection" : "return"} time (${b.window_type === "hour" ? "one-hour" : "Saver"} window).</p>
+          <div data-picker></div><p class="error" hidden></p>
+          <div class="row center"><button class="btn primary" data-move-yes disabled>Move to this time</button><button class="btn ghost" data-move-no>Keep the current time</button></div>`;
+        let chosen = null;
+        const yes = box.querySelector("[data-move-yes]"), err = box.querySelector(".error");
+        new SlotPicker(this, box.querySelector("[data-picker]"), { mode: "lave_collects", windowType: b.window_type, after: b.move_after,
+          allowWindowChoice: false, priced: false, onPick: (slot) => { chosen = slot; yes.disabled = !slot; } });
+        box.querySelector("[data-move-no]").addEventListener("click", () => this.show());
+        yes.addEventListener("click", async () => {
+          yes.disabled = true; err.hidden = true;
+          try { await this.call("POST", `/api/me/bookings/${b.id}/move`, { template_id: chosen.template_id, day: chosen.day }); this.show(); }
+          catch (e) { err.textContent = e.message; err.hidden = false; yes.disabled = false; }
+        });
+      });
       this.on("[data-cancel]", "click", (_, btn) => {
         const wrap = btn.parentElement;
         wrap.innerHTML = `<span class="small">Cancel this?</span><button class="btn primary" data-yes>Yes, cancel</button><button class="btn ghost" data-no>Keep</button>`;
@@ -1134,6 +1159,16 @@
         <div class="stack"><p class="eyebrow">Card</p>
           <p>${c.has_card_on_file ? "A card is saved for your orders." : "No card saved yet."}</p>
           ${this.config.stripe_publishable_key ? `<div class="row"><button class="btn" id="card-btn">${c.has_card_on_file ? "Replace card" : "Add a card"}</button></div><div id="card-box" class="stack" hidden><div id="card-mount"></div><p class="error" hidden id="card-error"></p><div class="row"><button class="btn primary" id="card-save">Save card</button></div></div>` : ""}
+        </div>
+        <div class="card stack" id="my-data">
+          <p class="eyebrow">Your data</p>
+          <p>Download a copy of everything we hold about you: your details, addresses, orders, Vault and Wardrobe.</p>
+          <div class="row"><button class="btn" id="data-download">Download my data</button></div>
+          ${c.deletion_requested_at
+            ? `<p class="notice">You asked us to delete your account on ${esc(DAY_LONG.format(parse(c.deletion_requested_at)))}. We'll be in touch within one month.</p>`
+            : `<p class="muted small">You can ask us to delete your account. If you have pieces with us or account credit, we'll be in touch first so nothing of yours is lost. We keep the order and payment records the law requires, without your name or contact details.</p>
+          <div class="row" id="delete-wrap"><button class="btn ghost" id="delete-ask">Ask us to delete my account</button></div>`}
+          <p class="error" hidden id="data-error"></p>
         </div>`;
       const form = this.$("#profile");
       form.addEventListener("submit", async (e) => {
@@ -1153,6 +1188,24 @@
         || `<p class="muted">No saved addresses. You can add one when you book.</p>`;
       this.on("[data-default]", "click", async (_, b) => { await this.call("PATCH", `/api/me/addresses/${b.dataset.default}`, { is_default: true }); this.client = await this.call("GET", "/api/me"); this.show(); });
       this.on("[data-remove]", "click", async (_, b) => { await this.call("DELETE", `/api/me/addresses/${b.dataset.remove}`); this.client = await this.call("GET", "/api/me"); this.show(); });
+      this.$("#data-download").addEventListener("click", async () => {
+        try {
+          const data = await this.call("GET", "/api/me/export");
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+          a.download = `lave-my-data-${isoDay(new Date())}.json`;
+          document.body.appendChild(a); a.click(); a.remove();
+        } catch (e) { const el = this.$("#data-error"); el.textContent = e.message; el.hidden = false; }
+      });
+      this.$("#delete-ask")?.addEventListener("click", () => {
+        const wrap = this.$("#delete-wrap");
+        wrap.innerHTML = `<span class="small">Ask us to delete your account?</span><button class="btn primary" data-yes>Yes, ask LAVE</button><button class="btn ghost" data-no>Keep my account</button>`;
+        wrap.querySelector("[data-no]").addEventListener("click", () => this.show());
+        wrap.querySelector("[data-yes]").addEventListener("click", async () => {
+          try { await this.call("POST", "/api/me/delete-request"); this.client = await this.call("GET", "/api/me"); this.show(); }
+          catch (e) { const el = this.$("#data-error"); el.textContent = e.message; el.hidden = false; }
+        });
+      });
       this.$("#card-btn")?.addEventListener("click", async () => {
         this.$("#card-box").hidden = false;
         this.$("#card-btn").hidden = true;

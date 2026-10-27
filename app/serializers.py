@@ -50,10 +50,11 @@ def client(c: Client, staff_view: bool = False) -> dict:
         "has_card_on_file": c.has_card_on_file,
         "addresses": [address(a) for a in c.addresses if not a.archived],
         "membership": membership(c.membership),
+        "deletion_requested_at": iso(c.deletion_requested_at),
     }
     if staff_view:
         out.update(staff_notes=c.staff_notes, wp_user_id=c.wp_user_id, stripe_customer_id=c.stripe_customer_id,
-                   created_at=iso(c.created_at))
+                   created_at=iso(c.created_at), deleted_at=iso(c.deleted_at))
     return out
 
 

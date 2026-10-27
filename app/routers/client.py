@@ -34,6 +34,7 @@ from app.schemas import (
     ProfileUpdate,
     ReturnRequest,
     ReturnUrl,
+    SlotChoice,
     VaultRetrieval,
     WardrobePatch,
 )
@@ -55,6 +56,11 @@ def me(client: Client = Depends(current_client)):
 
 @router.patch("")
 def update_me(body: ProfileUpdate, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    from app.services import sms
+    if body.phone and body.phone.strip():
+        if not (number := sms.valid_phone(body.phone)):
+            raise HTTPException(400, PHONE_NEEDED)
+        body.phone = number
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(client, field, value)
     db.commit()
@@ -113,6 +119,21 @@ def remove_address(address_id: int, client: Client = Depends(current_client), db
 
 # Booking
 
+PHONE_NEEDED = ("Add your mobile number, so your driver can text you when they're on the way. A UK mobile (07…), "
+                "or an international number starting with +.")
+
+
+def _need_phone(client: Client, phone: str) -> None:
+    """A mobile number is needed to book: kept if we have one, otherwise taken from the booking."""
+    from app.services import sms
+    if phone.strip():
+        if not (number := sms.valid_phone(phone)):
+            raise HTTPException(400, PHONE_NEEDED)
+        client.phone = number
+    elif not sms.valid_phone(client.phone or ""):
+        raise HTTPException(400, PHONE_NEEDED)
+
+
 @router.post("/bookings", status_code=201)
 def book(body: BookingRequest, response: Response, lave_list: str | None = Cookie(default=None),
          client: Client = Depends(current_client), db: Session = Depends(get_db)):
@@ -120,6 +141,7 @@ def book(body: BookingRequest, response: Response, lave_list: str | None = Cooki
     pieces = wardrobe_svc.owned(db, client.id, body.wardrobe_item_ids)
     if len(pieces) != len(set(body.wardrobe_item_ids)):
         raise HTTPException(404, "Some of those pieces aren't in your Wardrobe.")
+    _need_phone(client, body.phone)
     # The client's list from the price list goes with the booking as an estimate, then the list is cleared.
     from app.services import repository as repo
     planned = repo.summarise(db, repo.parse_list(lave_list))
@@ -163,6 +185,23 @@ def confirm_booking_payment(ref: str, client: Client = Depends(current_client), 
         db.refresh(order)
         notices.booking_confirmed(db, order)
     return {**ser.order(order, detail=True), "payment": {"status": result}}
+
+
+@router.get("/export")
+def export_my_data(client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """Everything we hold about you (UK GDPR), as a JSON file."""
+    from fastapi.responses import JSONResponse
+    from app.services import privacy
+    return JSONResponse(privacy.export(db, client), headers={
+        "Content-Disposition": f'attachment; filename="lave-my-data-{local_now():%Y-%m-%d}.json"', "Cache-Control": "no-store"})
+
+
+@router.post("/delete-request")
+def ask_to_delete(client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """Ask us to delete your account. An admin carries it out (once nothing of yours is still with us)."""
+    from app.services import privacy
+    privacy.request_deletion(db, client)
+    return {"requested_at": client.deletion_requested_at.isoformat()}
 
 
 @router.get("/credit")
@@ -256,7 +295,24 @@ def my_bookings(upcoming: bool = True, client: Client = Depends(current_client),
         q = q.order_by(Booking.starts_at)
     else:
         q = q.order_by(Booking.starts_at.desc()).limit(50)
-    return [ser.booking(b) for b in db.scalars(q)]
+    out = []
+    for b in db.scalars(q):
+        after = bookings_svc.move_after(db, b) if upcoming else None
+        out.append({**ser.booking(b), "move_after": after.isoformat() if after else None,
+                    "movable": b.status == BookingStatus.scheduled and b.mode == BookingMode.lave_collects and not b.atelier_id})
+    return out
+
+
+@router.post("/bookings/{booking_id}/move")
+def move_booking(booking_id: int, body: SlotChoice, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """Move a home collection or return to another time (same kind of window)."""
+    b = db.get(Booking, booking_id)
+    if not b or b.client_id != client.id:
+        raise HTTPException(404, "Booking not found.")
+    bookings_svc.move(db, b, (body.template_id, body.day))
+    db.commit()
+    notices.booking_moved(b)
+    return {**ser.booking(b), "move_after": None}
 
 
 @router.post("/bookings/{booking_id}/cancel")

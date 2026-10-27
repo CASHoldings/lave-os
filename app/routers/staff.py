@@ -40,8 +40,10 @@ from app.models import (
     WindowType,
 )
 from app.schemas import (
+    AddressIn,
     BlackoutIn,
     BookingPatch,
+    BookingRequest,
     ClientCreate,
     ClientPatch,
     GarmentIn,
@@ -51,6 +53,7 @@ from app.schemas import (
     OrderStatusChange,
     ServiceIn,
     ServicePatch,
+    SlotChoice,
     SlotTemplateIn,
     SlotTemplatePatch,
     StaffCreate,
@@ -270,13 +273,18 @@ def change_status(order_id: int, body: OrderStatusChange, staff: StaffUser = Dep
     db.commit()
     if body.status == OrderStatus.inspected:
         notices.items_counted(o)
+        notices.receipt(db, o)
+    if body.status == OrderStatus.ready:
+        notices.order_ready(db, o)
     return {**ser.order(o, staff_view=True, detail=True), "review": result}
 
 
 @router.post("/orders/{order_id}/charge")
 def charge(order_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import notices
     o = _order(db, order_id)
     payments.charge_order(db, o, staff.id)
+    notices.receipt(db, o)
     return ser.order(o, staff_view=True, detail=True)
 
 
@@ -441,6 +449,94 @@ def patch_client(client_id: int, body: ClientPatch, staff: StaffUser = Depends(o
         setattr(c, k, v)
     db.commit()
     return ser.client(c, staff_view=True)
+
+
+@router.get("/clients/{client_id}/delete-check")
+def client_delete_check(client_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import privacy
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    return {"blockers": privacy.blockers(db, c)}
+
+
+@router.delete("/clients/{client_id}")
+def delete_client(client_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """Admin only: remove everything that identifies the client, keeping order and payment records (UK GDPR)."""
+    from app.services import privacy
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    privacy.erase(db, c, staff.name)
+    db.commit()
+    return ser.client(c, staff_view=True)
+
+
+@router.post("/clients/{client_id}/addresses", status_code=201)
+def add_client_address(client_id: int, body: AddressIn, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Add an address for a client (e.g. while booking for them on the phone)."""
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    a = Address(client_id=c.id, **body.model_dump())
+    a.postcode = " ".join(a.postcode.upper().split())
+    if not any(x.is_default for x in c.addresses if not x.archived):
+        a.is_default = True
+    db.add(a)
+    db.commit()
+    return ser.address(a)
+
+
+@router.post("/clients/{client_id}/bookings", status_code=201)
+def book_for_client(client_id: int, body: BookingRequest, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Book a collection (or a member's drop-off) for a client, e.g. by phone or for a concierge. Nothing is charged
+    now: the order is settled after the atelier's review, like any other."""
+    from app.services import bookings as bookings_svc, notices, sms
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(404, "Client not found.")
+    address = db.get(Address, body.address_id) if body.address_id is not None else None
+    if body.address_id is not None and (not address or address.client_id != c.id or address.archived):
+        raise HTTPException(404, "Address not found.")
+    if body.phone.strip():
+        if not (number := sms.valid_phone(body.phone)):
+            raise HTTPException(400, "That doesn't look like a mobile number: a UK mobile (07…), or + and the country code.")
+        c.phone = number
+    elif not sms.valid_phone(c.phone or ""):
+        raise HTTPException(400, "Add the client's mobile number, so the driver can text them on the day.")
+    order = bookings_svc.place(
+        db, c, address=address,
+        collection=(body.collection.template_id, body.collection.day) if body.collection else None,
+        dropoff=(body.dropoff.atelier_id, body.dropoff.day, body.dropoff.bags) if body.dropoff else None,
+        delivery_slot=(body.delivery.template_id, body.delivery.day) if body.delivery else None,
+        return_preference=body.return_preference, enforce_minimum=False,
+        requested_services=body.requested_services, client_notes=body.notes)
+    order_svc.log(db, order, OrderStatus.awaiting_collection.value, f"Booked by {staff.name} for the client", staff.id)
+    db.commit()
+    db.refresh(order)
+    notices.booking_confirmed(db, order)
+    return ser.order(order, staff_view=True, detail=True)
+
+
+@router.post("/bookings/{booking_id}/move")
+def staff_move_booking(booking_id: int, body: SlotChoice, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Move a home collection or return to another time, for the client (no cut-off for staff)."""
+    from app.services import bookings as bookings_svc, notices
+    b = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(404, "Booking not found.")
+    bookings_svc.move(db, b, (body.template_id, body.day), by=staff.name)
+    db.commit()
+    notices.booking_moved(b)
+    return ser.booking(b, staff_view=True)
+
+
+@router.get("/earliest-return")
+def earliest_return_after(collection_end: datetime, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """When a return can be booked for a collection ending at this time."""
+    from app.services import bookings as bookings_svc
+    ready = delivery_svc.earliest_return(db, collection_end)
+    return {"earliest_return": ready.isoformat(), "text": bookings_svc.ready_from_text(ready)}
 
 
 @router.post("/clients/{client_id}/membership/end")
