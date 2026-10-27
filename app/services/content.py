@@ -163,16 +163,25 @@ POLICIES = [
 ]
 
 
-def load_starter_content(db: Session) -> None:
-    for path, title, intro, body, is_published in STARTER_PAGES:
-        if not db.scalar(select(PageContent).where(PageContent.path == path)):
-            db.add(PageContent(path=path, title=title, intro=intro, body=body, published=is_published))
+def load_policies(db: Session) -> int:
+    """Add any policy page the site doesn't have yet. Runs on every deploy; pages already there (and any edits made
+    in the admin) are left alone. Returns how many were added. Caller commits."""
+    added = 0
     for path, name, title, intro in POLICIES:
         if not db.scalar(select(PageContent).where(PageContent.path == path)):
             body = (POLICIES_DIR / f"{name}.md").read_text()
             if name != "index":
                 body += f"\n\n*Last updated {POLICIES_UPDATED}.*\n"
             db.add(PageContent(path=path, title=title, intro=intro, body=body, published=True))
+            added += 1
+    return added
+
+
+def load_starter_content(db: Session) -> None:
+    for path, title, intro, body, is_published in STARTER_PAGES:
+        if not db.scalar(select(PageContent).where(PageContent.path == path)):
+            db.add(PageContent(path=path, title=title, intro=intro, body=body, published=is_published))
+    load_policies(db)
     if not db.scalar(select(Post).limit(1)):
         db.add(Post(slug=slugify(STARTER_POST["title"]), kind="thread", status=PostStatus.draft, **STARTER_POST))
     db.commit()

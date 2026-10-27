@@ -323,3 +323,25 @@ def test_policy_pages_are_published_and_linked(api):
     home = api.get("/").text
     assert 'href="/policies/privacy/"' in home and "company number 16329170" in home
     assert api.get("/privacy-policy/", follow_redirects=False).headers["location"] == "/policies/privacy/"
+
+
+def test_policies_are_added_to_a_site_that_already_exists(api, db_session):
+    """Live sites were set up before the policies existed: every deploy adds the missing pages, and leaves edits alone."""
+    import inspect
+    from sqlalchemy import delete, select
+    from app import release
+    from app.models import PageContent
+    from app.services import content
+    with db_session() as db:
+        db.execute(delete(PageContent).where(PageContent.path.like("/policies/%")))
+        db.commit()
+        assert api.get("/policies/terms/").status_code == 404
+        assert content.load_policies(db) == 6
+        db.commit()
+        terms = db.scalar(select(PageContent).where(PageContent.path == "/policies/terms/"))
+        terms.body = "Our own wording."
+        db.commit()
+        assert content.load_policies(db) == 0
+        db.commit()
+    assert "Our own wording." in api.get("/policies/terms/").text
+    assert "load_policies(db)" in inspect.getsource(release.release)  # runs on every deploy, not only a new database
