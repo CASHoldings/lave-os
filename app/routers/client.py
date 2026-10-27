@@ -28,6 +28,7 @@ from app.schemas import (
     AddressIn,
     AddressPatch,
     BookingRequest,
+    CancelRequest,
     CardSaved,
     MembershipCheckout,
     MembershipPause,
@@ -156,6 +157,7 @@ def book(body: BookingRequest, response: Response, lave_list: str | None = Cooki
         return_preference=body.return_preference,
         requested_services=body.requested_services, client_notes=body.notes, requested_wardrobe=[p.id for p in pieces])
     order_svc.log(db, order, OrderStatus.awaiting_collection.value)
+    order_svc.log(db, order, "start_now", "Asked us to start within the 14-day cancellation period", visible=False)
     # Pay now for the fixed-price items and the collection & delivery charge. A declined card undoes the booking.
     try:
         payment = billing.take_booking_payment(db, order)
@@ -238,6 +240,7 @@ def delivery_terms(lave_list: str | None = Cookie(default=None), client: Client 
                     "counted_pence": planned.counted_pence,
                     "home_short_pence": planned.short_pence("home"), "dropoff_short_pence": planned.short_pence("dropoff")},
         "booking_wording": billing.BOOKING_WORDING,
+        "start_now_wording": billing.START_NOW_BOOKING,
     }
 
 
@@ -316,7 +319,8 @@ def move_booking(booking_id: int, body: SlotChoice, client: Client = Depends(cur
 
 
 @router.post("/bookings/{booking_id}/cancel")
-def cancel_booking(booking_id: int, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+def cancel_booking(booking_id: int, body: CancelRequest | None = None, client: Client = Depends(current_client),
+                   db: Session = Depends(get_db)):
     b = db.get(Booking, booking_id)
     if not b or b.client_id != client.id:
         raise HTTPException(404, "Booking not found.")
@@ -333,12 +337,24 @@ def cancel_booking(booking_id: int, client: Client = Depends(current_client), db
         db.refresh(order)
         delivery.recompute(db, order)  # one charge per booking: recalculated from the legs that remain
         # Cancelling the collection cancels the whole order (and its delivery) if nothing has been collected yet.
-        if b.kind == BookingKind.collection and order.status == OrderStatus.awaiting_collection:
+        whole_order = b.kind == BookingKind.collection and order.status == OrderStatus.awaiting_collection
+        if whole_order:
+            reason = (body.reason.strip() if body else "") or "No reason given"
             order_svc.advance(db, order, OrderStatus.cancelled, staff_id=None, note="Cancelled by client")
+            order_svc.log(db, order, "cancel_reason", reason, visible=False)
+            # Card refunds are made by hand, after we've understood why (Cancellation policy, 1). Credit used at
+            # booking goes straight back to their LAVE account.
+            if order.credit_used_pence:
+                billing.add_credit(db, client, order.credit_used_pence, f"Order {order.ref} cancelled", order)
+            if order.paid_pence:
+                order_svc.log(db, order, "refund_due", f"Refund {billing.pounds(order.paid_pence)} to the card by hand in Stripe",
+                              visible=False)
     for v in db.scalars(select(VaultItem).where(VaultItem.retrieval_booking_id == b.id)):
         v.status = VaultStatus.stored
         v.retrieval_booking_id = None
     db.commit()
+    if order and order.status == OrderStatus.cancelled and b.kind == BookingKind.collection:
+        notices.order_cancelled(order, (body.reason.strip() if body else ""))
     return ser.booking(b)
 
 

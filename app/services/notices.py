@@ -107,6 +107,33 @@ def booking_moved(b: Booking) -> None:
     ], letters.SOON)
 
 
+def order_cancelled(order: Order, reason: str) -> None:
+    """A client cancelled before collection: confirm to them, and tell the founder what to refund by hand."""
+    from app.services import mailer
+    paid, credit = order.paid_pence, order.credit_used_pence
+    s = get_settings()
+    if paid or credit:
+        mailer.send(s.contact_address, f"Booking cancelled: {order.ref}, refund {_pounds(paid)} by hand",
+                    f"{order.client.full_name} ({order.client.email}, {order.client.phone or 'no phone'}) cancelled order "
+                    f"{order.ref} before collection.\n\nReason: {reason or 'none given'}\n\n"
+                    + (f"Refund {_pounds(paid)} to their card in Stripe within 5 working days (Cancellation policy).\n" if paid else "")
+                    + (f"{_pounds(credit)} of account credit has gone back to their LAVE account automatically.\n" if credit else "")
+                    + f"\nOrder: {s.site_url}/admin#/orders/{order.id}")
+    if not order.client.email:
+        return
+    blocks = [f"Your collection for order {order.ref} is cancelled."]
+    if paid:
+        blocks.append(f"We'll be in touch about your refund of {_pounds(paid)}, which goes back to your card within "
+                      "5 working days.")
+    if credit:
+        blocks.append(f"The {_pounds(credit)} of LAVE account credit you used is back in your account.")
+    letters.send(order.client.email, f"Your LAVE booking {order.ref} is cancelled", order.client.first_name, [
+        *blocks,
+        letters.Button("Book again", f"{s.site_url}/book/"),
+        "If you cancelled by mistake, or there's anything we could have done better, simply reply to this email.",
+    ], letters.SOON)
+
+
 def billing_wording() -> str:
     from app.services.billing import BOOKING_WORDING
     return BOOKING_WORDING.replace("You'll pay for your items now.", "You've paid for your items.")

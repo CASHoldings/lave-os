@@ -620,6 +620,7 @@
         <section class="stack" id="confirm" ${this.collected ? "" : "hidden"}>
           <dl class="summary" id="summary"></dl>
           <p class="center muted small" style="max-width:640px;margin:0 auto">${esc(t.booking_wording || "")}${this.minimumText() ? " " + esc(this.minimumText()) : ""}</p>
+          ${t.start_now_wording ? `<p class="center muted small" style="max-width:640px;margin:0 auto">${esc(t.start_now_wording)} <a href="/policies/cancellation/">Cancellation policy</a></p>` : ""}
           <p class="error" id="book-error" hidden></p>
           <div class="row center"><button class="btn primary" id="book">Confirm booking</button></div>
         </section>`;
@@ -1025,10 +1026,13 @@
       });
       this.on("[data-cancel]", "click", (_, btn) => {
         const wrap = btn.parentElement;
-        wrap.innerHTML = `<span class="small">Cancel this?</span><button class="btn primary" data-yes>Yes, cancel</button><button class="btn ghost" data-no>Keep</button>`;
+        wrap.innerHTML = `<span class="small">Cancel this?</span>
+          <select data-reason aria-label="Why are you cancelling? (optional)"><option value="">Why? (optional)</option>
+            ${["Plans changed", "Booked the wrong time", "Price", "Using another service", "Something else"].map((r) => `<option>${r}</option>`).join("")}</select>
+          <button class="btn primary" data-yes>Yes, cancel</button><button class="btn ghost" data-no>Keep</button>`;
         wrap.querySelector("[data-no]").addEventListener("click", () => this.show());
         wrap.querySelector("[data-yes]").addEventListener("click", async () => {
-          try { await this.call("POST", `/api/me/bookings/${btn.dataset.cancel}/cancel`); this.show(); }
+          try { await this.call("POST", `/api/me/bookings/${btn.dataset.cancel}/cancel`, { reason: wrap.querySelector("[data-reason]").value }); this.show(); }
           catch (e) { const el = this.$("#cancel-error"); el.textContent = e.message; el.hidden = false; }
         });
       });
@@ -1330,6 +1334,7 @@
           ${p.annual_available ? `<button class="btn" data-plan="${p.code}" data-interval="year">Choose annual · ${money(p.annual_pence)}</button>` : ""}
           </div>`).join("")}</div>
         <p class="center small"><a href="/memberships/#compare">Compare every benefit</a></p>
+        ${this.config.start_now_membership ? `<p class="center muted small" style="max-width:640px;margin:0 auto">${esc(this.config.start_now_membership)} <a href="/policies/cancellation/">Cancellation policy</a></p>` : ""}
         <p class="error" hidden></p>`;
       this.on("[data-plan]", "click", async (_, b) => {
         try { location.href = (await this.call("POST", "/api/me/membership/checkout", { plan: b.dataset.plan, interval: b.dataset.interval || "month", return_url: returnUrl })).url; }

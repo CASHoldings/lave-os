@@ -151,7 +151,9 @@ def membership_checkout(db: Session, client: Client, plan: MembershipPlan, succe
         "success_url": success_url,
         "cancel_url": cancel_url,
         "client_reference_id": str(client.id),
-        "subscription_data": {"metadata": {"lave_client_id": str(client.id), "plan": plan.value}},
+        # The member asked us to start straight away, within the 14-day cancellation period (Cancellation policy, 3).
+        "subscription_data": {"metadata": {"lave_client_id": str(client.id), "plan": plan.value,
+                                           "start_now_requested": local_now().isoformat(timespec="seconds")}},
     })
     return session.url
 

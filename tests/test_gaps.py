@@ -151,3 +151,41 @@ def test_only_admins_delete_and_only_once_nothing_is_owed(api, client_headers, s
         assert db.get(Order, order["id"]) is not None  # the order record stays
     assert api.get("/api/me", headers=client_headers).status_code in (200, 401)
     assert json.dumps(api.get(f"/api/staff/clients/{cid}", headers=staff_headers).json()).count("Haydon") == 0
+
+
+# Cancelling a paid booking: the founder refunds by hand, after hearing why
+
+def test_cancel_with_a_reason_tells_the_founder_what_to_refund(api, client_headers, db_session):
+    from app.models import ClientCredit
+    from app.services import billing
+    order = _book(api, client_headers)
+    coll = next(b for b in order["bookings"] if b["kind"] == "collection")
+    with db_session() as db:
+        o = db.get(Order, order["id"])
+        from app.models import OrderPayment
+        o.payments.append(OrderPayment(order_id=o.id, kind="booking", amount_pence=3495, status="succeeded", stripe_id="pi_1"))
+        o.credit_used_pence = 500
+        db.commit()
+    mailer.OUTBOX.clear()
+    r = api.post(f"/api/me/bookings/{coll['id']}/cancel", headers=client_headers, json={"reason": "Plans changed"})
+    assert r.status_code == 200, r.text
+    founder = next(m for m in mailer.OUTBOX if m["subject"].startswith(f"Booking cancelled: {order['ref']}"))
+    assert "refund £34.95 by hand" in founder["subject"] and "Plans changed" in founder["text"]
+    assert any(m["subject"] == f"Your LAVE booking {order['ref']} is cancelled" for m in mailer.OUTBOX)
+    with db_session() as db:
+        client = db.get(Order, order["id"]).client
+        assert billing.credit_balance(db, client) == 500  # credit used at booking is back
+    # Cancelling still works without a reason.
+    order2 = _book(api, client_headers, day="2026-10-07")
+    coll2 = next(b for b in order2["bookings"] if b["kind"] == "collection")
+    assert api.post(f"/api/me/bookings/{coll2['id']}/cancel", headers=client_headers).status_code == 200
+
+
+def test_booking_and_joining_say_we_start_within_14_days(api, client_headers, staff_headers):
+    terms = api.get("/api/me/delivery-terms", headers=client_headers).json()
+    assert "14-day cancellation period" in terms["start_now_wording"]
+    assert "cancel within 14 days" in api.get("/api/config").json()["start_now_membership"]
+    order = _book(api, client_headers)
+    timeline = api.get(f"/api/staff/orders/{order['id']}", headers=staff_headers).json()["timeline"]
+    assert any(e["status"] == "start_now" for e in timeline)  # recorded on the order, for staff only
+    assert not any(e["status"] == "start_now" for e in order["timeline"])

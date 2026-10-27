@@ -78,6 +78,10 @@ class BookingRequest(BaseModel):
     phone: str = Field("", max_length=40)  # required at booking if we don't have a mobile number yet
 
 
+class CancelRequest(BaseModel):
+    reason: str = Field("", max_length=500)  # optional: why the client is cancelling
+
+
 class ReturnRequest(BaseModel):
     slot: SlotChoice
     address_id: int

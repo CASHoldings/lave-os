@@ -17,6 +17,9 @@ from app.services.slots import available_slots
 router = APIRouter(prefix="/api", tags=["public"])
 
 
+from app.services.billing import START_NOW_MEMBERSHIP  # noqa: E402
+
+
 @router.get("/config")
 def config(db: Session = Depends(get_db)):
     s = get_settings()
@@ -25,6 +28,7 @@ def config(db: Session = Depends(get_db)):
         "stripe_publishable_key": s.stripe_publishable_key or None,
         "wp_login_url": s.wp_login_url,
         "booking_horizon_days": s.booking_horizon_days,
+        "start_now_membership": START_NOW_MEMBERSHIP,
         "plans": [
             {"code": p["code"], "name": p["name"], "tier": p["tier"], "tagline": p["tagline"],
              "price_pence": p["price_pence"], "annual_pence": p["annual_pence"], "includes": p["headline"],

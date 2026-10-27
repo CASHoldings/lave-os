@@ -25,6 +25,12 @@ PENDING_MINUTES = 30  # an unfinished card check at booking releases the slots a
 BOOKING_WORDING = ("You'll pay for your items now. Once our atelier has checked them, we'll settle any difference: extra "
                    "is charged to your saved card, and anything we owe you is credited to your LAVE account, or "
                    "refunded if you prefer. If anything needs changing, we'll call you first.")
+# Shown where clients book and join, and recorded on the order (UK Consumer Contracts Regulations 2013).
+START_NOW_BOOKING = ("By booking, you ask us to start within your 14-day cancellation period. If you cancel after we've "
+                     "collected your pieces, you pay for the work already done.")
+START_NOW_MEMBERSHIP = ("By choosing a plan, you ask us to start your membership straight away. You can cancel within 14 "
+                        "days: if you haven't used it, we refund you in full. If you have, the current month isn't "
+                        "refunded; on an annual plan, we refund the months still to come.")
 MINIMUM_WORDING = ("Minimum order {minimum}: if your items come to less once our atelier has counted them, we'll charge "
                    "{minimum} for them.")
 
