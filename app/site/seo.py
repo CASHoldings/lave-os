@@ -11,6 +11,8 @@ AREAS = ["Battersea", "Nine Elms", "Battersea Power Station", "SW11"]
 
 # Pages without a description of their own (most set theirs in their template).
 DESCRIPTIONS = {
+    "/": "Premium dry cleaning and laundry collection in South London. LAVE is an eco-conscious textile care atelier "
+         "extending the life of your wardrobe and home fabrics.",
     "/contact/": "Contact LAVE, London's Textile Care Atelier, about bookings, membership, LAVE Privé, business care or press. "
                  "Call +44 7763 566 145.",
     "/laveworld/knowledge/": "THREAD by LAVE: guides to caring for clothes and home textiles, with LAVE news, events and press.",

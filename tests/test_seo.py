@@ -56,3 +56,11 @@ def test_structured_data_for_the_business_products_and_membership(api):
     product = next(d for d in _jsonld(api, product_path) if d["@type"] == "Product")
     assert product["offers"]["priceCurrency"] == "GBP" and product["brand"]["name"] == "LAVE"
     assert product["offers"]["availability"].endswith(("PreOrder", "InStock", "OutOfStock"))
+
+
+def test_home_page_description(api):
+    head = _head(api, "/")
+    text = ("Premium dry cleaning and laundry collection in South London. LAVE is an eco-conscious textile care atelier "
+            "extending the life of your wardrobe and home fabrics.")
+    assert f'<meta name="description" content="{text}">' in head
+    assert f'<meta property="og:description" content="{text}">' in head
