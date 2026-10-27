@@ -17,7 +17,8 @@ PLANS = [
         "sections": [
             ("Collection", _items(
                 "A fixed fortnightly collection day for your neighbourhood (two collections a month)",
-                "Saver collection and return included. One-hour windows £4.95.",
+                "Complimentary Saver collection and return",
+                "One-hour collection windows: £4.95",
                 "Drop off at any LAVE atelier")),
             ("Care included", _items(
                 "1 LAVE laundry bag a month: 6 kg, washed, dried and folded",
@@ -88,7 +89,7 @@ COMPARE = [
         ("Price a month / a year", ["£29 / £290", "£59 / £590", "£129 / £1,290"]),
         ("Collection", ["Fortnightly, Saver window included", "Weekly, one-hour windows included, +1 extra a month",
                         "Weekly, +1 extra a month, in-home or concierge handover"]),
-        ("Collection windows", ["Saver included, one-hour £4.95", "Saver and one-hour included", "Saver and one-hour included"]),
+        ("Collection windows", ["Saver complimentary, one-hour £4.95", "Saver and one-hour included", "Saver and one-hour included"]),
         ("Atelier drop-off", ["yes", "yes", "yes"]),
     ]),
     ("Care", [

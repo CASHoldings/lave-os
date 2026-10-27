@@ -113,6 +113,11 @@ OLD_BRAND_WORDING = [
      '"Saver and one-hour included"]}'),
     ("Choose a one-hour or Saver collection window, or drop off at the atelier.",
      "Choose a one-hour or Saver collection window or, as a member, drop off at a LAVE atelier."),
+    # Essence collection: two clear lines instead of one.
+    ('{"text": "Saver collection and return included. One-hour windows £4.95.", "soon": false}',
+     '{"text": "Complimentary Saver collection and return", "soon": false}, '
+     '{"text": "One-hour collection windows: £4.95", "soon": false}'),
+    ('"Saver included, one-hour £4.95"', '"Saver complimentary, one-hour £4.95"'),
 ]
 
 

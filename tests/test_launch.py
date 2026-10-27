@@ -286,3 +286,24 @@ def test_brand_lines(api, db_session):
 def test_health_check_answers_under_every_address(api):
     for host in ("lavelondon.co.uk", "www.lavelondon.co.uk", "www.lavelondon.com", "lave-os.onrender.com"):
         assert api.get("/healthz", headers={"host": host}, follow_redirects=False).status_code == 200
+
+
+def test_essence_collection_reads_as_two_lines(api, db_session):
+    """Saved plan wording from before is split into two lines on deploy, and the page shows both."""
+    import json
+    from app.models import SiteContent
+    from app.services import content
+    from app.site import defaults
+    saved = defaults.plans()
+    essence = saved["plans"][0]["sections"][0]["items"]
+    i = next(n for n, x in enumerate(essence) if x["text"] == "Complimentary Saver collection and return")
+    essence[i:i + 2] = [{"text": "Saver collection and return included. One-hour windows £4.95.", "soon": False}]
+    with db_session() as db:
+        row = db.get(SiteContent, "plans") or SiteContent(key="plans")
+        row.value = json.loads(json.dumps(saved))
+        db.add(row)
+        db.commit()
+        assert content.update_brand_wording(db) >= 1
+        items = [x["text"] for x in db.get(SiteContent, "plans").value["plans"][0]["sections"][0]["items"]]
+    assert "Complimentary Saver collection and return" in items and "One-hour collection windows: £4.95" in items
+    assert not any("One-hour windows £4.95." in t for t in items)
