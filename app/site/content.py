@@ -14,6 +14,9 @@ WP = "https://lavelondon.com/wp-content/uploads/"
 SLOGAN = "Care Better"
 TAGLINE = "Preserve what you treasure"
 SERVICE_MESSAGE = "Intentional care for the people and textiles you love"
+# Shown on the website and in every email (Companies Act 2006: name, number, place of registration, registered office).
+COMPANY = ("LAVE LTD, registered in England and Wales, company number 16329170. "
+           "Registered office: 438 Streatham High Road, London, England, SW16 3PX.")
 
 
 def slugify(text: str) -> str:

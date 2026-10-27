@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from app.config import get_settings
 from app.services import mailer
-from app.site.content import SERVICE_MESSAGE, SLOGAN, TAGLINE
+from app.site.content import COMPANY, SERVICE_MESSAGE, SLOGAN, TAGLINE
 
 PHONE = "+44 7763 566 145"
 # The brand line every letter closes on, followed by a sentence that fits the occasion.
@@ -62,7 +62,7 @@ def compose(subject: str, greeting: str, blocks: list[Block], closing: str) -> t
             parts.append("\n".join(f"  {w.ljust(width)}  {a}" for w, a in b.rows))
         else:
             parts.append(b)
-    parts += [closing, f"With care,\nLAVE\n{SLOGAN}. {TAGLINE}.", "\n".join(f"{k} {v}" for k, v, _ in contact)]
+    parts += [closing, f"With care,\nLAVE\n{SLOGAN}. {TAGLINE}.", "\n".join(f"{k} {v}" for k, v, _ in contact), COMPANY]
     text = "\n\n".join(parts)
 
     # Designed version: tables and inline styles, which every mail app understands.
@@ -109,6 +109,7 @@ def compose(subject: str, greeting: str, blocks: list[Block], closing: str) -> t
         f'color:{INK};">LAVE</td></tr>'
         f'<tr><td style="padding:28px 36px 30px;">{"".join(body)}</td></tr>'
         f'<tr><td style="padding:22px 36px 36px;border-top:1px solid {LINE};font-family:{FONT};font-size:12px;'
-        f'line-height:1.9;color:{SOFT};">{links}</td></tr>'
+        f'line-height:1.9;color:{SOFT};">{links}<br><span style="font-size:11px;line-height:1.6;display:inline-block;'
+        f'margin-top:10px;">{escape(COMPANY)}</span></td></tr>'
         f'</table></td></tr></table></body></html>')
     return text, html

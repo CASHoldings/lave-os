@@ -234,6 +234,7 @@ p { margin: 0; }
 .footer-nav { display: flex; flex-wrap: wrap; gap: 14px clamp(22px, 3.2vw, 56px); }
 @media (max-width: 560px) { .footer-nav { display: grid; grid-template-columns: repeat(2, max-content); column-gap: 40px; } }
 .footer-nav a { font-size: 0.75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; }
+.site-footer .footer-legal { max-width: 1760px; margin: 40px auto 0; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted, #686c78); font-size: 0.75rem; line-height: 1.6; }
 
 .social { list-style: none; margin: 0; padding: 0; display: flex; gap: 14px; flex-wrap: wrap; }
 .social a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #111521; transition: background .2s; }
