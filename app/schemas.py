@@ -127,6 +127,11 @@ class StaffLogin(BaseModel):
     password: str
 
 
+class TwoStepCode(BaseModel):
+    code: str = Field(max_length=20)
+    pending: str = ""  # from the password step, when signing in
+
+
 class StaffForgot(BaseModel):
     email: EmailStr
 

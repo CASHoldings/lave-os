@@ -134,6 +134,12 @@ class StaffUser(Timestamped, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[StaffRole] = mapped_column(Enum(StaffRole), default=StaffRole.operator)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Two-step sign-in (services/two_step.py): the authenticator secret, when it was turned on, the last code step
+    # used (so a code works once), and hashes of the unused recovery codes.
+    totp_secret: Mapped[str | None] = mapped_column(String(64))
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime)
+    totp_last_step: Mapped[int] = mapped_column(Integer, default=0)
+    recovery_codes: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class Client(Timestamped, Base):

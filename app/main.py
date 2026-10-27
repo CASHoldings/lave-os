@@ -62,6 +62,18 @@ def create_app() -> FastAPI:
         return response
 
     @app.middleware("http")
+    async def report_errors(request: Request, call_next):
+        # Anything that fails with a 500 is emailed to the founder (services/alerts.py), then handled as before.
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            import traceback
+            from app.services import alerts
+            alerts.report("Website error", f"{request.method} {request.url.path}: {exc!r}\n\n"
+                                           f"{''.join(traceback.format_exception(exc))[-4000:]}")
+            raise
+
+    @app.middleware("http")
     async def one_address(request: Request, call_next):
         # www.lavelondon.com and lavelondon.co.uk → lavelondon.com, so search engines see a single site.
         host = request.headers.get("host", "")

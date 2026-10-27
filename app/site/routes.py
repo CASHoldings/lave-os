@@ -38,9 +38,10 @@ TEMPLATES.env.filters["small"] = small_url  # the light copy of a photo, for car
 # Bot checks on the sign-up and sign-in-link forms (services/bot_guard.py).
 from app.services import bot_guard  # noqa: E402
 TEMPLATES.env.globals["form_token"] = bot_guard.form_token
+TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "51"
+ASSET_VERSION = "52"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]

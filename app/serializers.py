@@ -143,4 +143,5 @@ def template(t: SlotTemplate) -> dict:
 
 
 def staff(s: StaffUser) -> dict:
-    return {"id": s.id, "email": s.email, "name": s.name, "role": s.role.value, "active": s.active}
+    return {"id": s.id, "email": s.email, "name": s.name, "role": s.role.value, "active": s.active,
+            "two_step": bool(s.totp_enabled_at), "recovery_codes_left": len(s.recovery_codes or []) if s.totp_enabled_at else 0}

@@ -37,6 +37,9 @@ services:
         sync: false
       - key: LAVE_STORAGE_SECRET
         sync: false
+      # Weekly dated photo copies in a second bucket, e.g. lave-media-backup (LAUNCH.md, "Photo backups").
+      - key: LAVE_STORAGE_BACKUP_BUCKET
+        sync: false
       - key: LAVE_SECRET_KEY
         generateValue: true
       - key: LAVE_WP_SSO_SECRET
@@ -69,6 +72,11 @@ services:
       - key: LAVE_TWILIO_AUTH_TOKEN
         sync: false
       - key: LAVE_TWILIO_FROM
+        sync: false
+      # Cloudflare Web Analytics token (visitor numbers, no cookies), and where error alerts go (default: hello@).
+      - key: LAVE_CF_ANALYTICS_TOKEN
+        sync: false
+      - key: LAVE_ALERT_EMAIL
         sync: false
       # Stripe (phase 7, step 3). Test keys until launch.
       - key: LAVE_STRIPE_SECRET_KEY

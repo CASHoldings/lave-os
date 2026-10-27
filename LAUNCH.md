@@ -129,9 +129,46 @@ Render → `lave-os` → Environment (paste the token there only): `LAVE_TWILIO_
 and `LAVE_TWILIO_FROM` (the number, `LAVE`, or a Messaging Service SID starting MG). /admin → Settings →
 Collection & delivery shows whether texts are on.
 
+### Analytics (visitor numbers)
+
+Cloudflare Web Analytics is free and sets no cookies, so no cookie banner is needed. In dash.cloudflare.com →
+**Analytics & Logs → Web Analytics → Add a site**, enter `lavelondon.com` and choose the JavaScript snippet option
+(your DNS stays at Hostinger). Copy only the **token** from the snippet, and add it in Render → `lave-os` →
+Environment as `LAVE_CF_ANALYTICS_TOKEN`. Visitors appear in Cloudflare within minutes.
+
+### Alerts and uptime
+
+Website errors and failed background jobs (reminders, receipts, photo backups) are emailed to `LAVE_ALERT_EMAIL`
+(or hello@lavelondon.com if it's not set), at most once every 30 minutes per kind of problem. /admin → Settings →
+System lists recent problems and has a **Send a test alert** button.
+
+Whether the website is up at all needs a watcher outside it. At uptimerobot.com (free): **New monitor → HTTP(s)**,
+URL `https://lavelondon.com/healthz`, every 5 minutes, alert by email (and the app's push notifications, if you like).
+`/healthz` also checks the database, so it catches a missing database setting. In Render → `lave-os` → Settings →
+**Notifications**, choose to be emailed about failed deploys.
+
+### Photo backups
+
+A dated copy of every photo is made each week into a second R2 bucket, keeping the newest 8 weeks.
+1. Cloudflare → R2 → **Create bucket** `lave-media-backup` (no public access).
+2. R2 → **Manage API tokens**: edit the token LAVE OS uses so it can read and write **both** buckets (or create a
+   new one with both, and update `LAVE_STORAGE_KEY_ID` / `LAVE_STORAGE_SECRET` in Render).
+3. Render → `lave-os` → Environment: `LAVE_STORAGE_BACKUP_BUCKET` = `lave-media-backup`.
+4. /admin → Settings → System → **Back up now**, and check the result there a minute later.
+
+### Two-step sign-in (admin)
+
+Each person turns it on at /admin → Settings → **Two-step sign-in**: scan the QR code with an authenticator app
+(Google Authenticator, Microsoft Authenticator or 1Password), enter a code, and keep the ten recovery codes somewhere
+safe. Once yours is on, Settings → Team → **Require it for everyone** asks everyone else to set it up at their next
+sign-in. If someone loses their phone and recovery codes, an admin can **Reset** theirs on the Team tab.
+
 ## Day to day
 
 - **Editing**: everything in /admin goes live as soon as you save. No deploy needed.
 - **Code changes from Claude**: once they're pushed to GitHub, Render deploys them automatically, updates the database, and keeps the site up if anything fails.
 - **Backups**: Render backs up the database daily (restore from `lave-db` → **Recovery**). Photos are kept in the
-  Cloudflare R2 bucket `lave-media`.
+  Cloudflare R2 bucket `lave-media`, with weekly dated copies in `lave-media-backup` (see "Photo backups").
+- **Data requests**: a client can download their data from their account, or ask us to delete it. Requests show on
+  their client page in /admin ("Asked to delete"); only an admin can delete, once nothing of theirs is still with us.
+  Respond within one month.

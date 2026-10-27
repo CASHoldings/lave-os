@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-from fastapi import Cookie, Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -56,8 +56,30 @@ def peek_client(token: str | None) -> dict | None:
         return None
 
 
-def issue_staff_token(staff: StaffUser) -> str:
-    return _issue({"sub": str(staff.id), "typ": "staff", "role": staff.role.value}, get_settings().staff_session_hours)
+def issue_staff_token(staff: StaffUser, limited: bool = False) -> str:
+    """A staff session. `limited`: two-step sign-in is required and not set up yet, so this session can only set it up."""
+    claims = {"sub": str(staff.id), "typ": "staff", "role": staff.role.value, **({"lim": True} if limited else {})}
+    return _issue(claims, get_settings().staff_session_hours)
+
+
+def issue_staff_pending(staff: StaffUser) -> str:
+    """Password checked, code still to come: valid for five minutes, and only for the code step."""
+    now = datetime.now(timezone.utc)
+    payload = {"sub": str(staff.id), "typ": "staff-2fa", "pm": _password_mark(staff), "iat": now, "exp": now + timedelta(minutes=5)}
+    return jwt.encode(payload, get_settings().secret_key, algorithm=ALGO)
+
+
+def staff_from_pending(db: Session, token: str) -> StaffUser | None:
+    try:
+        claims = jwt.decode(token, get_settings().secret_key, algorithms=[ALGO], options={"require": ["exp", "sub"]})
+    except jwt.PyJWTError:
+        return None
+    staff = db.get(StaffUser, int(claims["sub"])) if claims.get("typ") == "staff-2fa" else None
+    return staff if staff and staff.active and claims.get("pm") == _password_mark(staff) else None
+
+
+# What a limited session (two-step required, not set up yet) can reach.
+SETUP_PATHS = ("/api/staff/me", "/api/staff/auth/logout", "/api/staff/auth/two-step/setup", "/api/staff/auth/two-step/enable")
 
 
 def _password_mark(staff: StaffUser) -> str:
@@ -144,6 +166,7 @@ def current_client(
 
 
 def current_staff(
+    request: Request,
     authorization: str | None = Header(default=None),
     lave_staff: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
@@ -155,6 +178,9 @@ def current_staff(
     staff = db.get(StaffUser, int(claims["sub"]))
     if not staff or not staff.active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account disabled.")
+    if claims.get("lim") and request.url.path not in SETUP_PATHS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Set up two-step sign-in to continue.")
+    staff.session_limited = bool(claims.get("lim"))
     return staff
 
 

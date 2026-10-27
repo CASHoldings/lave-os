@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     storage_endpoint: str = ""  # https://<account id>.r2.cloudflarestorage.com
     storage_key_id: str = ""
     storage_secret: str = ""
+    # Weekly dated copy of every photo, in a second bucket (services/backups.py). Empty: no backup.
+    storage_backup_bucket: str = ""
+    storage_backup_keep: int = 8  # weekly copies kept
     # First admin, created by `python -m app.release` when the database has no staff yet.
     first_admin_email: str = ""
     first_admin_password: str = ""
@@ -59,6 +62,10 @@ class Settings(BaseSettings):
     # Cloudflare Turnstile on the sign-up form (optional; free at dash.cloudflare.com → Turnstile).
     turnstile_site_key: str = ""
     turnstile_secret: str = ""
+    # Cloudflare Web Analytics (free, no cookies): the token from dash.cloudflare.com → Analytics & Logs → Web Analytics.
+    cf_analytics_token: str = ""
+    # Where error alerts go (services/alerts.py). Empty: the contact address.
+    alert_email: str = ""
     # Text messages (Twilio). Without them, "driver on the way" messages go by email instead.
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""

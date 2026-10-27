@@ -51,6 +51,15 @@ def allow(key: str, limit: int, window_seconds: int) -> bool:
     return True
 
 
+def blocked(key: str, limit: int, window_seconds: int) -> bool:
+    """Whether `key` has already used up its `limit` (without counting this check)."""
+    now = time.monotonic()
+    q = _hits[key]
+    while q and now - q[0] > window_seconds:
+        q.popleft()
+    return len(q) >= limit
+
+
 def reset_limits() -> None:
     _hits.clear()
 

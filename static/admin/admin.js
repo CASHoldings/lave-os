@@ -89,8 +89,56 @@
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target).entries());
       try {
-        me = (await api("POST", "/api/staff/auth/login", f)).staff;
+        const r = await api("POST", "/api/staff/auth/login", f);
+        if (r.two_step) { renderCode(r.pending); return; }
+        me = { ...r.staff, setup_two_step: r.setup_two_step };
         route();
+      } catch (ex) { const el = e.target.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
+    });
+  }
+
+  // Two-step sign-in: the code from the authenticator app, after the password.
+  function renderCode(pending) {
+    app.innerHTML = `<div class="login"><form id="code-form">
+      <div class="brand">LAVE<small style="display:block;font-size:11px;letter-spacing:.24em;margin-top:6px">Atelier OS</small></div>
+      <p class="small">Enter the six-digit code from your authenticator app.</p>
+      <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="20" required autofocus></label>
+      <p class="small muted">Lost your phone? Enter one of your recovery codes instead.</p>
+      <p class="error" hidden></p>
+      <button class="btn primary" type="submit">Sign in</button>
+      <button class="link small" type="button" id="back">Back</button>
+    </form></div>`;
+    document.getElementById("back").addEventListener("click", renderLogin);
+    document.getElementById("code-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        me = (await api("POST", "/api/staff/auth/login/code", { pending, code: e.target.code.value })).staff;
+        route();
+      } catch (ex) { const el = e.target.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
+    });
+  }
+
+  // Set up two-step sign-in: scan the QR code, confirm with a code, keep the recovery codes.
+  async function twoStepSetup(box, { forced = false } = {}) {
+    const r = await api("POST", "/api/staff/auth/two-step/setup");
+    box.innerHTML = `<section class="panel stack" style="max-width:520px">
+      <h2>Turn on two-step sign-in</h2>
+      ${forced ? `<p class="notice small">LAVE OS now asks everyone to use two-step sign-in. It takes a minute.</p>` : ""}
+      <p class="small">1. Open an authenticator app on your phone (Google Authenticator, Microsoft Authenticator or 1Password) and scan this code.</p>
+      <div class="qr">${r.qr_svg}</div>
+      <p class="small muted">Can't scan? Enter this key instead: <span class="tag">${esc(r.secret)}</span></p>
+      <form id="enable" class="stack"><label>2. Enter the six-digit code it shows<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+        <p class="error" hidden></p><div><button class="btn primary">Turn on</button></div></form></section>`;
+    box.querySelector("#enable").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const done = await api("POST", "/api/staff/auth/two-step/enable", { code: e.target.code.value });
+        me = { ...me, ...done.staff, setup_two_step: false };
+        box.innerHTML = `<section class="panel stack" style="max-width:520px"><h2>Two-step sign-in is on</h2>
+          <p>Keep these recovery codes somewhere safe, such as your password manager. Each one works once, if you lose your phone. They won't be shown again.</p>
+          <pre class="recovery">${done.recovery_codes.map(esc).join("\n")}</pre>
+          <div class="row"><button class="btn primary" id="saved-codes">I've saved them</button></div></section>`;
+        box.querySelector("#saved-codes").addEventListener("click", () => { location.hash = forced ? "#/today" : "#/settings?tab=security"; route(); });
       } catch (ex) { const el = e.target.querySelector(".error"); el.textContent = ex.message; el.hidden = false; }
     });
   }
@@ -164,7 +212,11 @@
         location.hash = r.order ? `#/orders/${r.order.id}` : `#/clients/${r.vault_item.client.id}`;
       } catch (ex) { toast(ex.message, true); }
     });
-    return document.getElementById("content");
+    const content = document.getElementById("content");
+    if (!me.two_step && active !== "settings") {
+      content.insertAdjacentHTML("beforebegin", `<p class="notice small" style="margin:12px 24px 0">Protect your account: <a href="#/settings?tab=security">turn on two-step sign-in</a>.</p>`);
+    }
+    return content;
   }
 
   /* Today */
@@ -1637,7 +1689,7 @@
     const isAdmin = me.role === "admin";
     const c = shell("settings", "Settings");
     const tabs = [["slots", "Slots"], ["closures", "Closures"], ["delivery", "Collection & delivery"], ["area", "Service area"], ["ateliers", "Ateliers"],
-      ...(isAdmin ? [["team", "Team"], ["email", "Email"]] : [])];
+      ["security", "Two-step sign-in"], ...(isAdmin ? [["team", "Team"], ["email", "Email"], ["system", "System"]] : [])];
     c.innerHTML = `<div class="row">${tabs.map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/settings?tab=${k}">${l}</a>`).join("")}</div>
       ${isAdmin ? "" : `<p class="notice">Only admins can change settings.</p>`}<div id="pane"><p class="loading">Loading…</p></div>`;
     const pane = c.querySelector("#pane");
@@ -1877,16 +1929,63 @@
       pane.querySelectorAll("[data-reopen]").forEach((b) => b.addEventListener("click", act(() => api("DELETE", `/api/staff/slots/blackouts/${b.dataset.reopen}`), "Reopened")));
     }
 
+    if (tab === "security") {
+      const who = await api("GET", "/api/staff/me");
+      me = { ...me, ...who };
+      if (!who.two_step) { await twoStepSetup(pane); return; }
+      pane.innerHTML = `<section class="panel stack" style="max-width:560px"><h2>Two-step sign-in</h2>
+          <p class="ok">On. You'll be asked for a code from your authenticator app each time you sign in.</p>
+          <p class="small muted">${who.recovery_codes_left} recovery code${who.recovery_codes_left === 1 ? "" : "s"} left.</p>
+          ${who.two_step_required ? `<p class="small muted">Required for everyone. To move it to a new phone, ask an admin to reset it.</p>`
+            : `<form id="ts-off" class="row"><input name="code" placeholder="Current code" inputmode="numeric" aria-label="Current code"><button class="btn">Turn off</button></form>`}
+        </section>`;
+      pane.querySelector("#ts-off")?.addEventListener("submit", act((e) => { e.preventDefault(); return api("POST", "/api/staff/auth/two-step/off", { code: e.target.code.value }).then((x) => { me = { ...me, ...x }; }); }, "Two-step sign-in turned off"));
+    }
+
+    if (tab === "system" && isAdmin) {
+      const x = await api("GET", "/api/staff/system"), b = x.backup;
+      const on = (v, yes, no) => v ? `<span class="ok">${yes}</span>` : `<span class="warn-text">${no}</span>`;
+      const size = (n) => n > 1e9 ? (n / 1e9).toFixed(1) + " GB" : (n / 1e6).toFixed(1) + " MB";
+      pane.innerHTML = `<section class="panel stack"><h2>Visitors</h2>
+          <p>${on(x.analytics, "Cloudflare Web Analytics is on.", "Not set up yet.")} ${x.analytics ? `See visitors at dash.cloudflare.com → Analytics &amp; Logs → Web Analytics.` : `Add LAVE_CF_ANALYTICS_TOKEN in Render (see LAUNCH.md, "Analytics").`}</p></section>
+        <section class="panel stack"><h2>Alerts</h2>
+          <p>Website errors and failed background jobs are emailed to <strong>${esc(x.alert_email)}</strong>, at most once every 30 minutes for each kind of problem.${x.email ? "" : ` <span class="warn-text">Email sending isn't set up, so alerts can't go out.</span>`}</p>
+          <div class="row"><button class="btn sm" id="test-alert">Send a test alert</button></div>
+          <p class="small">Is the website up? That needs a watcher outside it: a free UptimeRobot monitor on <span class="tag">${esc(x.health_url)}</span> every 5 minutes (LAUNCH.md, "Uptime").</p>
+          <h3>Recent problems</h3>
+          ${x.problems.length ? `<ul class="timeline">${x.problems.map((p) => `<li><span class="small muted">${DT.format(parse(p.at))}</span><span><strong>${esc(p.kind)}</strong><br><span class="small">${esc(p.detail.split("\n").slice(0, 3).join(" · "))}</span></span></li>`).join("")}</ul>` : `<p class="small muted">None since the website last restarted.</p>`}</section>
+        <section class="panel stack"><h2>Photo backups</h2>
+          ${!x.photos_in_bucket ? `<p class="small muted">Photos aren't in R2 on this machine.</p>` : b.configured
+            ? `<p>${on(!b.error, "Weekly copy to", "The last copy failed:")} ${b.error ? esc(b.error) : `<strong>${esc(b.bucket)}</strong>, keeping the newest ${b.keep}.`}</p>
+               ${b.finished_at ? `<p class="small">Last copy: ${DT.format(parse(b.finished_at))}, ${b.photos} photos (${size(b.bytes || 0)})${b.removed_folders?.length ? `; removed ${b.removed_folders.length} older cop${b.removed_folders.length === 1 ? "y" : "ies"}` : ""}.</p>` : `<p class="small muted">${b.running ? "Copying now…" : "No copy yet: the first runs within a day."}</p>`}
+               <div class="row"><button class="btn sm" id="backup-now">Back up now</button></div>`
+            : `<p class="warn-text">Not set up yet.</p><p class="small">Create a second R2 bucket (e.g. lave-media-backup), give the R2 API token access to it, then add LAVE_STORAGE_BACKUP_BUCKET in Render (LAUNCH.md, "Photo backups").</p>`}</section>
+        <section class="panel"><h2>Other services</h2><dl class="kv">
+          <dt>Email</dt><dd>${on(x.email, "Sending (Resend)", "Not set up")}</dd>
+          <dt>Text messages</dt><dd>${on(x.texts, "Sending (Twilio)", "Not set up: driver messages go by email")}</dd>
+          <dt>Sign-up bot check</dt><dd>${on(x.turnstile, "Cloudflare Turnstile on", "Turnstile off (other checks still run)")}</dd></dl></section>`;
+      pane.querySelector("#test-alert").addEventListener("click", async () => {
+        try { const r = await api("POST", "/api/staff/system/test-alert"); toast(r.sent ? `Test alert sent to ${r.to}` : "Not sent: check email settings", !r.sent); } catch (e) { toast(e.message, true); }
+      });
+      pane.querySelector("#backup-now")?.addEventListener("click", act(() => api("POST", "/api/staff/system/backup"), "Backup started. Refresh in a minute."));
+    }
+
     if (tab === "team" && isAdmin) {
       const rows = await api("GET", "/api/staff/team");
-      pane.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th></tr></thead>
+      const who = await api("GET", "/api/staff/me");
+      pane.innerHTML = `<section class="panel row between"><span><strong>Two-step sign-in</strong> <span class="small muted">${who.two_step_required ? "Required for everyone: anyone without it sets it up at their next sign-in." : "Optional: each person turns it on under Settings → Two-step sign-in."}</span></span>
+          <button class="btn sm" id="ts-require">${who.two_step_required ? "Make it optional" : "Require it for everyone"}</button></section>
+        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Two-step</th></tr></thead>
         <tbody>${rows.map((s) => `<tr><td>${esc(s.name)}</td><td>${esc(s.email)}</td>
           <td><select data-role="${s.id}" aria-label="Role">${["admin", "operator", "driver"].map((r) => `<option ${s.role === r ? "selected" : ""}>${r}</option>`).join("")}</select></td>
-          <td><input type="checkbox" data-active="${s.id}" ${s.active ? "checked" : ""} aria-label="Active"></td></tr>`).join("")}</tbody></table></div>
+          <td><input type="checkbox" data-active="${s.id}" ${s.active ? "checked" : ""} aria-label="Active"></td>
+          <td>${s.two_step ? `${pill("on")} <button class="link small" data-ts-reset="${s.id}">Reset</button>` : `<span class="muted small">Off</span>`}</td></tr>`).join("")}</tbody></table></div>
         <form id="team-add" class="panel form-grid"><label>Name<input name="name" required></label><label>Email<input name="email" type="email" required></label>
           <label>Temporary password<input name="password" type="text" minlength="10" required></label>
           <label>Role<select name="role"><option>operator</option><option>driver</option><option>admin</option></select></label><button class="btn primary">Add team member</button></form>`;
       pane.querySelectorAll("[data-role]").forEach((s) => s.addEventListener("change", act(() => api("PATCH", `/api/staff/team/${s.dataset.role}`, { role: s.value }), "Role updated")));
+      pane.querySelector("#ts-require").addEventListener("click", act(() => api("PUT", "/api/staff/team/two-step-required", { on: !who.two_step_required }), who.two_step_required ? "Two-step sign-in is now optional" : "Two-step sign-in is now required"));
+      pane.querySelectorAll("[data-ts-reset]").forEach((b) => b.addEventListener("click", act(() => api("POST", `/api/staff/team/${b.dataset.tsReset}/two-step/reset`), "Reset: they'll set it up again")));
       pane.querySelectorAll("[data-active]").forEach((i) => i.addEventListener("change", act(() => api("PATCH", `/api/staff/team/${i.dataset.active}`, { active: i.checked }), "Updated")));
       pane.querySelector("#team-add").addEventListener("submit", act((e) => { e.preventDefault(); return api("POST", "/api/staff/team", Object.fromEntries(new FormData(e.target).entries())); }, "Team member added"));
     }
@@ -1996,6 +2095,11 @@
     const [path, query] = (location.hash.slice(1) || "/today").split("?");
     const params = new URLSearchParams(query || "");
     const parts = path.split("/").filter(Boolean);
+    if (me.setup_two_step) {
+      app.innerHTML = `<div class="login" style="align-items:flex-start;padding-top:40px"><div id="forced" style="width:100%;max-width:560px"></div></div>`;
+      try { await twoStepSetup(document.getElementById("forced"), { forced: true }); } catch (e) { toast(e.message, true); }
+      return;
+    }
     if (me.role === "driver" && parts[0] !== "today") { location.hash = "#/today"; return; }
     try {
       if (parts[0] === "orders" && parts[1]) await viewOrder(parts[1]);

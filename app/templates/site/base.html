@@ -58,6 +58,7 @@
 
 {% block footer %}{% include "site/_footer.html" %}{% endblock %}
 <script src="/static/site/site.js?v={{ asset_version }}" defer></script>
+{% if cf_analytics_token() %}<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "{{ cf_analytics_token() }}"}'></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

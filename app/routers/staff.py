@@ -61,6 +61,7 @@ from app.schemas import (
     StaffLogin,
     StaffReset,
     StaffPatch,
+    TwoStepCode,
     VaultPatch,
     WalkInOrder,
 )
@@ -77,15 +78,107 @@ anyone = Depends(current_staff)
 
 # Auth
 
-@router.post("/auth/login")
-def login(body: StaffLogin, response: Response, db: Session = Depends(get_db)):
-    staff = find_staff_by_email(db, body.email)
-    if not staff or not staff.active or not verify_password(body.password, staff.password_hash):
-        raise HTTPException(401, "Email or password is incorrect.")
-    token = issue_staff_token(staff)
+LOGIN_TRIES, LOGIN_WINDOW = 10, 15 * 60  # wrong passwords or codes per IP address before a 15-minute pause
+
+
+def _signed_in(response: Response, staff: StaffUser, limited: bool = False) -> dict:
+    token = issue_staff_token(staff, limited)
     response.set_cookie(STAFF_COOKIE, token, httponly=True, samesite="strict", secure=not get_settings().is_dev,
                         max_age=get_settings().staff_session_hours * 3600, path="/")
-    return {"staff": ser.staff(staff), "token": token}
+    return {"staff": ser.staff(staff), "token": token, "setup_two_step": limited}
+
+
+def _too_many(request: Request) -> str:
+    from app.services import accounts
+    key = f"staff-login-fail:{request.client.host if request.client else 'unknown'}"
+    if accounts.blocked(key, LOGIN_TRIES, LOGIN_WINDOW):
+        raise HTTPException(429, "Too many attempts. Wait 15 minutes, then try again.")
+    return key
+
+
+@router.post("/auth/login")
+def login(body: StaffLogin, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Password first. With two-step sign-in on, the answer is a short-lived pass for the code step instead."""
+    from app.services import accounts, two_step
+    key = _too_many(request)
+    staff = find_staff_by_email(db, body.email)
+    if not staff or not staff.active or not verify_password(body.password, staff.password_hash):
+        accounts.allow(key, LOGIN_TRIES, LOGIN_WINDOW)
+        raise HTTPException(401, "Email or password is incorrect.")
+    if staff.totp_enabled_at:
+        from app.auth import issue_staff_pending
+        return {"two_step": True, "pending": issue_staff_pending(staff)}
+    return _signed_in(response, staff, limited=two_step.required(db))
+
+
+@router.post("/auth/login/code")
+def login_code(body: TwoStepCode, request: Request, response: Response, db: Session = Depends(get_db)):
+    """The code from the authenticator app (or a recovery code), after the password."""
+    from app.auth import staff_from_pending
+    from app.services import accounts, two_step
+    key = _too_many(request)
+    staff = staff_from_pending(db, body.pending)
+    if not staff:
+        raise HTTPException(401, "That took too long. Sign in again.")
+    if not two_step.check(staff, body.code):
+        accounts.allow(key, LOGIN_TRIES, LOGIN_WINDOW)
+        raise HTTPException(401, "That code didn't match. Try the newest code in your app, or a recovery code.")
+    db.commit()
+    return _signed_in(response, staff)
+
+
+@router.post("/auth/two-step/setup")
+def two_step_setup(staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    """Start (or restart) setting up two-step sign-in: a QR code to scan with an authenticator app."""
+    from app.services import two_step
+    if staff.totp_enabled_at:
+        raise HTTPException(409, "Two-step sign-in is already on. Turn it off first to move it to a new phone.")
+    out = two_step.start(staff)
+    db.commit()
+    return out
+
+
+@router.post("/auth/two-step/enable")
+def two_step_enable(body: TwoStepCode, response: Response, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    """Confirm with a code from the app. Returns the recovery codes, shown once."""
+    from app.services import two_step
+    codes = two_step.enable(staff, body.code)
+    db.commit()
+    return {**_signed_in(response, staff), "recovery_codes": codes}
+
+
+@router.post("/auth/two-step/off")
+def two_step_off(body: TwoStepCode, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    from app.services import two_step
+    if two_step.required(db):
+        raise HTTPException(409, "Two-step sign-in is required for everyone. To move it to a new phone, ask an admin to reset it.")
+    if not two_step.check(staff, body.code):
+        raise HTTPException(400, "That code didn't match.")
+    two_step.turn_off(staff)
+    db.commit()
+    return ser.staff(staff)
+
+
+@router.post("/team/{staff_id}/two-step/reset")
+def two_step_reset(staff_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """For someone who has lost their phone and recovery codes: they set it up again at their next sign-in."""
+    from app.services import two_step
+    who = db.get(StaffUser, staff_id)
+    if not who:
+        raise HTTPException(404, "Team member not found.")
+    two_step.turn_off(who)
+    db.commit()
+    return ser.staff(who)
+
+
+@router.put("/team/two-step-required")
+def two_step_require(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import two_step
+    if body.get("on") and not staff.totp_enabled_at:
+        raise HTTPException(409, "Turn on two-step sign-in for yourself first, so you can't lock yourself out.")
+    two_step.set_required(db, bool(body.get("on")))
+    db.commit()
+    return {"required": two_step.required(db)}
 
 
 @router.post("/auth/forgot")
@@ -122,8 +215,10 @@ def logout(response: Response):
 
 
 @router.get("/me")
-def whoami(staff: StaffUser = anyone):
-    return ser.staff(staff)
+def whoami(staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    from app.services import two_step
+    return {**ser.staff(staff), "two_step_required": two_step.required(db),
+            "setup_two_step": getattr(staff, "session_limited", False)}
 
 
 # Day board
@@ -1303,6 +1398,40 @@ def put_delivery_settings(body: dict, staff: StaffUser = Depends(admin_only), db
     except (TypeError, ValueError):
         raise HTTPException(400, "Check the amounts: whole pence, and hours as a whole number.")
     return get_delivery_settings(staff, db)
+
+
+@router.get("/system")
+def system_status(staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """Analytics, alerts, photo backups and the other outside services, as they are now."""
+    from app.services import alerts, backups, bot_guard, sms
+    s = get_settings()
+    return {"analytics": bool(s.cf_analytics_token), "alert_email": s.alert_email or s.contact_address,
+            "email": bool(s.smtp_host), "texts": sms.configured(), "turnstile": bot_guard.turnstile_on(),
+            "photos_in_bucket": bool(s.storage_bucket), "backup": backups.status(db), "problems": list(alerts.RECENT),
+            "health_url": f"{s.site_url}/healthz"}
+
+
+@router.post("/system/backup", status_code=202)
+def system_backup_now(staff: StaffUser = Depends(admin_only)):
+    from app.services import backups
+    if not backups.configured():
+        raise HTTPException(409, "Set LAVE_STORAGE_BACKUP_BUCKET in Render first (see LAUNCH.md, \"Photo backups\").")
+    import threading
+    from app.db import SessionLocal
+
+    def go():
+        with SessionLocal() as db:
+            backups.run(db, force=True)
+    threading.Thread(target=go, daemon=True).start()
+    return {"started": True}
+
+
+@router.post("/system/test-alert")
+def system_test_alert(staff: StaffUser = Depends(admin_only)):
+    from app.services import alerts
+    alerts._last_sent.pop("Test alert", None)
+    sent = alerts.report("Test alert", f"{staff.name} sent a test alert from Settings → System. Nothing is wrong.")
+    return {"sent": sent, "to": get_settings().alert_email or get_settings().contact_address}
 
 
 @router.get("/profit")

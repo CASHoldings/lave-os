@@ -138,10 +138,8 @@ def test_only_admins_delete_and_only_once_nothing_is_owed(api, client_headers, s
     order = _book(api, client_headers)
     with db_session() as db:
         cid = db.scalar(select(Client.id).where(Client.email == "client@example.com"))
-    priya = api.post("/api/staff/auth/login", json={"email": "priya@example.com", "password": "operator-password"})
-    if priya.status_code == 200:
-        op = {"Authorization": f"Bearer {priya.json()['token']}"}
-        assert api.delete(f"/api/staff/clients/{cid}", headers=op).status_code == 403
+    driver = api.post("/api/staff/auth/login", json={"email": "driver@lavelondon.com", "password": "driver-password"})
+    assert api.delete(f"/api/staff/clients/{cid}", headers={"Authorization": f"Bearer {driver.json()['token']}"}).status_code == 403
     r = api.delete(f"/api/staff/clients/{cid}", headers=staff_headers)
     assert r.status_code == 409 and order["ref"] in r.json()["detail"]  # an open order
     api.post(f"/api/staff/orders/{order['id']}/status", headers=staff_headers, json={"status": "cancelled"})

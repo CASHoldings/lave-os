@@ -371,6 +371,10 @@ def reminder_loop() -> None:
                     from app.services import members
                     members.celebrate(db)  # members' birthdays: suggestions, reminders, and approved gestures on the day
                     delivery.refresh_bank_holidays(db)  # gov.uk; the bundled list stays if it can't be reached
-        except Exception:  # never let one bad night stop the reminders for good
+                from app.services import backups
+                backups.run(db)  # weekly dated copy of the photos, if a backup bucket is set
+        except Exception as exc:  # never let one bad night stop the reminders for good
             log.exception("Booking reminders or bank holiday refresh failed")
+            from app.services import alerts
+            alerts.report("Background job failed", f"Reminders, receipts, birthdays or bank holidays: {exc!r}")
         time.sleep(CHECK_EVERY)
