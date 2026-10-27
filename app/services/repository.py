@@ -421,7 +421,7 @@ class ListSummary:
 # Minimum order: the items in a booking must come to at least the home-collection or drop-off minimum (Settings →
 # Collection & delivery). Quotes and measured items count at their "from" price. A booking with a curated pack has no
 # minimum. A booking with no list is topped up to the minimum at review if its counted items come to less.
-MINIMUM_DEFAULTS = {"home_minimum_pence": 3000, "dropoff_minimum_pence": 2000}
+MINIMUM_DEFAULTS = {"home_minimum_pence": 2995, "dropoff_minimum_pence": 2000}
 # Quick-add buttons offered when a list is under the minimum: (label, price-list item).
 QUICK_ADD = [("Shirt", "Shirt, non-member hung"), ("Trousers", "Trousers, standard"), ("T-shirt", "T-shirt, washable"),
              ("Knitwear", "Knitwear, light")]

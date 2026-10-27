@@ -16,8 +16,9 @@ def test_panel_shows_levers_examples_and_weeks(api, staff_headers):
     r = api.get("/api/staff/profit", headers=staff_headers)
     assert r.status_code == 200
     p = r.json()
-    assert p["levers"]["home_minimum_pence"] == 3000 and p["levers"]["dropoff_minimum_pence"] == 2000
-    assert p["examples"][0] == {"label": "Smallest home order, member", "items_pence": 3000, "fee_pence": 0, "contribution_pence": 1960}
+    assert p["levers"]["home_minimum_pence"] == 2995 and p["levers"]["dropoff_minimum_pence"] == 2000
+    assert p["examples"][0] == {"label": "Smallest home order, member", "items_pence": 2995, "fee_pence": 0,
+                                "contribution_pence": profit.contribution(profit.ASSUMPTIONS, 2995)}
     assert len(p["weeks"]) == profit.WEEKS and p["weeks"][-1]["current"]
     assert [t["jobs"] for t in p["trip_costs"]] == [8, 12, 16, 26]
     r = api.put("/api/staff/profit/assumptions", headers=staff_headers, json={"margin_pct": 65, "route_day_pence": 12000})

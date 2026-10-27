@@ -79,11 +79,11 @@ def test_client_list_estimate_and_rules(api, db_session):
     with db_session() as db:
         week = db.scalar(select(Pack).where(Pack.name == "The Work Week"))
     r = _add(api, "item", shirt.id, 2)
-    assert r["count"] == 2 and r["estimate_pence"] == 1198 and "the minimum order is £30" in r["warnings"][0]
+    assert r["count"] == 2 and r["estimate_pence"] == 1198 and "the minimum order is £29.95" in r["warnings"][0]
     r = _add(api, "item", shirt.id, 3)
-    assert r["qty"] == 5 and "Add £0.05 more" in r["warnings"][0]  # a 5-shirt pack is £29.95
+    assert r["qty"] == 5 and not r["warnings"]  # a 5-shirt pack (£29.95) meets the minimum
     r = _add(api, "item", jacket.id)  # quoted after inspection: not in the estimate, but counts towards the minimum
-    assert r["estimate_pence"] == 2995 and not r["warnings"]
+    assert r["estimate_pence"] == 2995
     r = _add(api, "pack", week.id)
     assert r["estimate_pence"] == 2995 + 4395
     page = api.get("/atelier/list/").text

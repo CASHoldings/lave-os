@@ -411,7 +411,7 @@ def test_dropoff_has_its_own_lower_minimum(api, client_headers, staff_headers, d
     _member(db_session)
     addr = _address(api, client_headers)
     with db_session() as db:
-        coat = db.scalar(select(Service).where(Service.name == "Coat, long"))  # £27.99: under £30, over £20
+        coat = db.scalar(select(Service).where(Service.name == "Coat, long"))  # £27.99: under £29.95, over £20
         tie = db.scalar(select(Service).where(Service.name == "Tie"))  # £12.99: under both
     api.cookies.set("lave_list", f"i{tie.id}:1")
     body = {"dropoff": {"atelier_id": loc["id"], "day": "2026-10-11", "bags": 1}, "address_id": addr}

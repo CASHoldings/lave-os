@@ -356,7 +356,7 @@ class PackIn(BaseModel):
 
 
 class RepoRules(BaseModel):
-    home_minimum_pence: int = Field(3000, ge=0, le=100000)
+    home_minimum_pence: int = Field(2995, ge=0, le=100000)
     dropoff_minimum_pence: int = Field(2000, ge=0, le=100000)
     free_delivery_from_pence: int = Field(ge=0, le=100000)
     minimum_margin: int = Field(ge=0, le=95)

@@ -6,7 +6,7 @@
 - Membership is read when the booking is placed and kept on the order (Order.delivery_basis).
 - Returns open 48 hours after the collection window ends, on operating days only (Monday–Saturday, not bank holidays
   or days the founder closes). Atelier drop-offs count as collected at the end of the next Saver window.
-- Minimum order (items): £30 for a home collection, £20 for an atelier drop-off (repository.py, "Minimum order").
+- Minimum order (items): £29.95 for a home collection (a 5-shirt pack), £20 for an atelier drop-off (repository.py, "Minimum order").
 - Every amount here is editable in /admin → Settings → Collection & delivery, without a deploy.
 """
 import json

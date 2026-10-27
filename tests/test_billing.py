@@ -85,24 +85,24 @@ def test_list_under_the_home_minimum_is_blocked_everywhere(api, client_headers, 
     with db_session() as db:
         price = db.get(Service, shirt).price_pence
     _list(api, (shirt, 3))
-    short = 3000 - 3 * price
+    short = 2995 - 3 * price
     page = api.get("/atelier/list/").text
-    assert "more to book a home collection: the minimum order is £30" in page and 'aria-disabled="true"' in page
+    assert "more to book a home collection: the minimum order is £29.95" in page and 'aria-disabled="true"' in page
     assert ">+ Shirt" in page and ">+ Knitwear" in page  # quick-add
     terms = api.get("/api/me/delivery-terms", headers=client_headers).json()["minimum"]
-    assert terms["home_short_pence"] == short and terms["home_pence"] == 3000 and terms["dropoff_pence"] == 2000
+    assert terms["home_short_pence"] == short and terms["home_pence"] == 2995 and terms["dropoff_pence"] == 2000
     r = _book(api, client_headers)
-    assert r.status_code == 409 and "the minimum order is £30" in r.json()["detail"]
+    assert r.status_code == 409 and "the minimum order is £29.95" in r.json()["detail"]
     _list(api, (shirt, 3), (knit, 3))
     assert "minimum order" not in api.get("/atelier/list/").text
     r = _book(api, client_headers)
-    assert r.status_code == 201 and r.json()["minimum_pence"] == 3000
+    assert r.status_code == 201 and r.json()["minimum_pence"] == 2995
 
 
 def test_staples_no_longer_need_a_pack_of_5(api, client_headers, db_session):
     shirt = _service(db_session, "Shirt, non-member folded")
     coat = _service(db_session, "Coat, wash & press")
-    _list(api, (shirt, 1), (coat, 1))  # one shirt is fine once the order reaches £30
+    _list(api, (shirt, 1), (coat, 1))  # one shirt is fine once the order reaches the minimum
     assert _book(api, client_headers).status_code == 201
 
 
@@ -130,23 +130,23 @@ def test_curated_packs_are_always_bookable(api, client_headers, db_session):
 
 def test_no_list_is_topped_up_to_the_minimum_at_review(api, client_headers, staff_headers, db_session):
     r = _book(api, client_headers)  # no list: allowed, the minimum applies at review
-    assert r.status_code == 201 and r.json()["minimum_pence"] == 3000
+    assert r.status_code == 201 and r.json()["minimum_pence"] == 2995
     order_id = r.json()["id"]
     with db_session() as db:
         o = db.get(Order, order_id)
         o.items.append(Garment(tag_code=f"{o.ref}-01", description="Shirt", price_pence=599, service_id=_service(db_session, "Shirt, non-member hung")))
         db.commit()
-        assert o.minimum_top_up_pence == 3000 - 599
-        assert o.total_pence == 3000 + o.fees_pence
+        assert o.minimum_top_up_pence == 2995 - 599
+        assert o.total_pence == 2995 + o.fees_pence
     detail = api.get(f"/api/staff/orders/{order_id}", headers=staff_headers).json()
-    assert detail["minimum_top_up_pence"] == 2401
+    assert detail["minimum_top_up_pence"] == 2396
     # Staff can waive it.
     detail = api.patch(f"/api/staff/orders/{order_id}", headers=staff_headers, json={"minimum_pence": 0}).json()
     assert detail["minimum_top_up_pence"] == 0
 
 
 def test_one_item_under_the_minimum_can_go_to_a_drop_off_but_not_home(api, client_headers, db_session):
-    coat = _service(db_session, "Coat, long")  # £27.99: under £30, over £20
+    coat = _service(db_session, "Coat, long")  # £27.99: under £29.95, over £20
     _list(api, (coat, 1))
     terms = api.get("/api/me/delivery-terms", headers=client_headers).json()["minimum"]
     assert terms["home_short_pence"] > 0 and terms["dropoff_short_pence"] == 0
