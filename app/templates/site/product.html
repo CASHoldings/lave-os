@@ -1,6 +1,9 @@
 {% extends "site/base.html" %}
 {% block title %}{{ product.name }} | Apothecary | LAVE{% endblock %}
 {% block description %}{{ product.summary }}{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_image %}{% if product.image %}{{ product_image_abs }}{% else %}{{ site_url }}{{ og_default }}{% endif %}{% endblock %}
+{% block head %}{{ product_jsonld }}{% endblock %}
 {% block main %}
 <article class="service">
   <div class="service-img">{% if product.image %}<img src="{{ img(product) }}" alt="{{ product.name }}">{% endif %}</div>

@@ -1,5 +1,6 @@
 {% extends "site/base.html" %}
-{% block title %}{{ page.title if page else "Policies" }} | LAVE{% endblock %}
+{% block title %}{{ page.title if page else "Policies" }} | LAVE{% if not page or page.title|length < 20 %} Textile Care Atelier, London{% endif %}{% endblock %}
+{% block description %}{{ (page.intro if page and page.intro else meta_description) or "LAVE, London's Textile Care Atelier." }}{% endblock %}
 {% block main %}
 <article class="article">
   {% if page %}

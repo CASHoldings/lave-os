@@ -1,5 +1,6 @@
 {% extends "site/base.html" %}
-{% block title %}{{ heading }} | LAVE{% endblock %}
+{% block title %}{{ heading }} | {{ "LAVE Membership" if events_mode else "THREAD by LAVE" }}{% endblock %}
+{% block robots %}{% if not posts %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block head %}<link rel="alternate" type="application/rss+xml" title="THREAD by LAVE" href="/journal/feed.xml">{% endblock %}
 {% block main %}
 <section class="welcome tight">

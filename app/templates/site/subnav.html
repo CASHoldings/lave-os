@@ -1,5 +1,7 @@
 {% extends "site/base.html" %}
-{% block title %}{{ subnav.title }} | {{ section.title }} | LAVE{% endblock %}
+{% block title %}{% if item %}{{ item }} | {{ subnav.title }} | LAVE{% else %}{{ subnav.title }} | {{ section.title }} | LAVE{% endif %}{% endblock %}
+{# Pages still being written stay out of search results until they have something to say. #}
+{% block robots %}{% if item %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block main %}
 <section class="welcome tight">
   <p class="eyebrow">{{ section.title }}</p>

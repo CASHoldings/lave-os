@@ -50,8 +50,12 @@ def product_page(request: Request, slug: str, db: Session = Depends(get_db)):
     APOTHECARY = _apothecary(request)
     sub = next((s for s in APOTHECARY.subnav if s.slug == product.menu_sub), APOTHECARY.subnav[0])
     related = [p for p in shop.products(db, menu_sub=product.menu_sub) if p.id != product.id][:4]
+    from app.site import seo
+    site_url = get_settings().site_url.rstrip("/")
+    image = shop.image_url(product) if product.image else ""
     return render(request, "site/product.html", section=APOTHECARY, subnav=sub, product=product, o=shop.options(product),
-                  related=related, **_listing_ctx(db))
+                  related=related, product_image_abs=seo.absolute(site_url, image),
+                  product_jsonld=seo.jsonld(seo.product(site_url, product, image, shop.selling(db))), **_listing_ctx(db))
 
 
 @router.get("/apothecary/{sub_slug}/", response_class=HTMLResponse)

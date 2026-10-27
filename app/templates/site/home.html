@@ -1,5 +1,6 @@
 {% extends "site/base.html" %}
 {% block body_class %}home{% endblock %}
+{% block head %}{{ jsonld(business_jsonld) }}{% endblock %}
 {% block header %}
 <header class="home-bar" data-header>
   <button class="home-menu" aria-expanded="false" aria-controls="drawer" data-menu-toggle>

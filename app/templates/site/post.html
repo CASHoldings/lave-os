@@ -1,9 +1,9 @@
 {% extends "site/base.html" %}
 {% block title %}{{ post.title }} | THREAD by LAVE{% endblock %}
 {% block description %}{{ post.excerpt }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_image %}{% if post.cover_image %}{% set c = cover(post.cover_image) %}{{ c if c.startswith("http") else site_url ~ c }}{% else %}{{ site_url }}{{ og_default }}{% endif %}{% endblock %}
 {% block head %}
-<meta property="og:title" content="{{ post.title }}"><meta property="og:description" content="{{ post.excerpt }}">
-{% if post.cover_image %}<meta property="og:image" content="{{ cover(post.cover_image) }}">{% endif %}
 {% if is_draft %}<meta name="robots" content="noindex">{% endif %}
 {% endblock %}
 {% block main %}

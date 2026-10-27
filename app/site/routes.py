@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import CLIENT_COOKIE, peek_client
 from app.plans import gbp
+from app.site import seo
 from app.services import shop
 
 BASKET_COOKIE = "lave_basket"
@@ -43,7 +44,7 @@ TEMPLATES.env.globals["company"] = COMPANY
 TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "55"
+ASSET_VERSION = "56"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -102,6 +103,10 @@ def render(request: Request, template: str, status_code: int = 200, **ctx) -> HT
         "year": date.today().year,
         "asset_version": ASSET_VERSION, "image_url": catalogue.image_url,
         "site_url": get_settings().site_url.rstrip("/"),
+        # One address per page for search engines (no ?query), its description, and the share image.
+        "canonical": get_settings().site_url.rstrip("/") + request.url.path,
+        "meta_description": seo.DESCRIPTIONS.get(request.url.path, ""),
+        "og_default": seo.OG_IMAGE, "jsonld": seo.jsonld,
     }
     base["crumbs"] = breadcrumbs(request, ctx)
     return TEMPLATES.TemplateResponse(request, template, {**base, **{k: v for k, v in ctx.items() if k != "crumbs"}},
@@ -117,7 +122,9 @@ def _section(request: Request, key: str):
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return render(request, "site/home.html", home=request.state.site.docs["home"])
+    site_url = get_settings().site_url.rstrip("/")
+    return render(request, "site/home.html", home=request.state.site.docs["home"],
+                  business_jsonld=seo.business(site_url, request.state.site.docs["footer"]["social"]))
 
 
 @router.get("/robots.txt")
@@ -136,7 +143,9 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
     from app.services import content as cms
 
     site = request.state.site
-    paths = ["/", "/book/", "/contact/", "/policies/", "/laveworld/knowledge/",
+    # Only pages worth finding: not /book/ (it asks you to sign in), nor pages still being written.
+    has_posts = bool(cms.published(db, limit=1))
+    paths = ["/", "/contact/", "/policies/", *(["/laveworld/knowledge/"] if has_posts else []),
              *[f"/policies/{slug}/" for slug in ("terms", "cancellation", "garment-care", "privacy", "cookies")]]
     for s in site.sections:
         paths.append(s.path)
@@ -148,6 +157,8 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
     paths += [f"/atelier/clean/{c}/" for c in repo.COLLECTION_PAGES if counts.get(c)]
     paths += [f"/apothecary/products/{p.slug}/" for p in shop.products(db)]
     paths += [f"/journal/{p.slug}/" for p in cms.published(db, limit=1000)]
+    if not has_posts:  # the Journal stays out of search until it has stories
+        paths = [p for p in paths if p != "/laveworld/knowledge/"]
     base = get_settings().site_url.rstrip("/")
     urls = "".join(f"<url><loc>{escape(base + p)}</loc></url>" for p in dict.fromkeys(paths))
     return Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
@@ -205,7 +216,8 @@ def section_page(request: Request, section_key: str, waitlist: str = "", db: Ses
     site = request.state.site
     if section.key == "membership":
         return render(request, "site/membership.html", section=section, page=site.page("membership"), plans=site.plans,
-                      compare=site.docs["plans"]["compare"], extras=site.docs["plans"]["extras"])
+                      compare=site.docs["plans"]["compare"], extras=site.docs["plans"]["extras"],
+                      membership_jsonld=seo.jsonld(seo.memberships(get_settings().site_url.rstrip("/"), site.plans)))
     if section.key == "atelier":
         from app.services import repository as repo
         return render(request, "site/atelier.html", section=section, page=site.page("atelier"), plans=site.plans,
