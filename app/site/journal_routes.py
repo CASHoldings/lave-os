@@ -166,6 +166,16 @@ def policies(request: Request, db: Session = Depends(get_db)):
     return render(request, "site/content_page.html", section=None, subnav=None, page=page, crumb=page.title if page else "Policies", policies_fallback=page is None, **_ctx())
 
 
+@router.get("/policies/{slug}/", response_class=HTMLResponse)
+def policy(request: Request, slug: str, db: Session = Depends(get_db)):
+    page = cms.page(db, f"/policies/{slug}/")
+    if not page:
+        from starlette.exceptions import HTTPException as StarletteHTTPException
+        raise StarletteHTTPException(404)
+    return render(request, "site/content_page.html", section=None, subnav=None, page=page,
+                  crumbs=[("Home", "/"), ("Policies", "/policies/"), (page.title, f"/policies/{slug}/")], **_ctx())
+
+
 @router.get("/memberships/{sub_slug}/{item_slug}/")
 def membership_item(request: Request, sub_slug: str, item_slug: str, db: Session = Depends(get_db)):
     """Membership menu links land on the right part of the Membership page."""

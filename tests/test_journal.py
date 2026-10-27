@@ -50,7 +50,11 @@ def test_pages_and_policies(api, staff_headers):
     api.patch(f"/api/staff/pages/{creation['id']}", headers=staff_headers,
               json={"title": "Creation", "intro": "Founded in London.", "body": "Our first atelier.", "published": True})
     assert "Our first atelier." in api.get("/laveworld/story/creation/").text
-    assert "being updated" in api.get("/policies/").text
+    # Policies are pages too, editable in the admin.
+    assert "/policies/privacy/" in pages and pages["/policies/privacy/"]["published"]
+    api.patch(f"/api/staff/pages/{pages['/policies/cookies/']['id']}", headers=staff_headers,
+              json={**{k: pages["/policies/cookies/"][k] for k in ("title", "intro", "image")}, "body": "Edited.", "published": True})
+    assert "Edited." in api.get("/policies/cookies/").text
 
 
 def test_contact_form(api, staff_headers):

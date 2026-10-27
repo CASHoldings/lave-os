@@ -14,6 +14,7 @@
   <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
   <input type="hidden" name="t" value="{{ form_token() }}">
   {% if turnstile_key() %}<div class="cf-turnstile" data-sitekey="{{ turnstile_key() }}" data-appearance="interaction-only" data-theme="light"></div>{% endif %}
+  <p class="muted small">By creating an account, you agree to our <a href="/policies/terms/">Terms</a>. Our <a href="/policies/privacy/">Privacy policy</a> explains how we use your information.</p>
   <button class="btn dark" type="submit">Create account</button>
 </form>
 <div class="auth-links"><a href="/account/login/?next={{ next|urlencode }}">Already have an account? Sign in</a></div>

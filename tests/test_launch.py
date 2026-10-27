@@ -24,7 +24,7 @@ def test_old_wordpress_addresses_redirect(api):
 
 def test_missing_slash_still_arrives(api):
     r = api.get("/privacy-policy")
-    assert r.status_code == 200 and r.url.path == "/policies/"
+    assert r.status_code == 200 and r.url.path == "/policies/privacy/"
 
 
 def test_real_pages_win_over_redirects(api):
@@ -307,3 +307,19 @@ def test_essence_collection_reads_as_two_lines(api, db_session):
         items = [x["text"] for x in db.get(SiteContent, "plans").value["plans"][0]["sections"][0]["items"]]
     assert "Complimentary Saver collection and return" in items and "One-hour collection windows: £4.95" in items
     assert not any("One-hour windows £4.95." in t for t in items)
+
+
+def test_policy_pages_are_published_and_linked(api):
+    index = api.get("/policies/")
+    assert index.status_code == 200 and "being updated" not in index.text
+    for slug, words in [("terms", "company number 16329170"), ("cancellation", "Consumer Contracts Regulations 2013"),
+                        ("garment-care", "Fair Claims Guide"), ("privacy", "[ICO number]"), ("cookies", "lave_client")]:
+        r = api.get(f"/policies/{slug}/")
+        assert r.status_code == 200 and words in r.text, slug
+        assert f'href="/policies/{slug}/"' in index.text
+        assert f"/policies/{slug}/" in api.get("/sitemap.xml").text
+    assert "<table>" in api.get("/policies/privacy/").text
+    assert api.get("/policies/nonsense/").status_code == 404
+    home = api.get("/").text
+    assert 'href="/policies/privacy/"' in home and "company number 16329170" in home
+    assert api.get("/privacy-policy/", follow_redirects=False).headers["location"] == "/policies/privacy/"

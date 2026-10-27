@@ -1,6 +1,7 @@
 """Journal posts and LAVEWorld pages: Markdown rendering, queries and starter content."""
 import html
 import json
+from pathlib import Path
 import re
 
 import markdown
@@ -146,10 +147,32 @@ def update_brand_wording(db: Session) -> int:
     return changed
 
 
+# Legal pages, from app/site/data/policies/*.md. Added once; after that they're edited in /admin → Website → Pages.
+POLICIES_DIR = Path(__file__).resolve().parent.parent / "site" / "data" / "policies"
+POLICIES_UPDATED = "27 October 2026"
+POLICIES = [
+    ("/policies/", "index", "Policies", "Our terms, and how we look after your pieces, your money and your information."),
+    ("/policies/terms/", "terms", "Terms & conditions",
+     "The agreement between you and LAVE when you book a collection, become a member, store pieces in the Vault or buy from the Apothecary."),
+    ("/policies/cancellation/", "cancellation", "Cancellation & refunds", "How to change your mind, and how and when we refund you."),
+    ("/policies/garment-care/", "garment-care", "Garment care & liability",
+     "How we look after your pieces, what we ask of you, and what happens if something goes wrong."),
+    ("/policies/privacy/", "privacy", "Privacy policy", "What personal information we collect, why, who we share it with, and your rights."),
+    ("/policies/cookies/", "cookies", "Cookie notice",
+     "We use only the cookies our website needs to work. We don't use advertising or tracking cookies, so we don't ask you to accept cookies."),
+]
+
+
 def load_starter_content(db: Session) -> None:
     for path, title, intro, body, is_published in STARTER_PAGES:
         if not db.scalar(select(PageContent).where(PageContent.path == path)):
             db.add(PageContent(path=path, title=title, intro=intro, body=body, published=is_published))
+    for path, name, title, intro in POLICIES:
+        if not db.scalar(select(PageContent).where(PageContent.path == path)):
+            body = (POLICIES_DIR / f"{name}.md").read_text()
+            if name != "index":
+                body += f"\n\n*Last updated {POLICIES_UPDATED}.*\n"
+            db.add(PageContent(path=path, title=title, intro=intro, body=body, published=True))
     if not db.scalar(select(Post).limit(1)):
         db.add(Post(slug=slugify(STARTER_POST["title"]), kind="thread", status=PostStatus.draft, **STARTER_POST))
     db.commit()
