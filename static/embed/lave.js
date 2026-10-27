@@ -528,16 +528,20 @@
   class LaveBooking extends LaveBase {
     async start() {
       await this.loadTerms();
-      if (this.terms.pack_short) {
-        const n = this.terms.pack_short;
-        this.view.innerHTML = `<div class="card stack center"><p class="notice">Add ${n} more item${n === 1 ? "" : "s"} to complete your pack. Everyday staples are booked in packs of 5 or more.</p>
-          <div class="row center"><a class="btn primary" href="/atelier/list/">Complete your pack</a></div></div>`;
+      this.ateliers = this.terms.dropoff ? await this.call("GET", "/api/me/ateliers?days=" + this.config.booking_horizon_days).catch(() => []) : [];
+      // Minimum order: a list under the home minimum can still go to a drop-off if it reaches that minimum.
+      // (Wardrobe pieces sent again also count, so with those the server checks.)
+      const m = this.terms.minimum || {}, sending = !!this.getAttribute("items");
+      this.homeShort = m.applies && !sending ? m.home_short_pence || 0 : 0;
+      const dropShort = m.applies && !sending ? m.dropoff_short_pence || 0 : 0;
+      if (this.homeShort && (!this.ateliers.length || dropShort)) {
+        this.view.innerHTML = `<div class="card stack center"><p class="notice">${esc(this.shortText(this.homeShort, "home"))}</p>
+          <div class="row center"><a class="btn primary" href="/atelier/list/">Add to your list</a></div></div>`;
         return;
       }
-      this.ateliers = this.terms.dropoff ? await this.call("GET", "/api/me/ateliers?days=" + this.config.booking_horizon_days).catch(() => []) : [];
       const usable = this.client.addresses.filter(inZone);
       const def = usable.find((a) => a.is_default) || usable[0];
-      const wantsDropoff = this.getAttribute("mode") === "drop_off" && this.ateliers.length;
+      const wantsDropoff = (this.getAttribute("mode") === "drop_off" || this.homeShort) && this.ateliers.length;
       this.state = { mode: wantsDropoff ? "atelier" : "lave_collects", addressId: def?.id ?? null, collection: null,
                      dropoff: null, ready: null, delivery: null, arrangeLater: false,
                      returnPref: this.terms.longer_items?.length ? "together" : "", bag: [], notes: "", pieces: [] };
@@ -552,6 +556,21 @@
     }
 
     get collected() { return this.state.mode === "atelier" ? !!this.state.dropoff?.day : !!this.state.collection; }
+
+    shortText(short, mode) {
+      const m = this.terms.minimum;
+      return mode === "home"
+        ? `Add ${money(short)} more to your list to book a home collection: the minimum order is ${money(m.home_pence)}.`
+        : `Add ${money(short)} more to your list to book a drop-off: the minimum order is ${money(m.dropoff_pence)}.`;
+    }
+
+    /* Booked without a list: the minimum order is charged at review if the counted items come to less. */
+    minimumText() {
+      const m = this.terms.minimum || {};
+      if (!m.applies || m.has_list) return "";
+      const min = money(this.state.mode === "atelier" ? m.dropoff_pence : m.home_pence);
+      return `Minimum order ${min}: if your items come to less once our atelier has counted them, we'll charge ${min} for them.`;
+    }
 
     renderFlow() {
       const s = this.state, t = this.terms;
@@ -597,7 +616,7 @@
         </section>
         <section class="stack" id="confirm" ${this.collected ? "" : "hidden"}>
           <dl class="summary" id="summary"></dl>
-          <p class="center muted small" style="max-width:640px;margin:0 auto">${esc(t.booking_wording || "")}</p>
+          <p class="center muted small" style="max-width:640px;margin:0 auto">${esc(t.booking_wording || "")}${this.minimumText() ? " " + esc(this.minimumText()) : ""}</p>
           <p class="error" id="book-error" hidden></p>
           <div class="row center"><button class="btn primary" id="book">Confirm booking</button></div>
         </section>`;
@@ -635,6 +654,11 @@
         this.drawDropoff();
       } else {
         addressBlock(this, this.$("#address"), { selectedId: s.addressId, onChange: onAddress });
+        if (this.homeShort) {
+          this.$("#collect").innerHTML = `<p class="notice center">${esc(this.shortText(this.homeShort, "home"))} Or drop off at a LAVE atelier.</p>
+            <div class="row center"><a class="btn" href="/atelier/list/">Add to your list</a></div>`;
+          return;
+        }
         this.collectPicker = new SlotPicker(this, this.$("#collect"), {
           mode: "lave_collects", onPick: (slot) => { s.collection = slot; this.collectionChanged(); },
         });
@@ -910,6 +934,7 @@
           <tbody>${o.items.map((i) => `<tr><td class="tag">${esc(i.tag_code)}</td><td>${esc([i.colour, i.brand, i.description].filter(Boolean).join(" "))}${i.condition_notes ? `<br><span class="muted small">${esc(i.condition_notes)}</span>` : ""}</td>
             <td>${esc(i.service?.name || "")}</td><td>${i.status === "in_vault" ? "In the Vault" : esc(i.status.replace(/_/g, " "))}</td><td class="num">${money(i.price_pence)}</td></tr>`).join("")}</tbody>
           <tfoot>
+            ${o.minimum_top_up_pence ? `<tr><td colspan="4">Minimum order ${money(o.minimum_pence)} <span class="muted small">your items came to less</span></td><td class="num">${money(o.minimum_top_up_pence)}</td></tr>` : ""}
             ${o.fees_pence ? `<tr><td colspan="4">Collection and delivery</td><td class="num">${money(o.fees_pence)}</td></tr>` : ""}
             ${o.discount_pence ? `<tr><td colspan="4">Discount</td><td class="num">−${money(o.discount_pence)}</td></tr>` : ""}
             <tr><td colspan="4"><strong>Total</strong> <span class="muted small">${o.payment_status === "paid" ? "Settled" : o.payment_status === "waived" ? "No charge" : "Settled once our atelier has checked everything"}</span></td><td class="num"><strong>${money(o.total_pence)}</strong></td></tr>

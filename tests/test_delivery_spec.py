@@ -403,3 +403,24 @@ def test_staff_book_a_return(api, client_headers, staff_headers):
                  json={"slot": {"template_id": saver["template_id"], "day": saver["day"]}, "address_id": addr})
     assert r.status_code == 201, r.text
     assert [b["kind"] for b in r.json()["bookings"]] == ["collection", "delivery"] and r.json()["fees_pence"] == 695
+
+
+def test_dropoff_has_its_own_lower_minimum(api, client_headers, staff_headers, db_session):
+    from tests.test_flow import _address
+    loc = _atelier(api, staff_headers)
+    _member(db_session)
+    addr = _address(api, client_headers)
+    with db_session() as db:
+        coat = db.scalar(select(Service).where(Service.name == "Coat, long"))  # £27.99: under £30, over £20
+        tie = db.scalar(select(Service).where(Service.name == "Tie"))  # £12.99: under both
+    api.cookies.set("lave_list", f"i{tie.id}:1")
+    body = {"dropoff": {"atelier_id": loc["id"], "day": "2026-10-11", "bags": 1}, "address_id": addr}
+    r = api.post("/api/me/bookings", headers=client_headers, json=body)
+    assert r.status_code == 409 and "the minimum order is £20" in r.json()["detail"]
+    api.cookies.set("lave_list", f"i{coat.id}:1")
+    assert "For members dropping off at a LAVE atelier, it&#39;s £20" in api.get("/atelier/list/").text
+    assert 'aria-disabled="true"' not in api.get("/atelier/list/").text
+    api.cookies.set("lave_client", client_headers["Authorization"].removeprefix("Bearer "))
+    assert 'mode="drop_off"' in api.get("/book/").text  # booking opens on drop-off
+    r = api.post("/api/me/bookings", headers=client_headers, json=body)
+    assert r.status_code == 201 and r.json()["minimum_pence"] == 2000

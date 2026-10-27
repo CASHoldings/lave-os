@@ -6,7 +6,7 @@ import stripe
 from sqlalchemy import select
 
 from app.config import get_settings
-from app.models import Client, ClientCredit, Membership, MembershipPlan, MembershipStatus, Order, Service
+from app.models import Client, ClientCredit, Garment, Membership, MembershipPlan, MembershipStatus, Order, Service
 from app.services import billing, payments
 from tests.test_flow import _address, _slots
 
@@ -77,32 +77,80 @@ def _book(api, h, window="saver", **extra):
                                                        "address_id": addr, **extra})
 
 
-# Packs of 5
+# Minimum order (rules 1, 2, 8, 9, 11)
 
-def test_short_pack_is_blocked_everywhere(api, client_headers, db_session):
+def test_list_under_the_home_minimum_is_blocked_everywhere(api, client_headers, db_session):
     shirt = _service(db_session, "Shirt, non-member folded")
     knit = _service(db_session, "Knitwear, light")
+    with db_session() as db:
+        price = db.get(Service, shirt).price_pence
     _list(api, (shirt, 3))
+    short = 3000 - 3 * price
     page = api.get("/atelier/list/").text
-    assert "Add 2 more items to complete your pack" in page and 'aria-disabled="true"' in page
+    assert "more to book a home collection: the minimum order is £30" in page and 'aria-disabled="true"' in page
     assert ">+ Shirt" in page and ">+ Knitwear" in page  # quick-add
-    assert api.get("/api/me/delivery-terms", headers=client_headers).json()["pack_short"] == 2
+    terms = api.get("/api/me/delivery-terms", headers=client_headers).json()["minimum"]
+    assert terms["home_short_pence"] == short and terms["home_pence"] == 3000 and terms["dropoff_pence"] == 2000
     r = _book(api, client_headers)
-    assert r.status_code == 409 and "Add 2 more items to complete your pack" in r.json()["detail"]
-    # Knitwear counts toward the pack; pressing-only doesn't.
-    press = db_session().scalar(select(Service.id).where(Service.sale_mode == "single", Service.product_category == "Pressing only"))
-    _list(api, (shirt, 3), (press, 3))
-    assert "Add 2 more items" in api.get("/atelier/list/").text
-    _list(api, (shirt, 3), (knit, 2))
-    assert "complete your pack" not in api.get("/atelier/list/").text
+    assert r.status_code == 409 and "the minimum order is £30" in r.json()["detail"]
+    _list(api, (shirt, 3), (knit, 3))
+    assert "minimum order" not in api.get("/atelier/list/").text
+    r = _book(api, client_headers)
+    assert r.status_code == 201 and r.json()["minimum_pence"] == 3000
+
+
+def test_staples_no_longer_need_a_pack_of_5(api, client_headers, db_session):
+    shirt = _service(db_session, "Shirt, non-member folded")
+    coat = _service(db_session, "Coat, wash & press")
+    _list(api, (shirt, 1), (coat, 1))  # one shirt is fine once the order reaches £30
     assert _book(api, client_headers).status_code == 201
 
 
-def test_no_staples_no_minimum(api, client_headers, db_session):
-    coat = _service(db_session, "Coat, long")
+def test_quotes_count_at_their_from_price(api, client_headers, db_session):
+    with db_session() as db:
+        quote = db.scalar(select(Service).where(Service.sale_mode == "quote", Service.active.is_(True), Service.show_online.is_(True),
+                                                Service.price_pence >= 3000))
+        quote_id = quote.id
+    _list(api, (quote_id, 1))
+    assert api.get("/api/me/delivery-terms", headers=client_headers).json()["minimum"]["home_short_pence"] == 0
+    assert _book(api, client_headers).status_code == 201
+
+
+def test_curated_packs_are_always_bookable(api, client_headers, db_session):
+    from app.models import Pack
+    with db_session() as db:
+        pack = db.scalar(select(Pack).where(Pack.active.is_(True), Pack.show_online.is_(True)))
+        pack_id = pack.id
+    api.cookies.set("lave_list", f"p{pack_id}:1")
+    terms = api.get("/api/me/delivery-terms", headers=client_headers).json()["minimum"]
+    assert terms["applies"] is False and terms["home_short_pence"] == 0
+    r = _book(api, client_headers)
+    assert r.status_code == 201 and r.json()["minimum_pence"] == 0
+
+
+def test_no_list_is_topped_up_to_the_minimum_at_review(api, client_headers, staff_headers, db_session):
+    r = _book(api, client_headers)  # no list: allowed, the minimum applies at review
+    assert r.status_code == 201 and r.json()["minimum_pence"] == 3000
+    order_id = r.json()["id"]
+    with db_session() as db:
+        o = db.get(Order, order_id)
+        o.items.append(Garment(tag_code=f"{o.ref}-01", description="Shirt", price_pence=599, service_id=_service(db_session, "Shirt, non-member hung")))
+        db.commit()
+        assert o.minimum_top_up_pence == 3000 - 599
+        assert o.total_pence == 3000 + o.fees_pence
+    detail = api.get(f"/api/staff/orders/{order_id}", headers=staff_headers).json()
+    assert detail["minimum_top_up_pence"] == 2401
+    # Staff can waive it.
+    detail = api.patch(f"/api/staff/orders/{order_id}", headers=staff_headers, json={"minimum_pence": 0}).json()
+    assert detail["minimum_top_up_pence"] == 0
+
+
+def test_one_item_under_the_minimum_can_go_to_a_drop_off_but_not_home(api, client_headers, db_session):
+    coat = _service(db_session, "Coat, long")  # £27.99: under £30, over £20
     _list(api, (coat, 1))
-    assert "complete your pack" not in api.get("/atelier/list/").text
-    assert _book(api, client_headers).status_code == 201
+    terms = api.get("/api/me/delivery-terms", headers=client_headers).json()["minimum"]
+    assert terms["home_short_pence"] > 0 and terms["dropoff_short_pence"] == 0
+    assert _book(api, client_headers).status_code == 409
 
 
 # Paying at booking

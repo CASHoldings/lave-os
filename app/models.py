@@ -297,6 +297,9 @@ class Order(Timestamped, Base):
     # Orders with pieces outside the 48-hour promise: "together" (one return when all is ready) or "split".
     return_preference: Mapped[str] = mapped_column(String(10), default="")
     discount_pence: Mapped[int] = mapped_column(Integer, default=0)
+    # Minimum order (items) for this booking: home collection or drop-off, set at booking (0: none, e.g. curated packs
+    # or set by staff). Once counted, items under it are topped up to it (minimum_top_up_pence).
+    minimum_pence: Mapped[int] = mapped_column(Integer, default=0)
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.unpaid)
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(String(64))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -312,8 +315,13 @@ class Order(Timestamped, Base):
         return sum(i.price_pence for i in self.items)
 
     @property
+    def minimum_top_up_pence(self) -> int:
+        """What's added to bring counted items up to the minimum order. Nothing until the items are counted."""
+        return max(0, (self.minimum_pence or 0) - self.items_total_pence) if self.items else 0
+
+    @property
     def total_pence(self) -> int:
-        return max(0, self.items_total_pence + self.fees_pence - self.discount_pence)
+        return max(0, self.items_total_pence + self.minimum_top_up_pence + self.fees_pence - self.discount_pence)
 
     @property
     def paid_pence(self) -> int:
@@ -325,7 +333,7 @@ class Order(Timestamped, Base):
         """The counted total once the atelier has itemised the order; until then, what was booked."""
         items = self.items_total_pence if self.items else sum(
             line["unit_pence"] * line["qty"] for line in self.requested_items or [] if not line.get("priced_later"))
-        return max(0, items + self.fees_pence - self.discount_pence)
+        return max(0, items + self.minimum_top_up_pence + self.fees_pence - self.discount_pence)
 
     @property
     def balance_pence(self) -> int:

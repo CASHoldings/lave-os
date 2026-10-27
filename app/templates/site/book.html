@@ -12,10 +12,10 @@
   <a class="link small" href="/atelier/list/">Review list</a>
 </div>
 {% endif %}
-{% if planned and planned.pack_short %}
+{% if short %}
 <section class="welcome tight">
   <p class="notice-line" role="status">{{ planned.warnings[0] }}</p>
-  <div class="ctas"><a class="btn dark" href="/atelier/list/">Complete your pack</a></div>
+  <div class="ctas"><a class="btn dark" href="/atelier/list/">Add to your list</a></div>
 </section>
 {% else %}
 <section class="embed-page">

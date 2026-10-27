@@ -11,7 +11,7 @@
 {% if summary.lines %}
   {% for w in summary.warnings %}<p class="notice-line" role="status">{{ w }}</p>{% endfor %}
   {% if summary.quick_add %}
-  <div class="quick-add" aria-label="Add to complete your pack">
+  <div class="quick-add" aria-label="Add to reach the minimum order">
     {% for q in summary.quick_add %}<form method="post" action="/atelier/list/">
       <input type="hidden" name="action" value="add"><input type="hidden" name="kind" value="item"><input type="hidden" name="id" value="{{ q.id }}">
       <input type="hidden" name="qty" value="1"><input type="hidden" name="back" value="/atelier/list/">
@@ -43,7 +43,7 @@
     {% if summary.to_free_delivery_pence %}<p class="small">Add {{ summary.to_free_delivery_pence|gbp }} more for free Saver collection and delivery.</p>
     {% else %}<p class="small ok">Free Saver collection and delivery.</p>{% endif %}
   </div>
-  <div class="ctas">{% if summary.pack_short %}<span class="btn dark" role="link" aria-disabled="true" title="Complete your pack first">Book a collection with this list</span>
+  <div class="ctas">{% if list_blocked %}<span class="btn dark" role="link" aria-disabled="true" title="Add to your list to reach the minimum order">Book a collection with this list</span>
     {%- else %}<a class="btn dark" href="/book/">Book a collection with this list</a>{% endif %}<a class="btn" href="/atelier/prices/">Keep browsing</a></div>
   <form method="post" action="/atelier/list/" class="center"><input type="hidden" name="action" value="clear"><button class="link small">Clear the list</button></form>
 {% else %}

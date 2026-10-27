@@ -6,6 +6,7 @@
 - Membership is read when the booking is placed and kept on the order (Order.delivery_basis).
 - Returns open 48 hours after the collection window ends, on operating days only (Monday–Saturday, not bank holidays
   or days the founder closes). Atelier drop-offs count as collected at the end of the next Saver window.
+- Minimum order (items): £30 for a home collection, £20 for an atelier drop-off (repository.py, "Minimum order").
 - Every amount here is editable in /admin → Settings → Collection & delivery, without a deploy.
 """
 import json
@@ -44,7 +45,9 @@ def config(db: Session) -> dict:
     row = db.get(SiteSetting, "delivery.config")
     saved = json.loads(row.value) if row and row.value else {}
     cfg = {**DEFAULTS, **{k: v for k, v in saved.items() if k in DEFAULTS}}
-    cfg["free_saver_threshold_pence"] = rules(db)["free_delivery_from_pence"]  # one setting, shared with the price list
+    r = rules(db)
+    cfg["free_saver_threshold_pence"] = r["free_delivery_from_pence"]  # one setting, shared with the price list
+    cfg["home_minimum_pence"], cfg["dropoff_minimum_pence"] = r["home_minimum_pence"], r["dropoff_minimum_pence"]
     return cfg
 
 
@@ -54,6 +57,8 @@ def save_config(db: Session, changes: dict) -> dict:
     for k, v in changes.items():
         if k == "free_saver_threshold_pence":
             set_setting(db, "free_delivery_from_pence", int(v))
+        elif k in ("home_minimum_pence", "dropoff_minimum_pence"):
+            set_setting(db, k, int(v))
         elif k in DEFAULTS:
             cfg[k] = type(DEFAULTS[k])(v) if not isinstance(DEFAULTS[k], list) else [str(x).strip() for x in v if str(x).strip()]
     row = db.get(SiteSetting, "delivery.config") or SiteSetting(key="delivery.config")
@@ -152,7 +157,8 @@ def public_terms(db: Session) -> dict:
     short = lambda p: f"£{p / 100:.2f}".removesuffix(".00")  # noqa: E731
     return {"threshold": short(cfg["free_saver_threshold_pence"]), "under": short(cfg["nonmember_saver_under_pence"]),
             "hour": short(cfg["nonmember_one_hour_pence"]), "essence_hour": short(cfg["essence_one_hour_pence"]),
-            "turnaround": cfg["turnaround_hours"]}
+            "turnaround": cfg["turnaround_hours"], "home_minimum": short(cfg["home_minimum_pence"]),
+            "dropoff_minimum": short(cfg["dropoff_minimum_pence"])}
 
 
 # Days and times

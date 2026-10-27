@@ -136,7 +136,7 @@ def set_setting(db: Session, key: str, value) -> None:
 
 
 def rules(db: Session) -> dict:
-    return {"pack_minimum": setting(db, "pack_minimum", 5),
+    return {**{k: setting(db, k, v) for k, v in MINIMUM_DEFAULTS.items()},
             "free_delivery_from_pence": setting(db, "free_delivery_from_pence", 4500),
             "minimum_margin": setting(db, "minimum_margin", 65),
             "text": setting(db, "rules_text", RULES_MD.read_text() if RULES_MD.exists() else "")}
@@ -387,12 +387,15 @@ class ListLine:
     sale_mode: str = "single"
     priced_later: bool = False
     detail: str = ""
-    staples: int = 0   # per one of this line: staples ("Packs only" items) in it
-    eligible: int = 0  # per one of this line: pieces that count toward a pack
 
     @property
     def total_pence(self) -> int:
         return 0 if self.priced_later else self.unit_pence * self.qty
+
+    @property
+    def counted_pence(self) -> int:
+        """Towards the minimum order: quotes and measured items count at their "from" price."""
+        return self.unit_pence * self.qty
 
 
 @dataclass
@@ -402,53 +405,61 @@ class ListSummary:
     warnings: list[str] = field(default_factory=list)
     free_delivery_from_pence: int = 4500
     count: int = 0
-    pack_short: int = 0  # pack-eligible pieces still needed before this list can be booked
+    counted_pence: int = 0  # towards the minimum order (quotes at their "from" price)
+    minimums: dict = field(default_factory=dict)  # {"home": pence, "dropoff": pence}; empty: no minimum (curated pack)
     quick_add: list[dict] = field(default_factory=list)
+
+    def short_pence(self, mode: str) -> int:
+        """How much more this list needs before it can be booked: mode "home" or "dropoff"."""
+        return max(0, self.minimums.get(mode, 0) - self.counted_pence) if self.lines else 0
 
     @property
     def to_free_delivery_pence(self) -> int:
         return max(0, self.free_delivery_from_pence - self.estimate_pence)
 
 
-# Pack rule: an order with staples ("Packs only") needs at least `pack_minimum` pack-eligible pieces. Staples of any
-# type mix, and "Single or pack" items (knitwear, suits, dresses, coats, bed linen…) count too. Quotes, pressing
-# only, alterations, repairs, wash & fold bags, curtains and rugs don't. An order with no staples has no minimum.
-STAPLE = "pack"
-PACK_ELIGIBLE = {"pack", "single_or_pack"}
-# Quick-add buttons offered when a pack is short: (label, price-list item).
+# Minimum order: the items in a booking must come to at least the home-collection or drop-off minimum (Settings →
+# Collection & delivery). Quotes and measured items count at their "from" price. A booking with a curated pack has no
+# minimum. A booking with no list is topped up to the minimum at review if its counted items come to less.
+MINIMUM_DEFAULTS = {"home_minimum_pence": 3000, "dropoff_minimum_pence": 2000}
+# Quick-add buttons offered when a list is under the minimum: (label, price-list item).
 QUICK_ADD = [("Shirt", "Shirt, non-member hung"), ("Trousers", "Trousers, standard"), ("T-shirt", "T-shirt, washable"),
              ("Knitwear", "Knitwear, light")]
 
 
-def unit_counts(service_or_pack, by_id: dict[int, Service] | None = None) -> tuple[int, int]:
-    """(staples, eligible) in one of an item or a curated pack."""
-    if isinstance(service_or_pack, Service):
-        mode = service_or_pack.sale_mode
-        return int(mode == STAPLE), int(mode in PACK_ELIGIBLE)
-    lines = pack_lines(service_or_pack, by_id or {})
-    return (sum(q for s, q in lines if s.sale_mode == STAPLE), sum(q for s, q in lines if s.sale_mode in PACK_ELIGIBLE))
+def minimums(db: Session) -> dict:
+    r = rules(db)
+    return {"home": r["home_minimum_pence"], "dropoff": r["dropoff_minimum_pence"]}
 
 
-def pack_shortfall(staples: int, eligible: int, minimum: int) -> int:
-    return max(0, minimum - eligible) if staples else 0
+def booked_minimum(db: Session, lines: list[dict], mode: str) -> tuple[int, int]:
+    """For the server's check at booking: (the minimum that applies, how much the booked lines are short of it).
+    No list: the minimum still applies (topped up at review), nothing is short. A curated pack: no minimum."""
+    if any(line.get("kind") == "pack" for line in lines):
+        return 0, 0
+    minimum = minimums(db)[mode]
+    if not lines:
+        return minimum, 0
+    return minimum, max(0, minimum - sum(line["unit_pence"] * line["qty"] for line in lines))
 
 
-def booked_shortfall(db: Session, lines: list[dict]) -> int:
-    """For the server's check at booking: how many pack-eligible pieces a booked list is short, from the database."""
-    item_ids = [line["id"] for line in lines if line.get("kind") == "item"]
-    pack_ids = [line["id"] for line in lines if line.get("kind") == "pack"]
-    services = {s.id: s for s in db.scalars(select(Service).where(Service.id.in_(item_ids)))} if item_ids else {}
-    packs_ = {p.id: p for p in db.scalars(select(Pack).where(Pack.id.in_(pack_ids)))} if pack_ids else {}
-    if packs_:
-        member_ids = {x["service_id"] for p in packs_.values() for x in p.items or []}
-        services.update({s.id: s for s in db.scalars(select(Service).where(Service.id.in_(member_ids)))})
-    staples = eligible = 0
-    for line in lines:
-        thing = services.get(line["id"]) if line.get("kind") == "item" else packs_.get(line["id"])
-        if thing is not None:
-            s, e = unit_counts(thing, services)
-            staples, eligible = staples + s * line["qty"], eligible + e * line["qty"]
-    return pack_shortfall(staples, eligible, rules(db)["pack_minimum"])
+def short_text(db: Session, short: int, mode: str) -> str:
+    m = minimums(db)
+    if mode == "dropoff":
+        return f"Add {pounds(short)} more to book a drop-off: the minimum order is {pounds(m['dropoff'])}."
+    return f"Add {pounds(short)} more to book a home collection: the minimum order is {pounds(m['home'])}."
+
+
+def pounds(pence: int) -> str:
+    return f"£{pence / 100:.2f}".removesuffix(".00")
+
+
+def dropoff_offered(db: Session) -> bool:
+    """Atelier drop-off is switched on and there's at least one active atelier."""
+    from app.models import AtelierLocation
+    from app.services import delivery
+    return bool(delivery.config(db)["dropoff_enabled"]
+                and db.scalar(select(AtelierLocation.id).where(AtelierLocation.status == "active").limit(1)))
 
 
 def summarise(db: Session, entries: dict[str, int]) -> ListSummary:
@@ -464,22 +475,20 @@ def summarise(db: Session, entries: dict[str, int]) -> ListSummary:
     for key, qty in entries.items():
         kind, ident = key[0], int(key[1:])
         if kind == "i" and (s := by_id.get(ident)) and s.active and s.show_online:
-            out.lines.append(ListLine(key, "item", s.id, s.name, qty, s.price_pence, s.sale_mode, s.sale_mode in PRICED_LATER,
-                                      "", *unit_counts(s)))
+            out.lines.append(ListLine(key, "item", s.id, s.name, qty, s.price_pence, s.sale_mode, s.sale_mode in PRICED_LATER))
         elif kind == "p" and (p := pack_map.get(ident)) and p.active and p.show_online:
             fig = pack_figures(p, by_id)
             if not fig["unavailable"]:
                 out.lines.append(ListLine(key, "pack", p.id, p.name, qty, fig["price_pence"], "pack_bundle", False,
-                                          "; ".join(f"{q} × {s.name}" for s, q in fig["lines"]), *unit_counts(p, by_id)))
+                                          "; ".join(f"{q} × {s.name}" for s, q in fig["lines"])))
     out.estimate_pence = sum(line.total_pence for line in out.lines)
     out.count = sum(line.qty for line in out.lines)
-    out.pack_short = pack_shortfall(sum(line.staples * line.qty for line in out.lines),
-                                    sum(line.eligible * line.qty for line in out.lines), r["pack_minimum"])
-    if out.pack_short:
-        n = out.pack_short
-        out.warnings.append(f"Add {n} more item{'s' if n != 1 else ''} to complete your pack. Everyday staples are booked "
-                            f"in packs of {r['pack_minimum']} or more: mix them freely, or add knitwear, suits, dresses, "
-                            "coats or bed linen.")
+    out.counted_pence = sum(line.counted_pence for line in out.lines)
+    if not any(line.kind == "pack" for line in out.lines):
+        out.minimums = minimums(db)
+    if short := out.short_pence("home"):
+        out.warnings.append(short_text(db, short, "home") + (
+            f" For members dropping off at a LAVE atelier, it's {pounds(out.minimums['dropoff'])}." if dropoff_offered(db) else ""))
         by_name = {s.name: s for s in db.scalars(select(Service).where(Service.name.in_([n for _, n in QUICK_ADD]),
                                                                       Service.active.is_(True)))}
         out.quick_add = [{"label": label, "id": by_name[name].id, "price_pence": by_name[name].price_pence}
@@ -506,7 +515,7 @@ def client_price(s: Service) -> dict:
     if s.sale_mode in ("per_m2", "per_kg"):
         return {"main": p, "prefix": "", "suffix": "per m²" if s.sale_mode == "per_m2" else "per kg", "note": "Measured at the atelier", "pack": None}
     if s.sale_mode == "pack":
-        return {"main": p, "prefix": "", "suffix": "each", "note": "In packs of 5 or more", "pack": p * 5}
+        return {"main": p, "prefix": "", "suffix": "each", "note": "Best value in packs of 5", "pack": p * 5}
     if s.sale_mode == "single_or_pack":
         return {"main": p, "prefix": "", "suffix": "", "note": "", "pack": p * 5}
     return {"main": p, "prefix": "", "suffix": "", "note": "", "pack": None}

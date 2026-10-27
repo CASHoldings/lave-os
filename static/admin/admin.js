@@ -37,6 +37,12 @@
     return `<span class="pill ${cls}">${esc(STATUS_LABEL[status] || human(status))}</span>`;
   };
 
+  // Density rules (13–14 of the profitability rules): set by hand in Settings → Slots.
+  const ROUTE_DAY_NOTE = `<section class="panel note-box"><h2>Route days: two rules you set here</h2>
+    <p><strong>13. Only open slots on route days.</strong> At launch, keep collections to a few days (for example Tuesday, Thursday and Saturday) and set every other day's capacity to 0. Fuller days cost less per job: about £14 at 8 jobs a day, under £10 at 12.</p>
+    <p><strong>14. Open another route day once each day averages about 12 jobs.</strong> A new day only pays once it can reach 8 jobs. Check <a href="#/profit">Profitability</a> for jobs per route day.</p>
+    <p class="small muted">Route days must still support the 48-hour promise: with fewer days, some returns land later than 48 hours, never earlier.</p></section>`;
+
   let me = null;
   let services = [];
 
@@ -136,7 +142,7 @@
 
   function shell(active, title, actionsHtml = "") {
     const isOps = me.role !== "driver";
-    const links = [["today", "Today"], ...(isOps ? [["orders", "Orders"], ["clients", "Clients"], ["vault", "Vault"], ["shop", "Shop"], ...(me.role === "admin" ? [["products", "Products"]] : []), ["journal", "Journal"], ["website", "Website"], ["settings", "Settings"]] : [])];
+    const links = [["today", "Today"], ...(isOps ? [["orders", "Orders"], ["clients", "Clients"], ["vault", "Vault"], ["shop", "Shop"], ...(me.role === "admin" ? [["products", "Products"]] : []), ["journal", "Journal"], ["website", "Website"], ["profit", "Profitability"], ["settings", "Settings"]] : [])];
     app.innerHTML = `<div class="shell">
       <aside class="side">
         <div class="brand">LAVE<small>Atelier OS</small></div>
@@ -378,6 +384,7 @@
                 <td>${removable ? `<button class="link small" data-item-del="${i.id}">Remove</button>` : ""}</td></tr>`).join("")}</tbody>
               <tfoot>
                 <tr><td colspan="5">Items</td><td class="num">${money(o.items_total_pence)}</td><td></td></tr>
+                ${o.minimum_pence ? `<tr><td colspan="5">Minimum order top-up <span class="small muted">minimum ${paid ? money(o.minimum_pence) : `<input id="minimum" value="${(o.minimum_pence / 100).toFixed(2)}" size="5" style="text-align:right" aria-label="Minimum order">`}; set 0 to waive</span></td><td class="num">${money(o.minimum_top_up_pence)}</td><td></td></tr>` : ""}
                 <tr><td colspan="5">Collection and delivery${o.delivery_basis?.manual ? ' <span class="small muted">set by hand</span>' : ""}</td><td class="num">${paid ? money(o.fees_pence) : `<input id="fees" value="${(o.fees_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Fees">`}</td><td></td></tr>
                 <tr><td colspan="5">Discount</td><td class="num">${paid ? "−" + money(o.discount_pence) : `<input id="discount" value="${(o.discount_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Discount">`}</td><td></td></tr>
                 <tr><td colspan="5">Total</td><td class="num">${money(o.total_pence)}</td><td></td></tr>
@@ -496,6 +503,7 @@
     c.querySelectorAll("[data-item-del]").forEach((b) => b.addEventListener("click", act(() => api("DELETE", `/api/staff/items/${b.dataset.itemDel}`), "Removed")));
     c.querySelector("#fees")?.addEventListener("change", act((e) => api("PATCH", `/api/staff/orders/${id}`, { fees_pence: toPence(e.target.value) }), "Fees updated"));
     c.querySelector("#discount")?.addEventListener("change", act((e) => api("PATCH", `/api/staff/orders/${id}`, { discount_pence: toPence(e.target.value) }), "Discount updated"));
+    c.querySelector("#minimum")?.addEventListener("change", act((e) => api("PATCH", `/api/staff/orders/${id}`, { minimum_pence: toPence(e.target.value) || 0 }), "Minimum order updated"));
     c.querySelector("#save-notes").addEventListener("click", act(() => api("PATCH", `/api/staff/orders/${id}`, { staff_notes: c.querySelector("#staff-notes").value }), "Notes saved"));
     c.querySelector("#charge")?.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/charge`), "Payment taken"));
     c.querySelectorAll("[data-manual]").forEach((b) => b.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/payment`, { status: b.dataset.manual }), "Payment recorded")));
@@ -1370,7 +1378,7 @@
         <span class="small muted">${esc(p.note)}</span>
         <span class="small">${p.items.map((i) => `${i.qty} × ${esc(i.name)}`).join(", ")}</span>
         <span class="row between"><strong>${money(p.price_pence)}</strong><span class="small">${p.count} items · ${marginPill(p.margin, min)}</span></span>
-        ${p.count < R.rules.pack_minimum ? `<span class="small warn-text">Below the ${R.rules.pack_minimum}-item minimum</span>` : ""}</button>`).join("")}</div>`;
+</button>`).join("")}</div>`;
     pane.querySelector("[data-new-pack]").addEventListener("click", () => repoEditPack(null));
     pane.querySelectorAll("[data-pack]").forEach((b) => b.addEventListener("click", () => repoEditPack(R.packs.find((p) => String(p.id) === b.dataset.pack))));
   }
@@ -1406,8 +1414,7 @@
               <button type="button" class="link small danger-text" data-remove-line="${i}">Remove</button></div>`).join("")}
             <button type="button" class="btn sm ghost" data-add-line>Add item</button>
           </fieldset>
-          <div class="pack-sum"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${money(price)}</strong>${marginPill(cost != null && price ? Math.round((price - cost) * 100 / price) : null, R.rules.minimum_margin)}
-            ${count && count < R.rules.pack_minimum ? `<span class="small warn-text">Below the ${R.rules.pack_minimum}-item minimum</span>` : ""}</div>
+          <div class="pack-sum"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${money(price)}</strong>${marginPill(cost != null && price ? Math.round((price - cost) * 100 / price) : null, R.rules.minimum_margin)}</div>
           <fieldset class="ed-list"><legend>In season (featured on the website these months; none = all year)</legend>
             <div class="month-chips">${MONTH_NAMES.map((m, i) => `<label class="month-chip"><input type="checkbox" name="month" value="${i + 1}" ${pack.months.includes(i + 1) ? "checked" : ""}><span>${m}</span></label>`).join("")}</div></fieldset>
           <div class="row"><label class="check-label"><input type="checkbox" name="active" ${pack.active ? "checked" : ""}> Available</label>
@@ -1500,16 +1507,17 @@
     pane.innerHTML = `<form class="panel stack" id="rules">
         <h2>Pricing rules</h2>
         <div class="form-grid">
-          <label>Pack minimum (items)<input name="pack_minimum" type="number" min="1" max="20" value="${r.pack_minimum}"></label>
+          <label>Minimum order, home (£)<input name="home_min" value="${(r.home_minimum_pence / 100).toFixed(2)}"></label>
+          <label>Minimum order, drop-off (£)<input name="drop_min" value="${(r.dropoff_minimum_pence / 100).toFixed(2)}"></label>
           <label>Free collection from (£)<input name="free" value="${(r.free_delivery_from_pence / 100).toFixed(2)}"></label>
           <label>Minimum margin (%)<input name="minimum_margin" type="number" min="0" max="95" value="${r.minimum_margin}"></label>
         </div>
-        <p class="small muted">The pack minimum and free-collection amount are shown to clients and used in their list. The minimum margin colours the Margin column here.</p>
+        <p class="small muted">The minimum orders and free-collection amount are shown to clients and used in their list. The minimum margin colours the Margin column here.</p>
         <label>Rules and notes (private)<textarea name="text" rows="18">${esc(r.text)}</textarea></label>
         <div><button class="btn primary">Save rules</button></div>
       </form>`;
     pane.querySelector("#rules").addEventListener("submit", act((e) => { e.preventDefault(); const f = e.target;
-      return api("PUT", "/api/staff/repository/rules", { pack_minimum: Number(f.pack_minimum.value), free_delivery_from_pence: toPence(f.free.value),
+      return api("PUT", "/api/staff/repository/rules", { home_minimum_pence: toPence(f.home_min.value), dropoff_minimum_pence: toPence(f.drop_min.value), free_delivery_from_pence: toPence(f.free.value),
         minimum_margin: Number(f.minimum_margin.value), text: f.text.value }); }, "Rules saved"));
   }
 
@@ -1570,6 +1578,7 @@
       rows.forEach((t) => { (groups[`${t.mode}|${t.window_type}`] ||= []).push(t); });
       const groupName = { "lave_collects|hour": "LAVE collects · 1 hour", "lave_collects|saver": "LAVE collects · Saver" };
       pane.innerHTML = `<p class="muted">Capacity is how many bookings each window can take. Changes apply to new bookings. Charges are set under <a href="#/settings?tab=delivery">Collection &amp; delivery</a>.</p>
+        ${ROUTE_DAY_NOTE}
         ${Object.entries(groups).filter(([k]) => groupName[k]).map(([k, list]) => {
           const times = [...new Set(list.map((t) => t.start + "–" + t.end))].sort();
           return `<section class="panel"><h2>${groupName[k] || k}</h2><div class="table-wrap"><table>
@@ -1591,6 +1600,12 @@
       const p = (k) => (d[k] / 100).toFixed(2);
       const field = (k, label) => `<label>${label}<input name="${k}" value="${p(k)}" ${dis}></label>`;
       pane.innerHTML = `<form id="delivery" class="panel stack">
+          <h2>Minimum order</h2>
+          <p class="small muted">Items in a booking must come to at least this. Quotes count at their "from" price; curated packs can always be booked. Booked without a list? We charge up to the minimum at review. See <a href="#/profit">Profitability</a> for what each order earns.</p>
+          <div class="form-grid">
+            ${field("home_minimum_pence", "Home collection (£)")}
+            ${field("dropoff_minimum_pence", "Atelier drop-off (£)")}
+          </div>
           <h2>Charges</h2>
           <p class="small muted">One charge per booking covers collection and return. If either leg is one-hour, the one-hour charge applies, once.</p>
           <div class="form-grid">
@@ -1632,7 +1647,7 @@
       pane.querySelector("#delivery").addEventListener("submit", act((e) => {
         e.preventDefault();
         const f = e.target, body = {};
-        ["free_saver_threshold_pence", "nonmember_saver_under_pence", "nonmember_one_hour_pence", "essence_saver_pence", "essence_one_hour_pence",
+        ["home_minimum_pence", "dropoff_minimum_pence", "free_saver_threshold_pence", "nonmember_saver_under_pence", "nonmember_one_hour_pence", "essence_saver_pence", "essence_one_hour_pence",
           "elevate_eclat_saver_pence", "elevate_eclat_one_hour_pence"].forEach((k) => { body[k] = toPence(f[k].value); });
         body.turnaround_hours = Number(f.turnaround_hours.value);
         body.confirmed_categories = f.confirmed_categories.value.split("\n").map((x) => x.trim()).filter(Boolean);
@@ -1768,6 +1783,100 @@
     }
   }
 
+  /* Profitability: what orders earn, what route days cost, and the settings that move both. */
+
+  async function viewProfit() {
+    const c = shell("profit", "Profitability");
+    const isAdmin = me.role === "admin";
+    const P = await api("GET", "/api/staff/profit");
+    const signed = (p) => (p < 0 ? "−" : "") + money(Math.abs(p));
+    const a = P.assumptions, L = P.levers, W = P.weeks;
+    const recent = W.slice(-4);
+    const sum = (k) => recent.reduce((n, w) => n + (w[k] || 0), 0);
+    const orders = sum("orders"), valued = sum("valued_orders"), days = sum("route_days"), jobs = sum("jobs");
+    const weighted = (k) => valued ? Math.round(recent.reduce((n, w) => n + (w[k] || 0) * w.valued_orders, 0) / valued) : null;
+    const tile = (value, label, good, note) => `<div class="stat-tile"><strong class="${value == null ? "" : good ? "ok" : "warn-text"}">${value ?? "–"}</strong><span>${esc(label)}</span>${note ? `<small class="muted">${esc(note)}</small>` : ""}</div>`;
+    const perDay = days ? Math.round(jobs / days * 10) / 10 : null;
+    const avg = weighted("average_order_pence"), under = weighted("under_free_share"), contrib = weighted("contribution_per_order_pence");
+    const afterRoute = sum("after_route_pence");
+    const day = (wd) => WEEKDAYS[wd];
+    const goodBad = (v, target) => v == null ? "" : v >= target ? "ok" : "warn-text";
+    const lever = (label, value, href, note) => `<tr><td>${label}</td><td><strong>${value}</strong></td><td class="small muted">${note}</td><td>${href ? `<a class="link small" href="${href}">Change</a>` : ""}</td></tr>`;
+
+    c.innerHTML = `
+      <section class="stack"><h2>Last 4 weeks</h2>
+        <div class="stat-tiles">
+          ${tile(perDay, "Jobs per route day", perDay != null && perDay >= a.target_jobs_per_day, `target ${a.target_jobs_per_day}+, run a day from ${a.min_jobs_per_day}`)}
+          ${tile(avg == null ? null : money(avg), "Average order", avg != null && avg >= a.target_order_pence, `target ${money(a.target_order_pence)}+`)}
+          ${tile(under == null ? null : under + "%", `Orders under ${money(L.free_saver_threshold_pence)}`, under != null && under <= 50, "pay the under-threshold charge")}
+          ${tile(contrib == null ? null : money(contrib), "Contribution per order", contrib != null && contrib >= a.target_contribution_pence, `target ${money(a.target_contribution_pence)}+, before route costs`)}
+          ${tile(orders ? signed(afterRoute) : null, "After route-day costs", afterRoute >= 0, `${days} route day${days === 1 ? "" : "s"} at ${money(a.route_day_pence)}`)}
+        </div>
+        <p class="small muted">A job is one collection and its return (two stops). Contribution is what an order leaves after cleaning (${100 - a.margin_pct}% of item prices), packaging and card fees; a top-up to the minimum order has no cleaning cost. Orders booked without a list join the averages once they're itemised.</p>
+      </section>
+
+      <section class="panel"><h2>Week by week</h2><div class="table-wrap"><table>
+        <thead><tr><th>Week of</th><th class="num">Route days</th><th class="num">Jobs</th><th class="num">Jobs / day</th><th class="num">Trip cost / job</th><th class="num">Orders</th><th class="num">Average order</th><th class="num">Under ${money(L.free_saver_threshold_pence)}</th><th class="num">Contribution / order</th><th class="num">After route costs</th><th class="num">After fixed costs</th></tr></thead>
+        <tbody>${W.slice().reverse().map((w) => `<tr${w.current ? ' class="muted"' : ""}><td>${D.format(parse(w.week))}${w.current ? " (this week)" : ""}</td>
+          <td class="num">${w.route_days}</td><td class="num">${w.jobs}</td>
+          <td class="num ${goodBad(w.jobs_per_route_day, a.target_jobs_per_day)}">${w.jobs_per_route_day ?? "–"}</td>
+          <td class="num">${w.trip_cost_per_job_pence == null ? "–" : money(w.trip_cost_per_job_pence)}</td>
+          <td class="num">${w.orders}</td><td class="num ${goodBad(w.average_order_pence, a.target_order_pence)}">${w.average_order_pence == null ? "–" : money(w.average_order_pence)}</td>
+          <td class="num">${w.under_free_share == null ? "–" : w.under_free_share + "%"}</td>
+          <td class="num ${goodBad(w.contribution_per_order_pence, a.target_contribution_pence)}">${w.contribution_per_order_pence == null ? "–" : money(w.contribution_per_order_pence)}</td>
+          <td class="num">${w.orders || w.route_days ? signed(w.after_route_pence) : "–"}</td><td class="num">${w.orders || w.route_days ? signed(w.after_fixed_pence) : "–"}</td></tr>`).join("")}</tbody>
+      </table></div><p class="small muted">Fixed costs are spread evenly: ${money(a.fixed_month_pence)} a month is ${money(Math.round(a.fixed_month_pence * 12 / 52))} a week.</p></section>
+
+      <section class="panel"><h2>Your levers</h2><div class="table-wrap"><table><tbody>
+        ${lever("1. Minimum order, home collection", money(L.home_minimum_pence), "#/settings?tab=delivery", "No home order earns less than this covers.")}
+        ${lever("2. Minimum order, atelier drop-off", money(L.dropoff_minimum_pence), "#/settings?tab=delivery", "Only the return trip needs covering.")}
+        ${lever("3. Charge under the free threshold (non-members)", money(L.nonmember_saver_under_pence), "#/settings?tab=delivery", "Tops up mid-sized orders.")}
+        ${lever("4. Free Saver delivery from", money(L.free_saver_threshold_pence), "#/settings?tab=delivery", "About where an order pays its full share.")}
+        ${lever("5. One-hour window (non-members)", money(L.nonmember_one_hour_pence), "#/settings?tab=delivery", "Fixed-time stops break up routes, so they're always charged.")}
+        ${lever("7. Essence one-hour", money(L.essence_one_hour_pence), "#/settings?tab=delivery", "Saver is free for members; one-hour is included for Elevate and Éclat.")}
+        ${lever("12. Item margins", L.items_missing_cost ? `${L.items_missing_cost} items without a cost` : "All costed", isAdmin ? "#/products" : "", `${L.items_below_margin} below ${L.minimum_margin}%. Costs keep the ${a.margin_pct}% margin used here honest.`)}
+        ${lever("13. Route days open", L.route_weekdays.length ? L.route_weekdays.map(day).join(", ") : "None", "#/settings?tab=slots", `${L.weekly_home_capacity} home bookings a week at most.`)}
+        ${lever("15. Atelier drop-offs", L.dropoff_enabled ? `${L.ateliers_active} active atelier${L.ateliers_active === 1 ? "" : "s"}` : "Switched off", "#/settings?tab=ateliers", "One stop fewer per order.")}
+      </tbody></table></div>
+        <p class="small muted">Built in, nothing to set: 6. one charge per booking covers both legs · 8. quotes count towards the minimum at their "from" price · 9. booked without a list, we charge up to the minimum at review · 10. review sets the final figures · 11. curated packs can always be booked.</p></section>
+
+      <div class="grid-2">
+        <section class="panel"><h2>What one order earns now</h2><div class="table-wrap"><table>
+          <thead><tr><th>Order</th><th class="num">Items</th><th class="num">Delivery</th><th class="num">Contribution</th></tr></thead>
+          <tbody>${P.examples.map((x) => `<tr><td>${esc(x.label)}</td><td class="num">${money(x.items_pence)}</td><td class="num">${x.fee_pence ? money(x.fee_pence) : "Free"}</td><td class="num"><strong>${money(x.contribution_pence)}</strong></td></tr>`).join("")}</tbody>
+        </table></div><p class="small muted">Compare with the trip cost of a job, opposite, and the ${money(a.target_contribution_pence)} target that also covers overheads.</p></section>
+        <section class="panel"><h2>Trip cost per job</h2><div class="table-wrap"><table>
+          <thead><tr><th class="num">Jobs on the day</th><th class="num">Cost per job</th></tr></thead>
+          <tbody>${P.trip_costs.map((t) => `<tr><td class="num">${t.jobs}</td><td class="num">${money(t.per_job_pence)}</td></tr>`).join("")}</tbody>
+        </table></div><p class="small muted">Driver and charging (${money(a.route_day_pence)} a day) shared across the day's jobs, plus packaging.</p></section>
+      </div>
+
+      ${ROUTE_DAY_NOTE}
+
+      <form id="assumptions" class="panel stack"><h2>Cost figures</h2>
+        <p class="small muted">Your estimates. Change them as real costs come in; everything on this page follows.</p>
+        <div class="form-grid">
+          <label>Item margin after cleaning (%)<input name="margin_pct" type="number" min="0" max="100" value="${a.margin_pct}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Route day: driver and charging (£)<input name="route_day_pence" data-pence value="${(a.route_day_pence / 100).toFixed(2)}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Packaging per order (£)<input name="packaging_pence" data-pence value="${(a.packaging_pence / 100).toFixed(2)}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Card fee (%)<input name="card_fee_pct" type="number" step="0.1" min="0" value="${a.card_fee_pct}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Card fee per payment (£)<input name="card_fee_fixed_pence" data-pence value="${(a.card_fee_fixed_pence / 100).toFixed(2)}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Fixed costs a month, incl. van lease (£)<input name="fixed_month_pence" data-pence value="${(a.fixed_month_pence / 100).toFixed(2)}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Target jobs per route day<input name="target_jobs_per_day" type="number" min="1" value="${a.target_jobs_per_day}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Fewest jobs to run a day<input name="min_jobs_per_day" type="number" min="1" value="${a.min_jobs_per_day}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Target average order (£)<input name="target_order_pence" data-pence value="${(a.target_order_pence / 100).toFixed(2)}" ${isAdmin ? "" : "disabled"}></label>
+          <label>Target contribution per order (£)<input name="target_contribution_pence" data-pence value="${(a.target_contribution_pence / 100).toFixed(2)}" ${isAdmin ? "" : "disabled"}></label>
+        </div>
+        ${isAdmin ? `<div><button class="btn primary">Save figures</button></div>` : ""}
+      </form>`;
+    c.querySelector("#assumptions").addEventListener("submit", act((e) => {
+      e.preventDefault();
+      const body = {};
+      e.target.querySelectorAll("input").forEach((i) => { body[i.name] = i.dataset.pence !== undefined ? toPence(i.value) : Number(i.value); });
+      return api("PUT", "/api/staff/profit/assumptions", body);
+    }, "Figures saved"));
+  }
+
   /* Router */
 
   async function route() {
@@ -1794,6 +1903,7 @@
       else if (parts[0] === "journal" && parts[1]) await viewPost(parts[1]);
       else if (parts[0] === "journal") await viewJournal(params);
       else if (parts[0] === "settings") await viewSettings(params);
+      else if (parts[0] === "profit") await viewProfit();
       else await viewToday(params);
     } catch (e) {
       if (e.message === "Signed out") return;

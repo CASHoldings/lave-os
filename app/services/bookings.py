@@ -45,9 +45,10 @@ def place(db: Session, client: Client, *, address: Address | None, collection: t
     if bool(collection) == bool(dropoff):
         raise HTTPException(400, "Choose a collection time, or an atelier and day to drop off.")
     from app.services import repository as repo
-    if short := repo.booked_shortfall(db, requested_items or []):
-        raise HTTPException(409, f"Add {short} more item{'s' if short != 1 else ''} to complete your pack: everyday "
-                                 f"staples are booked in packs of {repo.rules(db)['pack_minimum']} or more.")
+    mode = "dropoff" if dropoff else "home"
+    minimum, short = repo.booked_minimum(db, requested_items or [], mode)
+    if short:
+        raise HTTPException(409, repo.short_text(db, short, mode))
     level = delivery.member_level(client)
     longer = delivery.longer_items(db, requested_items or [])
     if not longer:
@@ -59,7 +60,7 @@ def place(db: Session, client: Client, *, address: Address | None, collection: t
                                  "one return when everything is ready.")
 
     order = Order(client_id=client.id, requested_items=requested_items or [], estimate_pence=estimate_pence,
-                  return_preference=return_preference,
+                  return_preference=return_preference, minimum_pence=minimum,
                   delivery_basis={"level": level, "value_pence": estimate_pence or 0}, **order_fields)
     db.add(order)
     db.flush()

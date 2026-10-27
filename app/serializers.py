@@ -100,6 +100,7 @@ def order(o: Order, staff_view: bool = False, detail: bool = False) -> dict:
         "id": o.id, "ref": o.ref, "status": o.status.value, "status_label": CLIENT_LABELS[o.status.value],
         "created_at": iso(o.created_at), "item_count": len(o.items),
         "items_total_pence": o.items_total_pence, "fees_pence": o.fees_pence, "discount_pence": o.discount_pence,
+        "minimum_pence": o.minimum_pence or 0, "minimum_top_up_pence": o.minimum_top_up_pence,
         "total_pence": o.total_pence, "payment_status": o.payment_status.value,
         "requested_services": o.requested_services or [], "client_notes": o.client_notes,
         "requested_items": o.requested_items or [], "estimate_pence": o.estimate_pence,

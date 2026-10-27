@@ -215,6 +215,11 @@ def book(request: Request, mode: str = "", items: str = "", client: Client | Non
     if not client:
         query = "&".join(q for q in [f"mode={mode}" if mode == "drop_off" else "", f"items={items}" if items else ""] if q)
         return _to_login("/book/" + (f"?{query}" if query else ""))
-    from app.services import repository as repo
+    from app.services import delivery, repository as repo
     planned = repo.summarise(db, repo.parse_list(request.cookies.get(repo.LIST_COOKIE)))
-    return render(request, "site/book.html", crumbs=[("Home", "/"), ("Atelier", "/atelier/"), ("Book a collection", "/book/")], client=client, mode="drop_off" if mode == "drop_off" else "", items=items, planned=planned)
+    # Under the home minimum, the list can still go to a drop-off (members, at an atelier) if it reaches that minimum.
+    can_drop = bool(delivery.member_level(client)) and repo.dropoff_offered(db)
+    # (Wardrobe pieces sent again also count; the booking screen and the server check those.)
+    short = not items and planned.short_pence("home") and (not can_drop or planned.short_pence("dropoff"))
+    return render(request, "site/book.html", crumbs=[("Home", "/"), ("Atelier", "/atelier/"), ("Book a collection", "/book/")], client=client, mode="drop_off" if mode == "drop_off" or (can_drop and planned.short_pence("home")) else "",
+                  items=items, planned=planned, short=short)

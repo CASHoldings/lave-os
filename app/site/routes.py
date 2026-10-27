@@ -40,7 +40,7 @@ from app.services import bot_guard  # noqa: E402
 TEMPLATES.env.globals["form_token"] = bot_guard.form_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "50"
+ASSET_VERSION = "51"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]

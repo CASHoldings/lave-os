@@ -90,7 +90,10 @@ def packs(request: Request, lave_list: str | None = Cookie(default=None), db: Se
 def my_list(request: Request, lave_list: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     atelier, clean = _atelier(request)
     summary = repo.summarise(db, _list_entries(lave_list))
-    return render(request, "site/list.html", section=atelier, subnav=clean, crumb="Your list", summary=summary, rules=repo.rules(db), terms=delivery.public_terms(db))
+    # Under the home minimum, booking is still open if the list reaches the drop-off minimum and members can drop off.
+    blocked = summary.short_pence("home") and (summary.short_pence("dropoff") or not repo.dropoff_offered(db))
+    return render(request, "site/list.html", section=atelier, subnav=clean, crumb="Your list", summary=summary,
+                  list_blocked=blocked, rules=repo.rules(db), terms=delivery.public_terms(db))
 
 
 @router.post("/atelier/list/")

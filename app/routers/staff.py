@@ -235,7 +235,8 @@ def get_order(order_id: int, staff: StaffUser = Depends(ops), db: Session = Depe
 @router.patch("/orders/{order_id}")
 def patch_order(order_id: int, body: OrderPatch, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
     o = _order(db, order_id)
-    if o.payment_status == PaymentStatus.paid and (body.fees_pence is not None or body.discount_pence is not None):
+    if o.payment_status == PaymentStatus.paid and (body.fees_pence is not None or body.discount_pence is not None
+                                                     or body.minimum_pence is not None):
         raise HTTPException(409, "This order is paid; its total can't change. Refund in Stripe instead.")
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(o, k, v)
@@ -1206,6 +1207,22 @@ def put_delivery_settings(body: dict, staff: StaffUser = Depends(admin_only), db
     except (TypeError, ValueError):
         raise HTTPException(400, "Check the amounts: whole pence, and hours as a whole number.")
     return get_delivery_settings(staff, db)
+
+
+@router.get("/profit")
+def profit_overview(staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import profit
+    return profit.overview(db)
+
+
+@router.put("/profit/assumptions")
+def profit_assumptions(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import profit
+    try:
+        profit.save_assumptions(db, body)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Check the figures: whole pence, and percentages as numbers.")
+    return profit.overview(db)
 
 
 @router.get("/area")

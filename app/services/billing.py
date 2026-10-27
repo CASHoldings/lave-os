@@ -25,6 +25,8 @@ PENDING_MINUTES = 30  # an unfinished card check at booking releases the slots a
 BOOKING_WORDING = ("You'll pay for your items now. Once our atelier has checked them, we'll settle any difference: extra "
                    "is charged to your saved card, and anything we owe you is credited to your LAVE account, or "
                    "refunded if you prefer. If anything needs changing, we'll call you first.")
+MINIMUM_WORDING = ("Minimum order {minimum}: if your items come to less once our atelier has counted them, we'll charge "
+                   "{minimum} for them.")
 
 
 def pounds(pence: int) -> str:
@@ -202,7 +204,8 @@ def _booked_counts(db: Session, order: Order) -> tuple[Counter, dict[int, int]]:
 
 
 def revisions(db: Session, order: Order) -> list[str]:
-    """What the review changed from the booking: count, item type, price, an item that's quote-only, a short pack."""
+    """What the review changed from the booking: count, item type, price, an item that's quote-only. (A top-up to the
+    minimum order isn't a change: the client was told at booking.)"""
     from app.services import repository as repo
     out = []
     services = {s.id: s for s in db.scalars(select(Service).where(Service.id.in_({g.service_id for g in order.items if g.service_id})))}
@@ -223,10 +226,6 @@ def revisions(db: Session, order: Order) -> list[str]:
                 out.append(f"{g.description}: needs a quote (not booked as one)")
             elif booked[s.id] and s.sale_mode not in repo.PRICED_LATER and g.price_pence != prices.get(s.id, g.price_pence):
                 out.append(f"{g.description}: price {pounds(g.price_pence)}, booked at {pounds(prices[s.id])}")
-    staples = sum(1 for g in order.items if (s := services.get(g.service_id)) and s.sale_mode == repo.STAPLE)
-    eligible = sum(1 for g in order.items if (s := services.get(g.service_id)) and s.sale_mode in repo.PACK_ELIGIBLE)
-    if short := repo.pack_shortfall(staples, eligible, repo.rules(db)["pack_minimum"]):
-        out.append(f"Pack is {short} short of the minimum")
     return list(dict.fromkeys(out))
 
 
@@ -235,6 +234,10 @@ def settle(db: Session, order: Order, staff_id: int | None = None) -> dict:
     Returns {"charged": pence} or {"credited": pence} or {} (nothing to do), plus "error" if the card failed."""
     from app.services import delivery
     delivery.settle(db, order)  # the collection & delivery charge follows the reviewed order value
+    if order.minimum_top_up_pence and not any(e.status == "minimum_order" for e in order.events):
+        order_svc.log(db, order, "minimum_order", f"Your items came to {pounds(order.items_total_pence)}, under the "
+                                            f"{pounds(order.minimum_pence)} minimum order, so the order is "
+                                            f"{pounds(order.minimum_pence)} before collection and delivery.", staff_id)
     db.flush()
     balance = order.balance_pence
     if balance < 0:

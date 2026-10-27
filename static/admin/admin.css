@@ -226,3 +226,11 @@ button.stat-tile:hover, a.stat-tile:hover { border-color: var(--ink); }
 .repo-item img, .repo-thumb-empty { width: 36px; height: 45px; object-fit: cover; background: var(--panel); flex: none; }
 .pack-admin-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--panel); }
 .repo-group-head img, .repo-item img, .pack-admin-img { object-fit: contain; background: rgb(249, 249, 249); }
+
+/* Profitability */
+.stat-tile small { font-size: 11px; }
+.stat-tile strong.ok { color: var(--ok); }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+td.num.ok { color: var(--ok); }
+.note-box { border-left: 3px solid var(--warn); background: var(--warn-bg); }
+.note-box p { margin: 6px 0 0; }

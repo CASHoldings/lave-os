@@ -29,14 +29,14 @@ def test_wardrobe_builds_and_rebooks(api, client_headers, staff_headers):
     coat = next(w for w in wardrobe if w["name"] == "Wool coat")
     assert coat["times_cleaned"] == 1 and coat["service"]["price_pence"] == 2799
 
-    # Book the coat again; staff see the request and link the new garment to the same piece.
+    # Book them again (together over the £30 minimum); staff see the request and link the new garment to the same piece.
     s = api.get("/api/slots", params={"start": "2026-10-08", "days": 3}).json()[0]
     addr = api.get("/api/me", headers=client_headers).json()["addresses"][0]["id"]
     o2 = api.post("/api/me/bookings", headers=client_headers, json={
         "collection": {"template_id": s["template_id"], "day": s["day"]}, "address_id": addr,
-        "wardrobe_item_ids": [coat["id"]]}).json()
+        "wardrobe_item_ids": [w["id"] for w in wardrobe]}).json()
     detail = api.get(f"/api/staff/orders/{o2['id']}", headers=staff_headers).json()
-    assert [r["title"] for r in detail["requested_wardrobe"]] == ["Camel Wool coat"]
+    assert {r["title"] for r in detail["requested_wardrobe"]} == {"Camel Wool coat", "Silk blouse"}
     coll = next(b for b in o2["bookings"] if b["kind"] == "collection")
     api.patch(f"/api/staff/bookings/{coll['id']}", headers=staff_headers, json={"status": "completed"})
     api.post(f"/api/staff/orders/{o2['id']}/items", headers=staff_headers,

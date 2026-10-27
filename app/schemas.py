@@ -164,6 +164,7 @@ class OrderPatch(BaseModel):
     staff_notes: str | None = None
     fees_pence: int | None = Field(None, ge=0)
     discount_pence: int | None = Field(None, ge=0)
+    minimum_pence: int | None = Field(None, ge=0)  # 0 waives the minimum order
 
 
 class ManualPayment(BaseModel):
@@ -355,7 +356,8 @@ class PackIn(BaseModel):
 
 
 class RepoRules(BaseModel):
-    pack_minimum: int = Field(ge=1, le=20)
+    home_minimum_pence: int = Field(3000, ge=0, le=100000)
+    dropoff_minimum_pence: int = Field(2000, ge=0, le=100000)
     free_delivery_from_pence: int = Field(ge=0, le=100000)
     minimum_margin: int = Field(ge=0, le=95)
     text: str = Field("", max_length=20000)

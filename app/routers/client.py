@@ -193,7 +193,11 @@ def delivery_terms(lave_list: str | None = Cookie(default=None), client: Client 
         "items_fixed_pence": estimate,
         "priced_later": sum(line.qty for line in planned.lines if line.priced_later),
         "credit_pence": billing.credit_balance(db, client),
-        "pack_short": planned.pack_short,
+        # Minimum order (items): a list under it can't be booked; no list, and it's topped up at review.
+        "minimum": {"home_pence": cfg["home_minimum_pence"], "dropoff_pence": cfg["dropoff_minimum_pence"],
+                    "applies": not any(line.kind == "pack" for line in planned.lines), "has_list": bool(planned.lines),
+                    "counted_pence": planned.counted_pence,
+                    "home_short_pence": planned.short_pence("home"), "dropoff_short_pence": planned.short_pence("dropoff")},
         "booking_wording": billing.BOOKING_WORDING,
     }
 

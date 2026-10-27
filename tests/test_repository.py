@@ -51,7 +51,7 @@ def test_figures_match_the_sheet(db_session):
 
 def test_price_list_shows_prices_but_never_costs(api):
     page = api.get("/atelier/prices/").text
-    for text in ["Shirt, non-member hung", "£5.99", "5 for £29.95", "In packs of 5 or more", "Leather jacket", "from</span> £109.99",
+    for text in ["Shirt, non-member hung", "£5.99", "5 for £29.95", "Best value in packs of 5", "Leather jacket", "from</span> £109.99",
                  "Quoted after inspection", "per m²", "Wardrobe", "Home", "Pressing, alterations &amp; repairs", "Free Saver collection and delivery on orders from £45"]:
         assert text in page, text
     for secret in ["American Standard", "SoFresh", "Market reference", "Margin", "American basis", "£1.40"]:
@@ -79,11 +79,11 @@ def test_client_list_estimate_and_rules(api, db_session):
     with db_session() as db:
         week = db.scalar(select(Pack).where(Pack.name == "The Work Week"))
     r = _add(api, "item", shirt.id, 2)
-    assert r["count"] == 2 and r["estimate_pence"] == 1198 and "packs of 5" in r["warnings"][0]
+    assert r["count"] == 2 and r["estimate_pence"] == 1198 and "the minimum order is £30" in r["warnings"][0]
     r = _add(api, "item", shirt.id, 3)
-    assert r["qty"] == 5 and not r["warnings"]
-    r = _add(api, "item", jacket.id)  # quoted after inspection: not in the estimate
-    assert r["estimate_pence"] == 2995
+    assert r["qty"] == 5 and "Add £0.05 more" in r["warnings"][0]  # a 5-shirt pack is £29.95
+    r = _add(api, "item", jacket.id)  # quoted after inspection: not in the estimate, but counts towards the minimum
+    assert r["estimate_pence"] == 2995 and not r["warnings"]
     r = _add(api, "pack", week.id)
     assert r["estimate_pence"] == 2995 + 4395
     page = api.get("/atelier/list/").text
@@ -145,10 +145,11 @@ def test_admin_edits_items_and_packs_follow(api, staff_headers, db_session):
 
 def test_rules_drive_the_client_list(api, staff_headers, db_session):
     r = api.put("/api/staff/repository/rules", headers=staff_headers,
-                json={"pack_minimum": 6, "free_delivery_from_pence": 6000, "minimum_margin": 70, "text": "House rules"})
-    assert r.status_code == 200 and r.json()["pack_minimum"] == 6
+                json={"home_minimum_pence": 3500, "dropoff_minimum_pence": 2000, "free_delivery_from_pence": 6000,
+                      "minimum_margin": 70, "text": "House rules"})
+    assert r.status_code == 200 and r.json()["home_minimum_pence"] == 3500
     shirt = _item(db_session, "Shirt, non-member hung")
-    assert "Add 1 more" in _add(api, "item", shirt.id, 5)["warnings"][0]
+    assert f"Add £{(3500 - 5 * shirt.price_pence) / 100:.2f} more" in _add(api, "item", shirt.id, 5)["warnings"][0]
     assert "Free Saver collection and delivery on orders from £60" in api.get("/atelier/prices/").text
     assert _admin_overview(api, staff_headers)["stats"]["low_margin"] > 0
 
