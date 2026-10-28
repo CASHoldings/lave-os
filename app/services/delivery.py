@@ -100,6 +100,12 @@ def cell_labels(cfg: dict, level: str | None, order_value_pence: int) -> dict:
     return {"saver": pounds(saver) if saver else "Free", "hour": pounds(hour) if hour else "Free"}
 
 
+def missed_visit_charge(db: Session, order: Order, b: Booking) -> int:
+    """What a missed visit costs after the first one free (Terms, 10): the collection & delivery charge for that
+    window, as for an order under the free threshold. Members pay their own rate (often nothing for Saver)."""
+    return charge(config(db), (order.delivery_basis or {}).get("level"), 0, is_one_hour(b))
+
+
 def charge_text(order: Order) -> str:
     """For emails and summaries: Free | Included with your membership | £4.95 | £6.95."""
     if order.fees_pence:

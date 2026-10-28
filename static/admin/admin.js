@@ -437,6 +437,7 @@
               <tfoot>
                 <tr><td colspan="5">Items</td><td class="num">${money(o.items_total_pence)}</td><td></td></tr>
                 ${o.minimum_pence ? `<tr><td colspan="5">Minimum order top-up <span class="small muted">minimum ${paid ? money(o.minimum_pence) : `<input id="minimum" value="${(o.minimum_pence / 100).toFixed(2)}" size="5" style="text-align:right" aria-label="Minimum order">`}; set 0 to waive</span></td><td class="num">${money(o.minimum_top_up_pence)}</td><td></td></tr>` : ""}
+                ${o.missed_visits_pence ? `<tr><td colspan="5">Missed visits <span class="small muted">first one free, then the collection and delivery charge</span></td><td class="num">${money(o.missed_visits_pence)}</td><td></td></tr>` : ""}
                 <tr><td colspan="5">Collection and delivery${o.delivery_basis?.manual ? ' <span class="small muted">set by hand</span>' : ""}</td><td class="num">${paid ? money(o.fees_pence) : `<input id="fees" value="${(o.fees_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Fees">`}</td><td></td></tr>
                 <tr><td colspan="5">Discount</td><td class="num">${paid ? "−" + money(o.discount_pence) : `<input id="discount" value="${(o.discount_pence / 100).toFixed(2)}" size="6" style="text-align:right" aria-label="Discount">`}</td><td></td></tr>
                 <tr><td colspan="5">Total</td><td class="num">${money(o.total_pence)}</td><td></td></tr>
@@ -476,7 +477,8 @@
               <span class="small">${D.format(parse(b.starts_at))}, ${T.format(parse(b.starts_at))}–${T.format(parse(b.ends_at))} · ${b.atelier ? esc(b.atelier.name) : b.window_type === "hour" ? "One-hour" : "Saver"}</span>
               ${b.bag_codes?.length ? `<span class="small">${b.bag_codes.map((code) => `<span class="tag">${esc(code)}</span>${b.bags_checked.includes(code) ? " ✓" : ""}`).join(" · ")}</span>` : ""}
               ${b.address ? `<span class="small muted">${esc(b.address.one_line)}</span>` : ""}
-              ${b.status === "scheduled" && !b.atelier && b.mode === "lave_collects" ? `<details data-move="${b.id}" data-kind="${b.kind}" data-window="${b.window_type}"><summary class="small">Move to another time</summary><div class="stack" style="margin-top:8px"><div data-chooser></div><div class="row"><button class="btn sm primary" data-move-go disabled>Move</button></div></div></details>` : ""}</div>`).join("") : `<p class="muted small">Walk-in order, no bookings.</p>`}
+              ${b.missed ? `<span class="small warn-text">Missed ${b.missed}×${b.missed_fee_pence ? `, ${money(b.missed_fee_pence)} charged` : ", first one free"}</span>` : ""}
+              ${["scheduled", "missed"].includes(b.status) && !b.atelier && b.mode === "lave_collects" ? `<details data-move="${b.id}" data-kind="${b.kind}" data-window="${b.window_type}"><summary class="small">${b.status === "missed" ? "Rebook" : "Move to another time"}</summary><div class="stack" style="margin-top:8px"><div data-chooser></div><div class="row"><button class="btn sm primary" data-move-go disabled>Move</button></div></div></details>` : ""}</div>`).join("") : `<p class="muted small">Walk-in order, no bookings.</p>`}
             ${!["delivered", "cancelled"].includes(o.status) && o.bookings.some((b) => b.kind === "collection" && b.status !== "cancelled") ? `<details id="ret"><summary class="small">Book a return</summary>
               <form id="return-form" class="form-grid" style="margin-top:10px">
                 <p class="small muted" id="ret-ready" style="grid-column:1/-1"></p>

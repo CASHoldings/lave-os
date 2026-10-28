@@ -329,8 +329,14 @@ class Order(Timestamped, Base):
         return max(0, (self.minimum_pence or 0) - self.items_total_pence) if self.items else 0
 
     @property
+    def missed_visits_pence(self) -> int:
+        """Charges for missed visits after the first (bookings.record_missed)."""
+        return sum(b.missed_fee_pence for b in self.bookings)
+
+    @property
     def total_pence(self) -> int:
-        return max(0, self.items_total_pence + self.minimum_top_up_pence + self.fees_pence - self.discount_pence)
+        return max(0, self.items_total_pence + self.minimum_top_up_pence + self.fees_pence + self.missed_visits_pence
+                   - self.discount_pence)
 
     @property
     def paid_pence(self) -> int:
@@ -342,7 +348,7 @@ class Order(Timestamped, Base):
         """The counted total once the atelier has itemised the order; until then, what was booked."""
         items = self.items_total_pence if self.items else sum(
             line["unit_pence"] * line["qty"] for line in self.requested_items or [] if not line.get("priced_later"))
-        return max(0, items + self.minimum_top_up_pence + self.fees_pence - self.discount_pence)
+        return max(0, items + self.minimum_top_up_pence + self.fees_pence + self.missed_visits_pence - self.discount_pence)
 
     @property
     def balance_pence(self) -> int:
@@ -373,12 +379,19 @@ class Booking(Timestamped, Base):
     bags: Mapped[int] = mapped_column(Integer, default=0)
     bags_checked: Mapped[list] = mapped_column(JSON, default=list)
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Each time we couldn't complete this visit: [{"at": iso, "fee_pence": n}] (Terms, 10: the first missed visit on an
+    # order is rebooked free; after that the collection & delivery charge applies again). See bookings.record_missed.
+    missed_log: Mapped[list] = mapped_column(JSON, default=list)
 
     client: Mapped[Client] = relationship()
     order: Mapped[Order | None] = relationship(back_populates="bookings")
     address: Mapped[Address | None] = relationship()
     driver: Mapped[StaffUser | None] = relationship()
     atelier: Mapped["AtelierLocation | None"] = relationship()
+
+    @property
+    def missed_fee_pence(self) -> int:
+        return sum(m.get("fee_pence", 0) for m in self.missed_log or [])
 
     @property
     def bag_codes(self) -> list[str]:

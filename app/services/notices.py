@@ -134,6 +134,25 @@ def order_cancelled(order: Order, reason: str) -> None:
     ], letters.SOON)
 
 
+def visit_missed(b: Booking, fee: int) -> None:
+    """We couldn't complete a visit: ask them to choose a new time, and say whether a charge applies (Terms, 10)."""
+    if not b.client.email:
+        return
+    collecting = b.kind == BookingKind.collection
+    what = "collection" if collecting else "return"
+    ref = b.order.ref if b.order else b.ref
+    letters.send(b.client.email, f"We missed you: please rebook your LAVE {what}", b.client.first_name, [
+        f"We called by for your {what} {when(b)}, but weren't able to complete it.",
+        "Please choose a new time from your account. It only takes a moment.",
+        letters.Button("Choose a new time", _bookings_url()),
+        (f"As this is a further missed visit on order {ref}, a {_pounds(fee)} collection and delivery charge applies, "
+         "as set out in our terms." if fee else
+         f"Your first missed visit on order {ref} is rebooked free of charge. After that, each extra visit carries the "
+         "collection and delivery charge."),
+        f"If anything has changed, simply reply to this email or call us on {letters.PHONE}.",
+    ])
+
+
 def billing_wording() -> str:
     from app.services.billing import BOOKING_WORDING
     return BOOKING_WORDING.replace("You'll pay for your items now.", "You've paid for your items.")

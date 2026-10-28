@@ -294,7 +294,12 @@ def book_my_return(ref: str, body: ReturnRequest, client: Client = Depends(curre
 def my_bookings(upcoming: bool = True, client: Client = Depends(current_client), db: Session = Depends(get_db)):
     q = select(Booking).where(Booking.client_id == client.id)
     if upcoming:
-        q = q.where(Booking.ends_at >= local_now(), Booking.status.in_([BookingStatus.scheduled, BookingStatus.en_route]))
+        from sqlalchemy import and_, or_
+        # Upcoming visits, plus recent missed ones still waiting to be rebooked.
+        q = q.outerjoin(Order, Booking.order_id == Order.id).where(or_(
+            and_(Booking.ends_at >= local_now(), Booking.status.in_([BookingStatus.scheduled, BookingStatus.en_route])),
+            and_(Booking.status == BookingStatus.missed, Booking.starts_at >= local_now() - timedelta(days=14),
+                 or_(Order.id.is_(None), Order.status.not_in([OrderStatus.cancelled, OrderStatus.delivered])))))
         q = q.order_by(Booking.starts_at)
     else:
         q = q.order_by(Booking.starts_at.desc()).limit(50)
@@ -302,7 +307,8 @@ def my_bookings(upcoming: bool = True, client: Client = Depends(current_client),
     for b in db.scalars(q):
         after = bookings_svc.move_after(db, b) if upcoming else None
         out.append({**ser.booking(b), "move_after": after.isoformat() if after else None,
-                    "movable": b.status == BookingStatus.scheduled and b.mode == BookingMode.lave_collects and not b.atelier_id})
+                    "movable": b.status in (BookingStatus.scheduled, BookingStatus.missed)
+                               and b.mode == BookingMode.lave_collects and not b.atelier_id})
     return out
 
 

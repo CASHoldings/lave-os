@@ -260,8 +260,17 @@ def patch_booking(booking_id: int, body: BookingPatch, staff: StaffUser = anyone
     if staff.role == StaffRole.driver and (body.driver_id not in (None, staff.id) or (b.driver_id not in (None, staff.id))):
         raise HTTPException(403, "Drivers can only update their own runs.")
     data = body.model_dump(exclude_unset=True)
+    was = b.status
     for k, v in data.items():
         setattr(b, k, v)
+    # Missed visits (Terms, 10): the first on an order is rebooked free; each after that adds the charge.
+    missed_fee = None
+    if body.status == BookingStatus.missed and was != BookingStatus.missed:
+        from app.services import bookings as bookings_svc
+        missed_fee = bookings_svc.record_missed(db, b, staff.id)
+    elif was == BookingStatus.missed and body.status in (BookingStatus.completed, BookingStatus.en_route, BookingStatus.scheduled):
+        from app.services import bookings as bookings_svc
+        bookings_svc.undo_missed(db, b, staff.id)
     # A completed collection means the bag is in our hands.
     if body.status == BookingStatus.completed and b.kind == BookingKind.collection and b.order \
             and b.order.status == OrderStatus.awaiting_collection:
@@ -276,6 +285,12 @@ def patch_booking(booking_id: int, body: BookingPatch, staff: StaffUser = anyone
     if body.status == BookingStatus.en_route:
         from app.services import notices
         notices.driver_on_the_way(db, b)  # by text, or email if we can't text
+    if missed_fee is not None and b.order:
+        from app.services import billing, notices
+        if missed_fee and b.order.payment_status == PaymentStatus.paid:
+            billing.settle(db, b.order, staff.id)  # already settled after review: charge the saved card now
+            db.commit()
+        notices.visit_missed(b, missed_fee)
     return ser.booking(b, True)
 
 

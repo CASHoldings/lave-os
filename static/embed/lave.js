@@ -1002,7 +1002,9 @@
           <span><strong>${b.atelier ? "Drop-off" : b.kind === "collection" ? "Collection" : "Return"}</strong><br><span class="muted small">${esc(b.order_ref || b.ref)}</span></span>
           <span class="hide-sm">${esc(when(b))}</span>
           <span class="hide-sm muted small">${b.atelier ? esc(b.atelier.name) + (b.bag_codes?.length ? "<br>Bags: " + b.bag_codes.map(esc).join(", ") : "") : b.address ? esc(b.address.one_line) : "At the atelier"}</span>
-          <span class="row" data-cancel-wrap="${b.id}">${b.status === "scheduled" ? `${b.movable ? `<button class="btn ghost" data-move="${b.id}">Change time</button>` : ""}<button class="btn ghost" data-cancel="${b.id}">Cancel</button>` : `<span class="status">${esc(b.status.replace("_", " "))}</span>`}</span>
+          <span class="row" data-cancel-wrap="${b.id}">${b.status === "scheduled" ? `${b.movable ? `<button class="btn ghost" data-move="${b.id}">Change time</button>` : ""}<button class="btn ghost" data-cancel="${b.id}">Cancel</button>`
+            : b.status === "missed" ? `<span class="status warn">Missed</span>${b.movable ? `<button class="btn primary" data-move="${b.id}">Choose a new time</button>` : ""}`
+            : `<span class="status">${esc(b.status.replace("_", " "))}</span>`}</span>
         </div>
         <div class="stack" data-move-panel="${b.id}" hidden></div>`).join("")}</div><p class="error" id="cancel-error" hidden></p>`;
       this.on("[data-move]", "click", (_, btn) => {

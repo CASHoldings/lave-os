@@ -126,11 +126,12 @@ def move(db: Session, b: Booking, slot: tuple[int, date], by: str = "client") ->
     doesn't change. A collection can't move so late that a booked return would come back too soon. Caller commits."""
     from app.config import get_settings
     from app.services.clock import local_now
-    if b.status != BookingStatus.scheduled:
+    if b.status not in (BookingStatus.scheduled, BookingStatus.missed):
         raise HTTPException(409, "This visit can no longer be moved.")
+    missed = b.status == BookingStatus.missed
     if b.atelier_id or b.mode != BookingMode.lave_collects:
         raise HTTPException(409, "To change a drop-off, simply reply to your confirmation email and we'll help.")
-    if by == "client" and local_now() > b.starts_at - timedelta(minutes=get_settings().cancel_cutoff_minutes):
+    if by == "client" and not missed and local_now() > b.starts_at - timedelta(minutes=get_settings().cancel_cutoff_minutes):
         raise HTTPException(409, "It's too close to the visit to change it online. Call us and we'll help.")
     t = _home_template(db, slot[0])
     if t.window_type != b.window_type:
@@ -154,14 +155,49 @@ def move(db: Session, b: Booking, slot: tuple[int, date], by: str = "client") ->
     before = b.starts_at
     b.template_id, b.starts_at, b.ends_at = fresh.template_id, fresh.starts_at, fresh.ends_at
     b.reminded_at = b.on_the_way_sent_at = None
+    if missed:
+        b.status = BookingStatus.scheduled  # rebooked (its missed-visit record and any charge stay)
     db.delete(fresh)
     db.flush()
     if b.order:
         from app.services import orders as order_svc
         what = "Collection" if b.kind == BookingKind.collection else "Return"
-        order_svc.log(db, b.order, "moved", f"{what} moved from {when_text(before)} to {when_text(b.starts_at)}"
-                                            + ("" if by == "client" else f" (by {by})"))
+        change = f"rebooked for {when_text(b.starts_at)}" if missed else f"moved from {when_text(before)} to {when_text(b.starts_at)}"
+        order_svc.log(db, b.order, "moved", f"{what} {change}" + ("" if by == "client" else f" (by {by})"))
     return b
+
+
+def record_missed(db: Session, b: Booking, staff_id: int | None = None) -> int:
+    """We couldn't complete a home visit (nobody in, or a late cancellation by phone). The first missed visit on an
+    order is rebooked free; each one after that adds the collection & delivery charge (Terms, 10). Returns the
+    charge added. Caller commits."""
+    from app.services.clock import local_now
+    order = b.order
+    if not order or b.atelier_id or b.mode != BookingMode.lave_collects:
+        return 0
+    missed_before = sum(len(x.missed_log or []) for x in order.bookings)
+    fee = delivery.missed_visit_charge(db, order, b) if missed_before else 0
+    b.missed_log = [*(b.missed_log or []), {"at": local_now().isoformat(timespec="seconds"), "fee_pence": fee}]
+    from app.services import orders as order_svc
+    what = "collection" if b.kind == BookingKind.collection else "return"
+    order_svc.log(db, order, "missed_visit",
+                  f"We couldn't complete your {what} ({when_text(b.starts_at)}). "
+                  + (f"A {delivery.pounds(fee)} collection and delivery charge applies for the extra visit." if fee
+                     else "Your first missed visit is rebooked free."), staff_id)
+    return fee
+
+
+def undo_missed(db: Session, b: Booking, staff_id: int | None = None) -> None:
+    """A visit marked missed by mistake: take back the last record (and its charge). Caller commits."""
+    if not b.missed_log:
+        return
+    last = b.missed_log[-1]
+    b.missed_log = b.missed_log[:-1]
+    if b.order:
+        from app.services import orders as order_svc
+        order_svc.log(db, b.order, "missed_visit_undone",
+                      "Missed visit taken back" + (f": {delivery.pounds(last['fee_pence'])} charge removed" if last.get("fee_pence") else ""),
+                      staff_id, visible=False)
 
 
 def when_text(t: datetime) -> str:
