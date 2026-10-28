@@ -145,10 +145,10 @@ def visit_missed(b: Booking, fee: int) -> None:
         f"We called by for your {what} {when(b)}, but weren't able to complete it.",
         "Please choose a new time from your account. It only takes a moment.",
         letters.Button("Choose a new time", _bookings_url()),
-        (f"As this is a further missed visit on order {ref}, a {_pounds(fee)} collection and delivery charge applies, "
+        (f"As you've already had a missed visit in the last 12 months, a {_pounds(fee)} charge applies to order {ref}, "
          "as set out in our terms." if fee else
-         f"Your first missed visit on order {ref} is rebooked free of charge. After that, each extra visit carries the "
-         "collection and delivery charge."),
+         "As this is your first missed visit in 12 months, it's rebooked free of charge. After that, a charge applies "
+         "to each missed visit."),
         f"If anything has changed, simply reply to this email or call us on {letters.PHONE}.",
     ])
 

@@ -23,7 +23,7 @@ def test_first_missed_visit_is_free_then_the_charge_applies(api, client_headers,
     b = _mark(api, staff_headers, coll["id"], "missed")
     assert b["missed"] == 1 and b["missed_fee_pence"] == 0
     email = next(m for m in mailer.OUTBOX if m["subject"] == "We missed you: please rebook your LAVE collection")
-    assert "rebooked free of charge" in email["text"]
+    assert "first missed visit in 12 months" in email["text"]
 
     # The client rebooks it from their account (missed visits are listed for them).
     listed = {x["id"]: x for x in api.get("/api/me/bookings", headers=client_headers).json()}
@@ -36,7 +36,7 @@ def test_first_missed_visit_is_free_then_the_charge_applies(api, client_headers,
     mailer.OUTBOX.clear()
     b = _mark(api, staff_headers, coll["id"], "missed")
     assert b["missed"] == 2 and b["missed_fee_pence"] == 495
-    assert "£4.95 collection and delivery charge applies" in next(
+    assert "a £4.95 charge applies" in next(
         m for m in mailer.OUTBOX if m["subject"].startswith("We missed you"))["text"]
     detail = api.get(f"/api/staff/orders/{order['id']}", headers=staff_headers).json()
     assert detail["missed_visits_pence"] == 495
@@ -73,3 +73,54 @@ def test_a_missed_return_on_a_settled_order_is_charged_to_the_card(api, client_h
     api.post(f"/api/staff/bookings/{coll['id']}/move", headers=staff_headers, json={"template_id": later["template_id"], "day": later["day"]})
     _mark(api, staff_headers, coll["id"], "missed")
     assert len(charged) == 1 and charged[0] > 0
+
+
+def test_one_free_miss_per_customer_in_12_months_across_orders(api, client_headers, staff_headers, db_session):
+    first = _book(api, client_headers, day="2026-10-06")
+    second = _book(api, client_headers, day="2026-10-07")
+    assert _mark(api, staff_headers, _collection(first)["id"], "missed")["missed_fee_pence"] == 0
+    # A new order doesn't reset it: the next miss is charged.
+    assert _mark(api, staff_headers, _collection(second)["id"], "missed")["missed_fee_pence"] == 495
+    with db_session() as db:
+        from sqlalchemy import select
+        from app.models import Client
+        cid = db.scalar(select(Client.id).where(Client.email == "client@example.com"))
+    assert api.get(f"/api/staff/clients/{cid}", headers=staff_headers).json()["missed_12m"] == 2
+
+
+def test_a_miss_more_than_12_months_ago_doesnt_count(api, client_headers, staff_headers, db_session):
+    from app.models import Booking
+    old = _book(api, client_headers, day="2026-10-06")
+    _mark(api, staff_headers, _collection(old)["id"], "missed")
+    with db_session() as db:
+        b = db.get(Booking, _collection(old)["id"])
+        b.missed_log = [{"at": "2025-09-01T09:00:00", "fee_pence": 0}]
+        db.commit()
+    new = _book(api, client_headers, day="2026-10-07")
+    assert _mark(api, staff_headers, _collection(new)["id"], "missed")["missed_fee_pence"] == 0
+
+
+def test_members_pay_the_flat_member_charge(api, client_headers, staff_headers, db_session):
+    from tests.test_delivery_spec import _member
+    _member(db_session, "elevate")
+    first = _book(api, client_headers, day="2026-10-06")
+    second = _book(api, client_headers, day="2026-10-07")
+    _mark(api, staff_headers, _collection(first)["id"], "missed")
+    assert _mark(api, staff_headers, _collection(second)["id"], "missed")["missed_fee_pence"] == 495
+    r = api.put("/api/staff/delivery-settings", headers=staff_headers, json={"member_missed_visit_pence": 300})
+    assert r.json()["member_missed_visit_pence"] == 300
+
+
+def test_terms_wording_is_updated_on_deploy(api, db_session):
+    from sqlalchemy import select
+    from app.models import PageContent
+    from app.services import content
+    old_text, new_text = content.POLICY_CHANGES[0][1], content.POLICY_CHANGES[0][2]
+    with db_session() as db:
+        page = db.scalar(select(PageContent).where(PageContent.path == "/policies/terms/"))
+        page.body = page.body.replace(new_text, old_text).replace("28 October 2026", "27 October 2026")
+        db.commit()
+        assert content.update_policies(db) == 1
+        assert content.update_policies(db) == 0
+    text = api.get("/policies/terms/").text
+    assert "first missed visit in any 12 months is rebooked free" in text and "Last updated 28 October 2026" in text

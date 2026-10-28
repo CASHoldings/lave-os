@@ -30,6 +30,7 @@ DEFAULTS = {
     "elevate_eclat_saver_pence": 0,
     "elevate_eclat_one_hour_pence": 0,
     "turnaround_hours": 48,
+    "member_missed_visit_pence": 495,     # members, each missed visit after their free one in 12 months (Terms, 10)
     # Price-list categories outside the 48-hour promise (as well as anything sold as a quote).
     "confirmed_categories": ["Alterations", "Repairs", "Curtains & blinds", "Rugs"],
     "dropoff_enabled": True,
@@ -101,9 +102,12 @@ def cell_labels(cfg: dict, level: str | None, order_value_pence: int) -> dict:
 
 
 def missed_visit_charge(db: Session, order: Order, b: Booking) -> int:
-    """What a missed visit costs after the first one free (Terms, 10): the collection & delivery charge for that
-    window, as for an order under the free threshold. Members pay their own rate (often nothing for Saver)."""
-    return charge(config(db), (order.delivery_basis or {}).get("level"), 0, is_one_hour(b))
+    """What a missed visit costs after the customer's free one (Terms, 10): for non-members, the collection & delivery
+    charge for that window as for an order under the free threshold; for members, a flat charge (Settings)."""
+    cfg = config(db)
+    if (order.delivery_basis or {}).get("level"):
+        return cfg["member_missed_visit_pence"]
+    return charge(cfg, None, 0, is_one_hour(b))
 
 
 def charge_text(order: Order) -> str:

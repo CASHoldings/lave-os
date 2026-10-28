@@ -150,6 +150,7 @@ def update_brand_wording(db: Session) -> int:
 # Legal pages, from app/site/data/policies/*.md. Added once; after that they're edited in /admin → Website → Pages.
 POLICIES_DIR = Path(__file__).resolve().parent.parent / "site" / "data" / "policies"
 POLICIES_UPDATED = "27 October 2026"
+POLICY_DATES = {"terms": "28 October 2026"}  # pages changed since they first went live
 POLICIES = [
     ("/policies/", "index", "Policies", "Our terms, and how we look after your pieces, your money and your information."),
     ("/policies/terms/", "terms", "Terms & conditions",
@@ -171,10 +172,35 @@ def load_policies(db: Session) -> int:
         if not db.scalar(select(PageContent).where(PageContent.path == path)):
             body = (POLICIES_DIR / f"{name}.md").read_text()
             if name != "index":
-                body += f"\n\n*Last updated {POLICIES_UPDATED}.*\n"
+                body += f"\n\n*Last updated {POLICY_DATES.get(name, POLICIES_UPDATED)}.*\n"
             db.add(PageContent(path=path, title=title, intro=intro, body=body, published=True))
             added += 1
     return added
+
+
+# Changes to policy wording since the pages went live: (page, old text, new text, date). Applied on deploy where the
+# page still has the old text word for word; a page rewritten in the admin is left alone.
+POLICY_CHANGES = [
+    ("/policies/terms/",
+     "The first missed visit is rebooked free. After that, the collection and delivery charge applies again for each extra visit.",
+     "Your first missed visit in any 12 months is rebooked free. After that, a charge applies for each missed visit: "
+     "the collection and delivery charge for that window, or £4.95 for members.",
+     "28 October 2026"),
+]
+
+
+def update_policies(db: Session) -> int:
+    """Apply POLICY_CHANGES to live pages, and move their "Last updated" date. Returns how many pages changed."""
+    changed = 0
+    for path, old, new, day in POLICY_CHANGES:
+        page_row = db.scalar(select(PageContent).where(PageContent.path == path))
+        if page_row and old in (page_row.body or ""):
+            body = page_row.body.replace(old, new)
+            page_row.body = re.sub(r"\*Last updated [^*]+\.\*", f"*Last updated {day}.*", body)
+            changed += 1
+    if changed:
+        db.commit()
+    return changed
 
 
 def load_starter_content(db: Session) -> None:

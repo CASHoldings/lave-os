@@ -330,7 +330,7 @@ class Order(Timestamped, Base):
 
     @property
     def missed_visits_pence(self) -> int:
-        """Charges for missed visits after the first (bookings.record_missed)."""
+        """Charges for missed visits on this order (bookings.record_missed)."""
         return sum(b.missed_fee_pence for b in self.bookings)
 
     @property
@@ -379,8 +379,8 @@ class Booking(Timestamped, Base):
     bags: Mapped[int] = mapped_column(Integer, default=0)
     bags_checked: Mapped[list] = mapped_column(JSON, default=list)
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime)
-    # Each time we couldn't complete this visit: [{"at": iso, "fee_pence": n}] (Terms, 10: the first missed visit on an
-    # order is rebooked free; after that the collection & delivery charge applies again). See bookings.record_missed.
+    # Each time we couldn't complete this visit: [{"at": iso, "fee_pence": n}] (Terms, 10: a customer's first missed
+    # visit in any 12 months is rebooked free; after that each one is charged). See bookings.record_missed.
     missed_log: Mapped[list] = mapped_column(JSON, default=list)
 
     client: Mapped[Client] = relationship()

@@ -649,6 +649,7 @@
     c.innerHTML = `
       <div class="row between"><div class="row">${x.membership ? pill(x.membership.status === "active" ? x.membership.plan_name + " member" : "Membership " + x.membership.status) : ""}
         <span class="muted small">${x.paid_orders} paid orders</span>
+        ${x.missed_12m ? `<span class="pill ${x.missed_12m > 1 ? "err" : "warn"}">Missed ${x.missed_12m}× in 12 months</span>` : ""}
         ${me.role === "admin" && x.membership && x.membership.status !== "cancelled" ? `<span id="end-box"><button class="link small danger-text" id="end-membership">End membership</button></span>` : ""}</div>
         <div class="row"><button class="btn primary" id="book-for">Book a collection</button><button class="btn" id="walk-in">New walk-in order</button></div></div>
       <div id="book-for-box" hidden></div>
@@ -1780,6 +1781,9 @@
             ${field("elevate_eclat_saver_pence", "Elevate & Éclat Saver (£)")}
             ${field("elevate_eclat_one_hour_pence", "Elevate & Éclat one-hour (£)")}
           </div>
+          <h2>Missed visits</h2>
+          <p class="small muted">A customer's first missed visit in any 12 months is rebooked free. After that, non-members pay the collection and delivery charge for that window, and members pay this.</p>
+          <div class="form-grid">${field("member_missed_visit_pence", "Members, each missed visit (£)")}</div>
           <h2>Turnaround</h2>
           <div class="form-grid">
             <label>Returns open after (hours)<input name="turnaround_hours" type="number" min="1" value="${d.turnaround_hours}" ${dis}></label>
@@ -1811,7 +1815,7 @@
         e.preventDefault();
         const f = e.target, body = {};
         ["home_minimum_pence", "dropoff_minimum_pence", "free_saver_threshold_pence", "nonmember_saver_under_pence", "nonmember_one_hour_pence", "essence_saver_pence", "essence_one_hour_pence",
-          "elevate_eclat_saver_pence", "elevate_eclat_one_hour_pence"].forEach((k) => { body[k] = toPence(f[k].value); });
+          "elevate_eclat_saver_pence", "elevate_eclat_one_hour_pence", "member_missed_visit_pence"].forEach((k) => { body[k] = toPence(f[k].value); });
         body.turnaround_hours = Number(f.turnaround_hours.value);
         body.confirmed_categories = f.confirmed_categories.value.split("\n").map((x) => x.trim()).filter(Boolean);
         body.dropoff_enabled = f.dropoff_enabled.checked;

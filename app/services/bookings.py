@@ -167,23 +167,34 @@ def move(db: Session, b: Booking, slot: tuple[int, date], by: str = "client") ->
     return b
 
 
+MISSED_WINDOW_DAYS = 365  # one free missed visit per customer in any 12 months
+
+
+def missed_recently(db: Session, client_id: int, now: datetime | None = None) -> int:
+    """How many visits this customer has missed in the last 12 months."""
+    from sqlalchemy import select
+    from app.services.clock import local_now
+    since = (now or local_now()) - timedelta(days=MISSED_WINDOW_DAYS)
+    logs = db.scalars(select(Booking.missed_log).where(Booking.client_id == client_id, Booking.missed_log.is_not(None))).all()
+    return sum(1 for log in logs for m in (log or []) if datetime.fromisoformat(m["at"]) >= since)
+
+
 def record_missed(db: Session, b: Booking, staff_id: int | None = None) -> int:
-    """We couldn't complete a home visit (nobody in, or a late cancellation by phone). The first missed visit on an
-    order is rebooked free; each one after that adds the collection & delivery charge (Terms, 10). Returns the
-    charge added. Caller commits."""
+    """We couldn't complete a home visit (nobody in, or a late cancellation by phone). A customer's first missed visit
+    in any 12 months is rebooked free; each one after that is charged (Terms, 10): the collection & delivery charge
+    for that window, or a flat charge for members. Returns the charge added. Caller commits."""
     from app.services.clock import local_now
     order = b.order
     if not order or b.atelier_id or b.mode != BookingMode.lave_collects:
         return 0
-    missed_before = sum(len(x.missed_log or []) for x in order.bookings)
-    fee = delivery.missed_visit_charge(db, order, b) if missed_before else 0
+    fee = delivery.missed_visit_charge(db, order, b) if missed_recently(db, b.client_id) else 0
     b.missed_log = [*(b.missed_log or []), {"at": local_now().isoformat(timespec="seconds"), "fee_pence": fee}]
     from app.services import orders as order_svc
     what = "collection" if b.kind == BookingKind.collection else "return"
     order_svc.log(db, order, "missed_visit",
                   f"We couldn't complete your {what} ({when_text(b.starts_at)}). "
-                  + (f"A {delivery.pounds(fee)} collection and delivery charge applies for the extra visit." if fee
-                     else "Your first missed visit is rebooked free."), staff_id)
+                  + (f"A {delivery.pounds(fee)} missed visit charge applies." if fee
+                     else "Your first missed visit in 12 months is rebooked free."), staff_id)
     return fee
 
 

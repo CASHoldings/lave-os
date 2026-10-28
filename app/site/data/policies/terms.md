@@ -54,7 +54,7 @@ We collect and deliver in SW11, Nine Elms and Battersea Power Station, Monday to
 ## 10. Collections and returns
 
 - Please be available, or leave access instructions, for the whole window. Your driver texts you when they're on the way.
-- If nobody is available and we can't complete a visit, we'll contact you to rebook. The first missed visit is rebooked free. After that, the collection and delivery charge applies again for each extra visit.
+- If nobody is available and we can't complete a visit, we'll contact you to rebook. Your first missed visit in any 12 months is rebooked free. After that, a charge applies for each missed visit: the collection and delivery charge for that window, or £4.95 for members.
 - Once we've collected your pieces, we're responsible for them until we hand them back to you, or to the person or concierge desk you've asked us to leave them with.
 
 ## 11. Pieces we can't return

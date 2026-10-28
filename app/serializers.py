@@ -53,8 +53,12 @@ def client(c: Client, staff_view: bool = False) -> dict:
         "deletion_requested_at": iso(c.deletion_requested_at),
     }
     if staff_view:
+        from sqlalchemy.orm import object_session
+        from app.services.bookings import missed_recently
+        db = object_session(c)
         out.update(staff_notes=c.staff_notes, wp_user_id=c.wp_user_id, stripe_customer_id=c.stripe_customer_id,
-                   created_at=iso(c.created_at), deleted_at=iso(c.deleted_at))
+                   created_at=iso(c.created_at), deleted_at=iso(c.deleted_at),
+                   missed_12m=missed_recently(db, c.id) if db else 0)
     return out
 
 
