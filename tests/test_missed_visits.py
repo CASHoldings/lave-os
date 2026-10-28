@@ -124,3 +124,23 @@ def test_terms_wording_is_updated_on_deploy(api, db_session):
         assert content.update_policies(db) == 0
     text = api.get("/policies/terms/").text
     assert "first missed visit in any 12 months is rebooked free" in text and "Last updated 28 October 2026" in text
+
+
+def test_the_missed_visit_charge_shows_on_the_customers_order_and_receipt(api, client_headers, staff_headers, db_session):
+    from app.models import Garment, PaymentStatus
+    from app.services import notices
+    first = _book(api, client_headers, day="2026-10-06")
+    second = _book(api, client_headers, day="2026-10-07")
+    _mark(api, staff_headers, _collection(first)["id"], "missed")
+    _mark(api, staff_headers, _collection(second)["id"], "missed")
+    mine = api.get(f"/api/me/orders/{second['ref']}", headers=client_headers).json()
+    assert mine["missed_visits_pence"] == 495
+    with db_session() as db:
+        o = db.get(Order, second["id"])
+        o.items.append(Garment(tag_code=f"{o.ref}-01", description="Coat", price_pence=4000))
+        o.payment_status = PaymentStatus.paid
+        db.commit()
+        mailer.OUTBOX.clear()
+        assert notices.receipt(db, o)
+    receipt = next(m for m in mailer.OUTBOX if m["subject"].startswith("Your LAVE receipt"))
+    assert "Missed visit" in receipt["text"] and "£4.95" in receipt["text"]

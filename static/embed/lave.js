@@ -941,6 +941,7 @@
             <td>${esc(i.service?.name || "")}</td><td>${i.status === "in_vault" ? "In the Vault" : esc(i.status.replace(/_/g, " "))}</td><td class="num">${money(i.price_pence)}</td></tr>`).join("")}</tbody>
           <tfoot>
             ${o.minimum_top_up_pence ? `<tr><td colspan="4">Minimum order ${money(o.minimum_pence)} <span class="muted small">your items came to less</span></td><td class="num">${money(o.minimum_top_up_pence)}</td></tr>` : ""}
+            ${o.missed_visits_pence ? `<tr><td colspan="4">Missed visit <span class="muted small">see our terms, section 10</span></td><td class="num">${money(o.missed_visits_pence)}</td></tr>` : ""}
             ${o.fees_pence ? `<tr><td colspan="4">Collection and delivery</td><td class="num">${money(o.fees_pence)}</td></tr>` : ""}
             ${o.discount_pence ? `<tr><td colspan="4">Discount</td><td class="num">−${money(o.discount_pence)}</td></tr>` : ""}
             <tr><td colspan="4"><strong>Total</strong> <span class="muted small">${o.payment_status === "paid" ? "Settled" : o.payment_status === "waived" ? "No charge" : "Settled once our atelier has checked everything"}</span></td><td class="num"><strong>${money(o.total_pence)}</strong></td></tr>

@@ -286,6 +286,8 @@ def receipt(db: Session, order: Order) -> bool:
     items = [(" ".join(x for x in (g.colour, g.brand, g.description) if x) or "Item", _pounds(g.price_pence)) for g in order.items]
     if order.minimum_top_up_pence:
         items.append((f"Minimum order {_pounds(order.minimum_pence)}", _pounds(order.minimum_top_up_pence)))
+    if order.missed_visits_pence:
+        items.append(("Missed visit", _pounds(order.missed_visits_pence)))
     from app.services import delivery
     items.append(("Collection and delivery", _pounds(order.fees_pence) if order.fees_pence else delivery.charge_text(order)))
     if order.discount_pence:
