@@ -168,6 +168,33 @@ def laveworld() -> dict:
     }
 
 
+def resell() -> dict:
+    """Atelier → Rehome → Resell: the banner, the category banners between groups of pieces, and the service strip.
+    The pieces themselves are added in /admin → Website → Resell."""
+    return {
+        "banner": {"image": WP + "2025/08/LAVE-Business-Dry-Cleaning-Fashion.avif", "title": "The Resell Edit",
+                 "text": "Luxury and rare pieces, new or nearly new, each one cleaned, restored and checked by our "
+                         "atelier before it finds its next home."},
+        "categories": [
+            {"key": "bags", "title": "Bags", "banner_image": "", "banner_label": "All bags"},
+            {"key": "ready-to-wear", "title": "Ready-to-wear", "banner_image": "", "banner_label": "All ready-to-wear"},
+            {"key": "shoes", "title": "Shoes", "banner_image": "", "banner_label": "All shoes"},
+            {"key": "accessories", "title": "Accessories", "banner_image": "", "banner_label": "All accessories"},
+            {"key": "home", "title": "Home textiles", "banner_image": "", "banner_label": "All home textiles"},
+        ],
+        "services": [
+            {"title": "Private viewing", "text": "See a piece in person at the atelier, by appointment.",
+             "href": "/contact/?topic=resell"},
+            {"title": "Cared for by LAVE", "text": "Every piece is cleaned, restored and checked before it's offered.",
+             "href": "/atelier/"},
+            {"title": "Consign with us", "text": "Pass on a piece you no longer wear. We care for it and find it a new home.",
+             "href": "/contact/?topic=consign"},
+        ],
+        "empty_heading": "The first pieces arrive soon",
+        "empty_text": "We're preparing our first edit. Have a piece you'd like to rehome? Tell us about it.",
+    }
+
+
 # What /admin → Website lists, in order. "locked" lists can't have entries added or removed; "readonly" fields can't change.
 DOCUMENTS = {
     "home": {"title": "Home page", "help": "The two halves of the home page.", "default": home},
@@ -183,6 +210,9 @@ DOCUMENTS = {
               "default": menus, "locked": ["sections", "subnav"], "readonly": ["key", "path", "sections.title", "subnav.title"]},
     "plans": {"title": "Membership plans", "help": "Tier names, prices and benefits. Stripe follows these prices automatically; current members keep the price they joined at.",
               "default": plans, "locked": ["plans", "values"], "readonly": ["code", "tier"]},
+    "page.resell": {"title": "Resell page", "help": "The banner, a photo banner for each category (leave the photo "
+                    "empty to show none) and the service strip. Add the pieces under Website → Resell.",
+                    "default": resell, "locked": ["categories"], "readonly": ["key"]},
     "footer": {"title": "Footer", "help": "Use **double asterisks** around words to make them bold.", "default": footer,
                "locked": ["social"], "readonly": ["name"]},
 }

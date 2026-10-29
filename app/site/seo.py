@@ -132,3 +132,24 @@ def memberships(site_url: str, plans: list[dict]) -> dict:
             } for p in plans],
         },
     }
+
+
+def resale_piece(site_url: str, p) -> dict:
+    """A piece in Rehome → Resell, as a product Google can show with its price and availability."""
+    availability = {"available": "InStock", "reserved": "LimitedAvailability", "sold": "SoldOut"}.get(p.status, "InStock")
+    condition = "NewCondition" if p.condition == "new" else "UsedCondition"
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": " ".join(x for x in (p.designer, p.title) if x),
+        "description": p.description or p.detail or p.title,
+        "url": f"{site_url}/atelier/rehome/resell/{p.slug}/",
+        "itemCondition": f"https://schema.org/{condition}",
+        "offers": {"@type": "Offer", "priceCurrency": "GBP", "price": f"{p.price_pence / 100:.2f}",
+                   "availability": f"https://schema.org/{availability}", "seller": {"@id": f"{site_url}/#business"}},
+    }
+    if p.designer:
+        data["brand"] = {"@type": "Brand", "name": p.designer}
+    if p.images:
+        data["image"] = [absolute(site_url, u) for u in p.images]
+    return data

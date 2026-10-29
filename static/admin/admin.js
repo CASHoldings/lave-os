@@ -1100,7 +1100,7 @@
 
   /* Website: content editor, image library, services and products */
 
-  const VIEW_ON_SITE = { "home": "/", "page.atelier": "/atelier/", "page.apothecary": "/apothecary/", "page.membership": "/memberships/",
+  const VIEW_ON_SITE = { "page.resell": "/atelier/rehome/resell/", "home": "/", "page.atelier": "/atelier/", "page.apothecary": "/apothecary/", "page.membership": "/memberships/",
     "page.laveworld": "/laveworld/", "menus": "/atelier/", "plans": "/memberships/", "footer": "/" };
   const fieldName = (k) => k.replace(/_pence$/, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
   const isImageKey = (k) => /(^|_)(image|hero)$/.test(k);
@@ -1139,7 +1139,7 @@
   async function viewWebsite(params) {
     const tab = params.get("tab") || "pages";
     const c = shell("website", "Website");
-    c.innerHTML = `<div class="row">${[["pages", "Pages & menus"], ["products", "Apothecary products"], ["images", "Images"]]
+    c.innerHTML = `<div class="row">${[["pages", "Pages & menus"], ["products", "Apothecary products"], ["resell", "Resell"], ["images", "Images"]]
       .map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/website?tab=${k}">${l}</a>`).join("")}</div>
       ${me.role !== "admin" ? '<p class="notice">You can look around; only admins can save changes to the website.</p>' : ""}
       <div id="pane"><p class="loading">Loading…</p></div>`;
@@ -1208,6 +1208,90 @@
           <td class="num">${p.variants.length}</td><td>${p.active ? '<span class="pill ok">Shown</span>' : '<span class="pill">Hidden</span>'}</td></tr>`).join("")}</tbody></table></div>`;
       pane.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
     }
+
+    if (tab === "resell") {
+      const r = await api("GET", "/api/staff/resell");
+      const cat = Object.fromEntries(r.categories), cond = Object.fromEntries(r.conditions);
+      const state = { available: "ok", reserved: "warn", sold: "" };
+      pane.innerHTML = `<div class="row between"><p class="muted small">Pieces on the <a href="/atelier/rehome/resell/" target="_blank">Resell page</a>. The banner, category photos and service strip are under <a href="#/website/content/page.resell">Pages &amp; menus → Resell page</a>.</p>
+        ${me.role === "admin" ? `<a class="btn primary" href="#/website/resell/new">New piece</a>` : ""}</div>
+        ${r.pieces.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Piece</th><th>Category</th><th>Condition</th><th class="num">Price</th><th>Status</th><th>Online</th></tr></thead><tbody>
+        ${r.pieces.map((p) => `<tr class="click" data-href="#/website/resell/${p.id}">
+          <td>${p.images[0] ? `<img src="${esc(p.images[0])}" alt="" style="width:44px;height:56px;object-fit:cover;background:#f2f2f2">` : ""}</td>
+          <td><strong>${esc(p.title)}</strong><br><span class="small muted">${esc([p.designer, p.detail].filter(Boolean).join(" · "))}</span></td>
+          <td class="small">${esc(cat[p.category] || p.category)}</td><td class="small">${esc(cond[p.condition] || p.condition)}</td>
+          <td class="num">${money(p.price_pence)}</td><td><span class="pill ${state[p.status]}">${esc(p.status)}</span></td>
+          <td>${p.show_online ? "Shown" : '<span class="muted">Hidden</span>'}</td></tr>`).join("")}</tbody></table></div>`
+          : `<p class="empty">No pieces yet. Add the first, with its photos, and it appears on the Resell page.</p>`}`;
+      pane.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
+    }
+  }
+
+  /* One Resell piece: details, photos (first one leads; the second shows on hover), price and status. */
+  async function viewResellEdit(id) {
+    const isNew = id === "new";
+    const c = shell("website", isNew ? "New piece" : "Edit piece");
+    const r = await api("GET", "/api/staff/resell");
+    const p = isNew ? { title: "", designer: "", detail: "", category: "bags", condition: "nearly_new", price_pence: 0, images: [],
+      description: "", condition_notes: "", status: "available", show_online: true, sort: 0 } : r.pieces.find((x) => String(x.id) === String(id));
+    if (!p) { c.innerHTML = `<p class="error">Piece not found.</p>`; return; }
+    const isAdmin = me.role === "admin", dis = isAdmin ? "" : "disabled";
+    const opts = (list, v) => list.map(([k, l]) => `<option value="${k}" ${k === v ? "selected" : ""}>${esc(l)}</option>`).join("");
+    const draw = () => {
+      c.innerHTML = `<form id="piece" class="cols-3">
+          <div class="stack panel">
+            <label>Name<input name="title" value="${esc(p.title)}" required placeholder="Quilted Shoulder Bag" ${dis}></label>
+            <div class="form-grid"><label>Designer<input name="designer" value="${esc(p.designer)}" placeholder="Leave blank if unknown" ${dis}></label>
+              <label>Material and colour<input name="detail" value="${esc(p.detail)}" placeholder="Black lambskin, gold hardware" ${dis}></label></div>
+            <div class="form-grid">
+              <label>Category<select name="category" ${dis}>${opts(r.categories, p.category)}</select></label>
+              <label>Condition<select name="condition" ${dis}>${opts(r.conditions, p.condition)}</select></label>
+              <label>Price (£)<input name="price" value="${(p.price_pence / 100).toFixed(2)}" ${dis}></label>
+              <label>Status<select name="status" ${dis}>${opts(r.statuses.map((s) => [s, s[0].toUpperCase() + s.slice(1)]), p.status)}</select></label>
+              <label>Order (lower first)<input name="sort" type="number" value="${p.sort}" ${dis}></label>
+            </div>
+            <label>About this piece<textarea name="description" rows="5" placeholder="Its story, size, what comes with it" ${dis}>${esc(p.description)}</textarea></label>
+            <label>Condition notes<textarea name="condition_notes" rows="3" placeholder="Light wear to the corners; cleaned and conditioned by LAVE" ${dis}>${esc(p.condition_notes)}</textarea></label>
+            <label class="check-label"><input type="checkbox" name="show_online" ${p.show_online ? "checked" : ""} ${dis}> Show on the Resell page</label>
+          </div>
+          <div class="stack panel"><h2>Photos</h2>
+            <p class="small muted">The first photo leads; the second appears when someone hovers. Portrait photos on a plain light background suit the page best.</p>
+            <div class="stack">${p.images.map((u, i) => `<div class="row" style="align-items:center;gap:10px">
+              <img src="${esc(u)}" alt="" style="width:64px;height:80px;object-fit:cover;background:#f2f2f2">
+              ${isAdmin ? `<button type="button" class="btn sm ghost" data-up="${i}" ${i ? "" : "disabled"} aria-label="Move up">↑</button>
+              <button type="button" class="btn sm ghost" data-del="${i}">Remove</button>` : ""}</div>`).join("") || '<p class="small muted">No photos yet.</p>'}</div>
+            ${isAdmin ? `<button type="button" class="btn sm" data-add>Add a photo</button>` : ""}
+            ${!isNew ? `<a class="small" href="${esc(p.url)}" target="_blank">View on site</a>` : ""}
+          </div>
+        </form>
+        ${isAdmin ? `<div class="row"><button class="btn primary" data-save>${isNew ? "Add piece" : "Save piece"}</button><a class="btn ghost" href="#/website?tab=resell">Back</a>
+          ${!isNew ? `<span id="del-box"><button class="btn danger" data-delete>Delete</button></span>` : ""}</div>` : ""}`;
+      const f = c.querySelector("#piece");
+      const read = () => { Object.assign(p, { title: f.title.value, designer: f.designer.value, detail: f.detail.value, category: f.category.value,
+        condition: f.condition.value, price_pence: toPence(f.price.value) || 0, status: f.status.value, sort: Number(f.sort.value) || 0,
+        description: f.description.value, condition_notes: f.condition_notes.value, show_online: f.show_online.checked }); };
+      c.querySelector("[data-add]")?.addEventListener("click", async () => { read(); const u = await pickImage(); if (u) { p.images.push(u); draw(); } });
+      c.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { read(); p.images.splice(Number(b.dataset.del), 1); draw(); }));
+      c.querySelectorAll("[data-up]").forEach((b) => b.addEventListener("click", () => {
+        read(); const i = Number(b.dataset.up); [p.images[i - 1], p.images[i]] = [p.images[i], p.images[i - 1]]; draw(); }));
+      c.querySelector("[data-save]")?.addEventListener("click", async () => {
+        read();
+        const body = { ...p }; delete body.id; delete body.slug; delete body.url;
+        try {
+          if (isNew) { const made = await api("POST", "/api/staff/resell", body); toast("Piece added"); location.hash = "#/website/resell/" + made.id; }
+          else { Object.assign(p, await api("PATCH", `/api/staff/resell/${id}`, body)); toast("Saved"); draw(); }
+        } catch (ex) { toast(ex.message, true); }
+      });
+      c.querySelector("[data-delete]")?.addEventListener("click", () => {
+        const box = c.querySelector("#del-box");
+        box.innerHTML = `<span class="small">Delete this piece for good?</span> <button class="btn danger sm" data-yes>Delete</button> <button class="btn ghost sm" data-no>Keep</button>`;
+        box.querySelector("[data-no]").addEventListener("click", draw);
+        box.querySelector("[data-yes]").addEventListener("click", async () => {
+          try { await api("DELETE", `/api/staff/resell/${id}`); toast("Piece deleted"); location.hash = "#/website?tab=resell"; } catch (ex) { toast(ex.message, true); }
+        });
+      });
+    };
+    draw();
   }
 
   async function viewContent(key) {
@@ -2117,6 +2201,7 @@
       else if (parts[0] === "website" && parts[1] === "content" && parts[2]) await viewContent(parts[2]);
       else if (parts[0] === "website" && parts[1] === "services" && parts[2]) await viewServiceEdit(parts[2]);
       else if (parts[0] === "website" && parts[1] === "products" && parts[2]) await viewProductEdit(parts[2]);
+      else if (parts[0] === "website" && parts[1] === "resell" && parts[2]) await viewResellEdit(parts[2]);
       else if (parts[0] === "website") await viewWebsite(params);
       else if (parts[0] === "products") await viewProducts(params);
       else if (parts[0] === "journal" && parts[1]) await viewPost(parts[1]);

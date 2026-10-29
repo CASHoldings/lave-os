@@ -802,3 +802,22 @@ class ClientGesture(Base):
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime)  # founder told it's coming up
     sent_at: Mapped[datetime | None] = mapped_column(DateTime)  # member's birthday email
     client: Mapped[Client] = relationship()
+
+
+class ResalePiece(Timestamped, Base):
+    """A piece LAVE has cared for and is rehoming (Atelier → Rehome → Resell): luxury and rare, new or nearly new."""
+    __tablename__ = "resale_pieces"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(160), unique=True)
+    title: Mapped[str] = mapped_column(String(160))             # e.g. "Quilted Shoulder Bag"
+    designer: Mapped[str] = mapped_column(String(80), default="")
+    detail: Mapped[str] = mapped_column(String(160), default="")  # e.g. "Black lambskin, gold hardware"
+    category: Mapped[str] = mapped_column(String(30), default="bags")      # services/resell.py CATEGORIES
+    condition: Mapped[str] = mapped_column(String(20), default="nearly_new")  # new | nearly_new | vintage | rare
+    price_pence: Mapped[int] = mapped_column(Integer, default=0)
+    images: Mapped[list] = mapped_column(JSON, default=list)      # library photos, first one leads
+    description: Mapped[str] = mapped_column(Text, default="")
+    condition_notes: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(12), default="available")  # available | reserved | sold
+    show_online: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort: Mapped[int] = mapped_column(Integer, default=0)

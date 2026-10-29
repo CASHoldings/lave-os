@@ -1415,6 +1415,41 @@ def put_delivery_settings(body: dict, staff: StaffUser = Depends(admin_only), db
     return get_delivery_settings(staff, db)
 
 
+# Resell pieces (Atelier → Rehome → Resell)
+
+@router.get("/resell")
+def resell_list(staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import resell
+    return {"pieces": [resell.describe(p) for p in resell.pieces(db, online_only=False)],
+            "categories": resell.CATEGORIES, "conditions": resell.CONDITIONS, "statuses": resell.STATUSES}
+
+
+@router.post("/resell", status_code=201)
+def resell_create(body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import resell
+    return resell.describe(resell.create(db, body))
+
+
+@router.patch("/resell/{piece_id}")
+def resell_update(piece_id: int, body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.models import ResalePiece
+    from app.services import resell
+    piece = db.get(ResalePiece, piece_id)
+    if not piece:
+        raise HTTPException(404, "Piece not found.")
+    return resell.describe(resell.update(db, piece, body))
+
+
+@router.delete("/resell/{piece_id}", status_code=204)
+def resell_delete(piece_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.models import ResalePiece
+    piece = db.get(ResalePiece, piece_id)
+    if not piece:
+        raise HTTPException(404, "Piece not found.")
+    db.delete(piece)
+    db.commit()
+
+
 @router.get("/system")
 def system_status(staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
     """Analytics, alerts, photo backups and the other outside services, as they are now."""

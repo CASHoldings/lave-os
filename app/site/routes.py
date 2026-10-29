@@ -44,7 +44,7 @@ TEMPLATES.env.globals["company"] = COMPANY
 TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "58"
+ASSET_VERSION = "60"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -113,6 +113,50 @@ def render(request: Request, template: str, status_code: int = 200, **ctx) -> HT
                                       status_code=status_code)
 
 
+def resell_page(request: Request, section, db: Session) -> HTMLResponse:
+    """Atelier → Rehome → Resell: an editorial banner, then the pieces grouped by category (each group can open with a
+    photo banner), Filter & Sort, and the service strip."""
+    from app.services import resell
+    q = request.query_params
+    category, condition, sort = q.get("category", ""), q.get("condition", ""), q.get("sort", "featured")
+    found = resell.pieces(db, category, condition, sort)
+    page = request.state.site.page("resell")
+    groups = []
+    if sort == "featured" and not category:
+        for c in page["categories"]:
+            members = [p for p in found if p.category == c["key"]]
+            if members:
+                groups.append({**c, "pieces": members})
+    else:
+        banner = next((c for c in page["categories"] if c["key"] == category), None)
+        groups = [{**(banner or {"key": "", "title": "", "banner_image": "", "banner_label": ""}), "pieces": found}] if found else []
+    filtered = bool(category or condition or sort != "featured")
+    from app.site.content import ITEM_INTROS
+    return render(request, "site/resell.html", section=section, subnav=next(s for s in section.subnav if s.slug == "rehome"),
+                  item="Resell", page=page, groups=groups, count=len(found), intro=ITEM_INTROS[("atelier", "rehome", "resell")],
+                  categories=resell.CATEGORIES, conditions=resell.CONDITIONS, sorts=resell.SORTS,
+                  chosen={"category": category, "condition": condition, "sort": sort}, filtered=filtered,
+                  condition_names=resell.CONDITION_NAMES, any_pieces=bool(found) or bool(resell.pieces(db)))
+
+
+@router.get("/atelier/rehome/resell/{slug}/", response_class=HTMLResponse)
+def resell_piece(request: Request, slug: str, db: Session = Depends(get_db)):
+    from app.services import resell
+    from app.services.content import render_markdown
+    piece = resell.by_slug(db, slug)
+    if not piece:
+        raise HTTPException(404)
+    section = _section(request, "atelier")
+    site_url = get_settings().site_url.rstrip("/")
+    return render(request, "site/resell_piece.html", section=section, subnav=next(s for s in section.subnav if s.slug == "rehome"),
+                  piece=piece, condition_names=resell.CONDITION_NAMES, category_names=resell.CATEGORY_NAMES,
+                  md=render_markdown,
+                  crumbs=[("Home", "/"), ("Atelier", "/atelier/"), ("Rehome", "/atelier/rehome/"),
+                          ("Resell", "/atelier/rehome/resell/"), (piece.title, f"/atelier/rehome/resell/{piece.slug}/")],
+                  piece_jsonld=seo.jsonld(seo.resale_piece(site_url, piece)),
+                  piece_image_abs=seo.absolute(site_url, (piece.images or [""])[0]))
+
+
 def _section(request: Request, key: str):
     section = request.state.site.by_path.get(key)
     if not section:
@@ -157,6 +201,9 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
     paths += [f"/atelier/clean/{c}/" for c in repo.COLLECTION_PAGES if counts.get(c)]
     paths += [f"/apothecary/products/{p.slug}/" for p in shop.products(db)]
     paths += [f"/journal/{p.slug}/" for p in cms.published(db, limit=1000)]
+    from app.services import resell
+    if pieces := resell.pieces(db):  # the Resell page counts once it has pieces
+        paths += ["/atelier/rehome/resell/", *[f"/atelier/rehome/resell/{p.slug}/" for p in pieces]]
     if not has_posts:  # the Journal stays out of search until it has stories
         paths = [p for p in paths if p != "/laveworld/knowledge/"]
     base = get_settings().site_url.rstrip("/")
@@ -249,6 +296,8 @@ def item_page(request: Request, section_key: str, sub_slug: str, item_slug: str,
                       intro=intros.get(item_slug) or HOME_INTROS.get(item_slug, ""),
                       departments=repo.catalogue(db, item_slug), price_of=repo.client_price, in_list=entries,
                       summary=repo.summarise(db, entries))
+    if section.key == "atelier" and sub_slug == "rehome" and item_slug == "resell":
+        return resell_page(request, section, db)
     sub = next((s for s in section.subnav if s.slug == sub_slug), None)
     item = next((link for s in ([sub] if sub else []) for c in s.columns for link in c.labels if slugify(link) == item_slug), None)
     if not item:

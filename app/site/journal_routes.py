@@ -129,13 +129,22 @@ def laveworld_page(request: Request, sub_slug: str, item_slug: str, db: Session 
 
 # Contact and policies
 
-TOPICS = ["Booking or an order", "Membership", "LAVE Privé", "Business enquiry", "Press", "Something else"]
+TOPICS = ["Booking or an order", "Membership", "LAVE Privé", "Resell enquiry", "Consign a piece", "Business enquiry", "Press",
+          "Something else"]
+TOPIC_LINKS = {"prive": "LAVE Privé", "resell": "Resell enquiry", "consign": "Consign a piece"}
 
 
 @router.get("/contact/", response_class=HTMLResponse)
-def contact_form(request: Request, topic: str = "", sent: str = ""):
-    preset = "LAVE Privé" if topic == "prive" else ""
-    return render(request, "site/contact.html", crumb="Contact", topics=TOPICS, preset=preset, sent=bool(sent), error="", form={})
+def contact_form(request: Request, topic: str = "", sent: str = "", piece: str = "", db: Session = Depends(get_db)):
+    preset = TOPIC_LINKS.get(topic, "")
+    form = {}
+    if piece:  # "Enquire about this piece" on a Resell piece
+        from app.services import resell
+        if found := resell.by_slug(db, piece):
+            name = " ".join(x for x in (found.designer, found.title) if x)
+            form["message"] = (f"I'm interested in the {name}"
+                               f" (lavelondon.com/atelier/rehome/resell/{found.slug}/). Could we arrange a viewing?")
+    return render(request, "site/contact.html", crumb="Contact", topics=TOPICS, preset=preset, sent=bool(sent), error="", form=form)
 
 
 @router.post("/contact/", response_class=HTMLResponse)
