@@ -750,8 +750,9 @@ html { font-size: 100%; }
   background: radial-gradient(ellipse at 50% 42%, #f6f6f7 0%, #ececee 62%, #e3e3e6 100%); }
 .rp-photo img { width: 100%; height: 100%; object-fit: contain; padding: 7% 12%; box-sizing: border-box; mix-blend-mode: multiply; }
 .rp-info { position: sticky; top: var(--rp-top); height: calc(100vh - var(--rp-top)); min-height: 520px; display: grid; align-items: center;
-  padding: 32px var(--gutter); overflow-y: auto; }
-.rp-inner { width: 100%; max-width: 560px; margin: 0 auto; display: grid; gap: 10px; }
+  padding: 0 clamp(40px, 7vw, 128px); overflow-y: auto; }
+/* Generous room around the details: above the condition, below the last row, and either side of the buttons. */
+.rp-inner { width: 100%; max-width: 480px; margin: 0 auto; padding: clamp(64px, 10vh, 112px) 0; display: grid; gap: 10px; }
 .rp-condition { text-align: center; font-size: 0.8125rem; color: var(--muted); }
 .rp-name { text-align: center; font-size: clamp(1.15rem, 1.6vw, 1.4rem); font-weight: 400; letter-spacing: .01em; text-wrap: balance; }
 .rp-detail { text-align: center; font-size: 0.9375rem; color: var(--muted); max-width: 46ch; margin: 0 auto; text-wrap: balance; }
@@ -783,7 +784,8 @@ html { font-size: 100%; }
   .rp { grid-template-columns: 1fr; margin-top: 8px; }
   .rp-photos { grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; scroll-snap-type: x mandatory; }
   .rp-photo { height: auto; min-height: 0; aspect-ratio: 4 / 5; scroll-snap-align: start; }
-  .rp-info { position: static; height: auto; min-height: 0; overflow: visible; padding-top: 28px; padding-bottom: 56px; }
+  .rp-info { position: static; height: auto; min-height: 0; overflow: visible; padding: 0 32px; }
+  .rp-inner { padding: 44px 0 72px; }
   .rp-availability { margin-top: 28px; }
 }
 .rs-preview { max-width: 1500px; margin: 16px auto 0; padding: 12px var(--gutter); background: #fbf2e1; color: #7a4d00; font-size: 0.8125rem; text-align: center; }
