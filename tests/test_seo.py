@@ -64,3 +64,10 @@ def test_home_page_description(api):
             "extending the life of your wardrobe and home fabrics.")
     assert f'<meta name="description" content="{text}">' in head
     assert f'<meta property="og:description" content="{text}">' in head
+
+
+def test_resell_has_its_own_introduction(api):
+    page = api.get("/atelier/rehome/resell/").text
+    assert "We curate and rehome luxury and rare pieces, new or nearly new" in page
+    assert "This page is being written" not in page
+    assert '<p class="lead">' not in page.split("<h1>Resell</h1>")[1].split("</section>")[0]  # not bold

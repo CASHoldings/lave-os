@@ -253,4 +253,6 @@ def item_page(request: Request, section_key: str, sub_slug: str, item_slug: str,
     item = next((link for s in ([sub] if sub else []) for c in s.columns for link in c.labels if slugify(link) == item_slug), None)
     if not item:
         raise HTTPException(404)
-    return render(request, "site/subnav.html", section=section, subnav=sub, item=item)
+    from app.site.content import ITEM_INTROS
+    return render(request, "site/subnav.html", section=section, subnav=sub, item=item,
+                  item_intro=ITEM_INTROS.get((section.key, sub.slug, item_slug), ""))

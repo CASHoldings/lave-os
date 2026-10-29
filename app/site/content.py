@@ -14,6 +14,12 @@ WP = "https://lavelondon.com/wp-content/uploads/"
 SLOGAN = "Care Better"
 TAGLINE = "Preserve what you treasure"
 SERVICE_MESSAGE = "Intentional care for the people and textiles you love"
+# Introductions for menu pages that have their own words before the full page is written: (section, menu, page).
+ITEM_INTROS = {
+    ("atelier", "rehome", "resell"): "We curate and rehome luxury and rare pieces, new or nearly new, so they find "
+                                     "someone who will treasure them next.",
+}
+
 # Shown on the website and in every email (Companies Act 2006: name, number, place of registration, registered office).
 COMPANY = ("LAVE LTD, registered in England and Wales, company number 16329170. "
            "Registered office: 438 Streatham High Road, London, England, SW16 3PX.")
