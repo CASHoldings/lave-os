@@ -219,6 +219,30 @@ def update_menu_photos(db: Session) -> int:
     return changed
 
 
+def update_resell_photos(db: Session) -> int:
+    """Give a saved Resell page the default category photos where none was chosen, and swap the old, low-resolution
+    opening photo. Photos chosen in the admin are left alone. Returns how many changed."""
+    from app.models import Media
+    from app.site import defaults
+    row = db.get(SiteContent, "page.resell")
+    if not row or not row.value:
+        return 0
+    page, fresh, changed = json.loads(json.dumps(row.value)), defaults.resell(), 0
+    old = WP + "2025/08/LAVE-Business-Dry-Cleaning-Fashion.avif"
+    if page.get("banner", {}).get("image") in {old, *db.scalars(select(Media.url).where(Media.source_url == old))}:
+        page["banner"]["image"], changed = fresh["banner"]["image"], changed + 1
+    photos = {c["key"]: c["banner_image"] for c in fresh["categories"]}
+    for c in page.get("categories", []):
+        if not c.get("banner_image") and photos.get(c.get("key")):
+            c["banner_image"], changed = photos[c["key"]], changed + 1
+    if changed:
+        row.value, row.updated_by = page, "Resell photos"
+        db.commit()
+        from app.site import store
+        store._cache["stamp"] = None
+    return changed
+
+
 def update_policies(db: Session) -> int:
     """Apply POLICY_CHANGES to live pages, and move their "Last updated" date. Returns how many pages changed."""
     changed = 0

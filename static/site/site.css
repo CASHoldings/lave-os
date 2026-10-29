@@ -682,18 +682,24 @@ html { font-size: 100%; }
 .pack-photo.empty img.price-mark { width: 64px; height: auto; padding: 0; opacity: .16; }
 
 /* Resell (Atelier → Rehome → Resell): an editorial banner, a quiet 4-column grid on soft grey tiles, Filter & Sort */
-.rs-hero { position: relative; max-width: 1500px; margin: 8px auto 0; padding: 0 var(--gutter); }
-.rs-hero img { display: block; width: 100%; aspect-ratio: 21 / 9; object-fit: cover; background: var(--panel); }
-.rs-hero figcaption { position: absolute; left: var(--gutter); right: var(--gutter); bottom: 0; display: grid; gap: 12px; justify-items: center;
+.rs-hero { position: relative; width: min(1666px, 100% - 2 * var(--gutter)); margin: 8px auto 0; }
+.rs-hero img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--panel); }
+@media (max-width: 760px) { .rs-hero img { aspect-ratio: 4 / 5; } }
+.rs-hero figcaption { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: 12px; justify-items: center;
   padding: 16% 8% clamp(24px, 5vw, 64px); text-align: center; color: #fff; background: linear-gradient(transparent, rgba(25, 32, 51, .5)); }
 .rs-hero h2 { font-size: clamp(1.5rem, 3.4vw, 2.6rem); font-weight: 400; letter-spacing: .02em; text-wrap: balance; }
 .rs-hero p { max-width: 60ch; font-size: 0.875rem; line-height: 1.7; }
 .rs-catalogue { padding-bottom: 8px; }
 .rs-count { text-align: center; color: var(--muted); font-size: 0.8125rem; margin: 32px 0 48px; }
-.rs-band { position: relative; display: block; max-width: 1500px; margin: 88px auto 48px; padding: 0 var(--gutter); }
-.rs-band img { display: block; width: 100%; aspect-ratio: 21 / 9; object-fit: cover; background: var(--panel); }
-.rs-band span { position: absolute; left: 50%; bottom: clamp(20px, 3vw, 40px); transform: translateX(-50%); color: #fff; font-size: 0.875rem;
-  border-bottom: 1px solid currentColor; padding-bottom: 2px; text-shadow: 0 1px 14px rgba(0, 0, 0, .35); white-space: nowrap; }
+/* A category opens with a large centred photo, its name underlined near the bottom (Dior's "Belts", "All Bags"). */
+.rs-band { position: relative; display: block; width: min(1666px, 100% - 2 * var(--gutter)); margin: 112px auto 64px; color: #fff; text-decoration: none; }
+.rs-band.is-first { margin-top: 40px; }
+.rs-band img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--panel); }
+.rs-band::after { content: ""; position: absolute; inset: 55% 0 0; background: linear-gradient(transparent, rgba(25, 32, 51, .38)); pointer-events: none; }
+.rs-band span { position: absolute; z-index: 1; left: 50%; bottom: clamp(22px, 3.4vw, 48px); transform: translateX(-50%); font-size: 0.9375rem;
+  border-bottom: 1px solid currentColor; padding-bottom: 3px; white-space: nowrap; }
+.rs-band:hover span { border-bottom-width: 2px; }
+@media (max-width: 760px) { .rs-band { margin: 72px auto 40px; } .rs-band img { aspect-ratio: 4 / 5; } }
 .rs-group { text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin: 72px 0 32px; }
 .rs-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 64px clamp(16px, 2.6vw, 48px); max-width: 1920px; margin: 0 auto; padding: 0 var(--gutter); }
 @media (max-width: 1100px) { .rs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

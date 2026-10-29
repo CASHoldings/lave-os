@@ -19,7 +19,7 @@ from app.migrate import upgrade
 from app.models import SlotTemplate, StaffRole, StaffUser
 from app.seed import seed_services, seed_slots
 from app.services.content import (load_policies, load_starter_content, update_brand_wording, update_menu_photos,
-                                  update_policies)
+                                  update_policies, update_resell_photos)
 from app.services.shop import load_sample_products
 from app.site.catalogue import load_starting_catalogue
 
@@ -68,6 +68,8 @@ def release() -> list[str]:
         from app.services import resell
         if examples := resell.load_examples(db):
             notes.append(f"Resell: added {examples} hidden example pieces (see them on the page while signed in to the admin).")
+        if resell_photos := update_resell_photos(db):
+            notes.append(f"Resell page: added {resell_photos} photo(s).")
         if photos_changed := update_menu_photos(db):
             notes.append(f"Menus: updated {photos_changed} photo(s).")
         if updated := update_policies(db):

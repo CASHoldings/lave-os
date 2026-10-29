@@ -172,15 +172,18 @@ def resell() -> dict:
     """Atelier → Rehome → Resell: the banner, the category banners between groups of pieces, and the service strip.
     The pieces themselves are added in /admin → Website → Resell."""
     return {
-        "banner": {"image": WP + "2025/08/LAVE-Business-Dry-Cleaning-Fashion.avif", "title": "The Resell Edit",
+        "banner": {"image": WP + "2025/11/LAVE-Fabric-Care-Atelier-scaled.webp", "title": "The Resell Edit",
                  "text": "Luxury and rare pieces, new or nearly new, each one cleaned, restored and checked by our "
                          "atelier before it finds its next home."},
         "categories": [
-            {"key": "bags", "title": "Bags", "banner_image": "", "banner_label": "All bags"},
-            {"key": "ready-to-wear", "title": "Ready-to-wear", "banner_image": "", "banner_label": "All ready-to-wear"},
-            {"key": "shoes", "title": "Shoes", "banner_image": "", "banner_label": "All shoes"},
-            {"key": "accessories", "title": "Accessories", "banner_image": "", "banner_label": "All accessories"},
-            {"key": "home", "title": "Home textiles", "banner_image": "", "banner_label": "All home textiles"},
+            {"key": "bags", "title": "Bags", "banner_image": "", "banner_label": "Bags"},
+            {"key": "ready-to-wear", "title": "Ready-to-wear", "banner_image": WP + "2024/07/LAVE-Atelier-Store-Couture.avif",
+             "banner_label": "Ready-to-wear"},
+            {"key": "shoes", "title": "Shoes", "banner_image": "", "banner_label": "Shoes"},
+            {"key": "accessories", "title": "Accessories", "banner_image": WP + "2025/11/LAVE-Atelier-Store-Textile.webp",
+             "banner_label": "Accessories"},
+            {"key": "home", "title": "Home textiles", "banner_image": WP + "2024/07/LAVE-Atelier-Store-Furnishings.avif",
+             "banner_label": "Home textiles"},
         ],
         "services": [
             {"title": "Private viewing", "text": "See a piece in person at the atelier, by appointment.",

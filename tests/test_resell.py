@@ -116,3 +116,35 @@ def test_piece_page_offers_an_enquiry_and_a_private_viewing(api, staff_headers):
     api.patch(f"/api/staff/resell/{bag['id']}", headers=staff_headers, json={"status": "sold"})
     sold = api.get(bag["url"]).text
     assert "This piece has found its new home" in sold and "Book a private viewing" not in sold
+
+
+def test_each_later_category_opens_with_a_large_photo(api, staff_headers):
+    _piece(api, staff_headers, title="Velvet Blazer", category="ready-to-wear")
+    _piece(api, staff_headers, title="Silk Scarf", category="accessories")
+    page = api.get("/atelier/rehome/resell/").text
+    # The opening banner introduces ready-to-wear; accessories opens with its own photo, named and linked.
+    assert page.count('class="rs-band') == 1 and "LAVE-Atelier-Store-Textile.webp" in page
+    assert page.index("Velvet Blazer") < page.index("rs-band") < page.index("Silk Scarf")
+    assert '<h2 class="rs-group">Ready-to-wear</h2>' in page
+    assert "LAVE-Fabric-Care-Atelier-scaled.webp" in page  # the sharp opening photo
+    one = api.get("/atelier/rehome/resell/?category=accessories").text
+    assert 'class="rs-band is-first"' in one  # a single category still opens with its photo
+
+
+def test_a_saved_resell_page_gets_the_photos_on_deploy(api, db_session):
+    from app.models import SiteContent
+    from app.services import content
+    from app.site import defaults
+    page = defaults.resell()
+    page["banner"]["image"] = content.WP + "2025/08/LAVE-Business-Dry-Cleaning-Fashion.avif"
+    for c in page["categories"]:
+        c["banner_image"] = ""
+    page["categories"][0]["banner_image"] = "/media/my-own-bag-photo.webp"  # chosen in the admin: kept
+    with db_session() as db:
+        db.merge(SiteContent(key="page.resell", value=page))
+        db.commit()
+        assert content.update_resell_photos(db) == 4  # banner + ready-to-wear, accessories, home
+        assert content.update_resell_photos(db) == 0
+        saved = db.get(SiteContent, "page.resell").value
+    assert saved["categories"][0]["banner_image"] == "/media/my-own-bag-photo.webp"
+    assert saved["banner"]["image"].endswith("LAVE-Fabric-Care-Atelier-scaled.webp")

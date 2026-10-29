@@ -23,10 +23,11 @@
   {% if groups %}
   <p class="rs-count">{{ count }} piece{{ "s" if count != 1 }}</p>
   {% for g in groups %}
-    {% if g.banner_image and not chosen.category %}
-    <a class="rs-band" href="/atelier/rehome/resell/?category={{ g.key }}">
-      <img src="{{ g.banner_image }}" alt="" loading="lazy" decoding="async"><span>{{ g.banner_label or g.title }}</span></a>
-    {% elif groups|length > 1 %}
+    {# Like Dior: the opening banner introduces the first group; each later group opens with its own large photo. #}
+    {% if g.banner_image and (not loop.first or chosen.category or not page.banner.image) %}
+    <a class="rs-band{% if loop.first %} is-first{% endif %}" href="/atelier/rehome/resell/?category={{ g.key }}" aria-label="{{ g.title }}">
+      <img src="{{ g.banner_image }}" alt="" {% if not loop.first %}loading="lazy"{% endif %} decoding="async"><span>{{ g.banner_label or g.title }}</span></a>
+    {% elif g.title %}
     <h2 class="rs-group">{{ g.title }}</h2>
     {% endif %}
     <div class="rs-grid">
