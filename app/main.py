@@ -1,10 +1,11 @@
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -40,6 +41,16 @@ def cache_rule(path: str, versioned: bool) -> str | None:
     return None
 
 
+# Addresses only bots ask for: hidden files (/.env, /.git/…), PHP scripts and WordPress logins, admin tools.
+# /.well-known/ (site verification) and old /wp-content/uploads/ image links are real and pass through.
+PROBE = re.compile(r"(^|/)\.(?!well-known/)[^/]+|\.(php\d?|asp|aspx|jsp|cgi|sql|bak|env|ini|yml|yaml|log)/?$"
+                   r"|^/(wp-admin|wp-includes|wp-login|xmlrpc|phpmyadmin|pma|cgi-bin|vendor|server-status)(/|$)", re.I)
+
+
+def is_probe(path: str) -> bool:
+    return bool(PROBE.search(path))
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     settings.check_production_safety()
@@ -60,6 +71,14 @@ def create_app() -> FastAPI:
             if rule := cache_rule(request.url.path, bool(request.query_params.get("v"))):
                 response.headers["cache-control"] = rule
         return response
+
+    @app.middleware("http")
+    async def turn_away_probes(request: Request, call_next):
+        # Bots try addresses like /.env, /wp-login.php and /.git/config in bursts. They get a plain "not found"
+        # straight away, without using a database connection.
+        if is_probe(request.url.path):
+            return PlainTextResponse("Not found", status_code=404)
+        return await call_next(request)
 
     @app.middleware("http")
     async def report_errors(request: Request, call_next):
@@ -149,25 +168,30 @@ def create_app() -> FastAPI:
 
         app.mount("/dev", StaticFiles(directory=STATIC / "dev", html=True), name="dev")
 
-    @app.exception_handler(StarletteHTTPException)
-    async def not_found(request: Request, exc: StarletteHTTPException):
-        # Website addresses that don't exist: forward old WordPress links, otherwise show the LAVE "not found" page.
-        path = request.url.path
-        if exc.status_code != 404 or path.startswith(("/api/", "/admin", "/embed/", "/static/")):
-            return await http_exception_handler(request, exc)
+    def not_found_page(request: Request):
+        """Forward an old WordPress link, or render the LAVE "not found" page. Uses the database, so it runs in a worker
+        thread: waiting here for a connection must never hold up the rest of the website."""
         from app.db import get_db
         from app.site import redirects, store
         from app.site.routes import render
         sessions = request.app.dependency_overrides.get(get_db, get_db)()
         db = next(sessions)
         try:
-            target = redirects.resolve(path, db)
+            target = redirects.resolve(request.url.path, db)
             if target:
                 return RedirectResponse(target, status_code=301)
             request.state.site = store.load(db)
         finally:
             sessions.close()
         return render(request, "site/not_found.html", status_code=404, crumb="Page not found")
+
+    @app.exception_handler(StarletteHTTPException)
+    async def not_found(request: Request, exc: StarletteHTTPException):
+        path = request.url.path
+        if exc.status_code != 404 or path.startswith(("/api/", "/admin", "/embed/", "/static/")) or is_probe(path):
+            return await http_exception_handler(request, exc)
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(not_found_page, request)
 
     # Last: the website's /{section}/ routes would otherwise shadow the paths above.
     app.include_router(site_accounts.router)

@@ -19,7 +19,9 @@ def make_engine(url: str):
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
         return engine
-    return create_engine(url, pool_pre_ping=True)
+    # 10 connections plus 10 in a rush (Render's Postgres allows about 100; two copies of the site run during a
+    # deploy). A request that can't get one gives up after 10 seconds rather than 30.
+    return create_engine(url, pool_pre_ping=True, pool_size=10, max_overflow=10, pool_timeout=10, pool_recycle=1800)
 
 
 engine = make_engine(get_settings().database_url)

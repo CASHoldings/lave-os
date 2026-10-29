@@ -345,3 +345,24 @@ def test_policies_are_added_to_a_site_that_already_exists(api, db_session):
         db.commit()
     assert "Our own wording." in api.get("/policies/terms/").text
     assert "load_policies(db)" in inspect.getsource(release.release)  # runs on every deploy, not only a new database
+
+
+def test_bot_probes_are_turned_away_without_the_database(api, monkeypatch):
+    """Bots scanning for /.env and WordPress logins get a plain 404 straight away (they once used up every
+    database connection at night)."""
+    from app.db import get_db
+    from app.main import app
+
+    def no_database():
+        raise AssertionError("a bot probe reached the database")
+        yield  # noqa: unreachable
+    monkeypatch.setitem(app.dependency_overrides, get_db, no_database)
+    for path in ("/.env", "/.env/", "/.git/config", "/wp-login.php", "/xmlrpc.php", "/wp-admin/", "/backup.sql"):
+        r = api.get(path, follow_redirects=False)
+        assert r.status_code == 404 and r.text == "Not found", path
+
+
+def test_real_not_found_pages_and_old_links_still_work(api):
+    r = api.get("/nothing-here-at-all/")
+    assert r.status_code == 404 and "couldn't find that page" in r.text
+    assert api.get("/privacy-policy/", follow_redirects=False).headers["location"] == "/policies/privacy/"
