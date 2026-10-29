@@ -103,3 +103,16 @@ def test_examples_are_not_added_beside_real_pieces(api, staff_headers, db_sessio
     _piece(api, staff_headers)
     with db_session() as db:
         assert resell.load_examples(db) == 0
+
+
+def test_piece_page_offers_an_enquiry_and_a_private_viewing(api, staff_headers):
+    bag = _piece(api, staff_headers, condition_notes="Light wear to the corners.")
+    page = api.get(bag["url"]).text
+    assert "Available to view by appointment" in page and "Book a private viewing" in page and "£1,850" in page
+    assert "Light wear to the corners." in page and "+44 7763 566 145" in page
+    viewing = api.get(f"/contact/?topic=resell&piece={bag['slug']}&ask=viewing").text
+    assert "Could we arrange a private viewing?" in viewing
+    assert "Could you tell me more about it?" in api.get(f"/contact/?topic=resell&piece={bag['slug']}").text
+    api.patch(f"/api/staff/resell/{bag['id']}", headers=staff_headers, json={"status": "sold"})
+    sold = api.get(bag["url"]).text
+    assert "This piece has found its new home" in sold and "Book a private viewing" not in sold

@@ -135,15 +135,17 @@ TOPIC_LINKS = {"prive": "LAVE Privé", "resell": "Resell enquiry", "consign": "C
 
 
 @router.get("/contact/", response_class=HTMLResponse)
-def contact_form(request: Request, topic: str = "", sent: str = "", piece: str = "", db: Session = Depends(get_db)):
+def contact_form(request: Request, topic: str = "", sent: str = "", piece: str = "", ask: str = "",
+                 db: Session = Depends(get_db)):
     preset = TOPIC_LINKS.get(topic, "")
     form = {}
     if piece:  # "Enquire about this piece" on a Resell piece
         from app.services import resell
         if found := resell.by_slug(db, piece):
             name = " ".join(x for x in (found.designer, found.title) if x)
+            question = "Could we arrange a private viewing?" if ask == "viewing" else "Could you tell me more about it?"
             form["message"] = (f"I'm interested in the {name}"
-                               f" (lavelondon.com/atelier/rehome/resell/{found.slug}/). Could we arrange a viewing?")
+                               f" (lavelondon.com/atelier/rehome/resell/{found.slug}/). {question}")
     return render(request, "site/contact.html", crumb="Contact", topics=TOPICS, preset=preset, sent=bool(sent), error="", form=form)
 
 

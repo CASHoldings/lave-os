@@ -1,33 +1,71 @@
 {% extends "site/base.html" %}
 {% block title %}{{ [piece.designer, piece.title]|select|join(" ") }} | Resell | LAVE{% endblock %}
 {% block description %}{{ (piece.description or [piece.designer, piece.title, piece.detail]|select|join(", "))|truncate(155) }}{% endblock %}
+{% block robots %}{% if not piece.show_online %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block og_type %}product{% endblock %}
 {% block og_image %}{% if piece.images %}{{ piece_image_abs }}{% else %}{{ site_url }}{{ og_default }}{% endif %}{% endblock %}
 {% block head %}{{ piece_jsonld }}{% endblock %}
 {% block main %}
 {% set sold, reserved = piece.status == "sold", piece.status == "reserved" %}
+{% set enquire = "/contact/?topic=resell&piece=" ~ piece.slug %}
 {% if not piece.show_online %}<p class="rs-preview">Preview: this piece is hidden from customers. Tick <strong>Show on the Resell page</strong> in <a href="/admin#/website/resell/{{ piece.id }}">the admin</a> to publish it.</p>{% endif %}
-<article class="rs-piece">
-  <div class="rs-gallery">
-    {% for u in piece.images %}<img src="{{ u }}" alt="{{ piece.designer }} {{ piece.title }}{% if not loop.first %}, view {{ loop.index }}{% endif %}" {% if not loop.first %}loading="lazy"{% endif %} decoding="async">
-    {% else %}<div class="rs-gallery-empty"></div>{% endfor %}
+<article class="rp">
+  {# Photos: edge to edge on a soft grey backdrop, one under another (a swipe on phones). #}
+  <div class="rp-photos">
+    {% for u in piece.images %}
+    <figure class="rp-photo"><img src="{{ u }}" alt="{{ piece.designer }} {{ piece.title }}{% if not loop.first %}, view {{ loop.index }}{% endif %}" {% if not loop.first %}loading="lazy"{% endif %} decoding="async"></figure>
+    {% else %}<figure class="rp-photo"></figure>{% endfor %}
   </div>
-  <div class="rs-info">
-    <p class="eyebrow">{{ condition_names[piece.condition] }} · {{ category_names.get(piece.category, "") }}</p>
-    <h1>{{ piece.title }}</h1>
-    {% if piece.designer or piece.detail %}<p class="rs-detail">{{ [piece.designer, piece.detail]|select|join(" · ") }}</p>{% endif %}
-    <p class="rs-price">{% if sold %}Sold{% else %}{{ piece.price_pence|gbp }}{% if reserved %} <span class="rs-state">Reserved</span>{% endif %}{% endif %}</p>
-    {% if sold %}
-    <p>This piece has found its new home.</p>
-    <a class="btn" href="/atelier/rehome/resell/">See the edit</a>
-    {% else %}
-    <a class="btn dark" href="/contact/?topic=resell&amp;piece={{ piece.slug }}">{{ "Join the waiting list" if reserved else "Enquire about this piece" }}</a>
-    <p class="small muted">We'll reply within 2 working days to arrange a private viewing or reserve it for you.</p>
-    {% endif %}
-    {% if piece.description %}<div class="rs-section"><h2>About this piece</h2><div class="prose">{{ md(piece.description)|safe }}</div></div>{% endif %}
-    {% if piece.condition_notes %}<div class="rs-section"><h2>Condition</h2><p>{{ piece.condition_notes }}</p></div>{% endif %}
-    <div class="rs-section"><h2>Cared for by LAVE</h2><p>Cleaned, restored and checked by our atelier before it's offered, and delivered in LAVE packaging.</p></div>
-    <p class="small"><a href="/atelier/rehome/resell/">&larr; Back to Resell</a></p>
+
+  <div class="rp-info">
+    <div class="rp-inner">
+      <p class="rp-condition">{{ condition_names[piece.condition] }}</p>
+      <h1 class="rp-name">{{ piece.title }}</h1>
+      {% if piece.designer or piece.detail %}<p class="rp-detail">{{ [piece.designer, piece.detail]|select|join(" · ") }}</p>{% endif %}
+
+      <p class="rp-availability">{% if sold %}This piece has found its new home{% elif reserved %}Reserved for another client{% else %}Available to view by appointment{% endif %}</p>
+      {% if sold %}
+      <a class="rp-primary" href="/atelier/rehome/resell/"><span>See the edit</span></a>
+      {% else %}
+      <a class="rp-primary" href="{{ enquire }}"><span>{{ "Join the waiting list" if reserved else "Enquire about this piece" }}</span><span>{{ piece.price_pence|gbp }}</span></a>
+      <a class="rp-secondary" href="{{ enquire }}&amp;ask=viewing">Book a private viewing</a>
+      {% endif %}
+
+      {% if piece.description %}
+      <div class="rp-desc" data-rp-desc>
+        <div class="rp-desc-head"><h2>Description</h2><button type="button" class="rp-more" data-rp-more aria-expanded="false">See more <span aria-hidden="true">&rsaquo;</span></button></div>
+        <div class="rp-desc-text">{{ md(piece.description)|safe }}</div>
+      </div>
+      {% endif %}
+
+      <div class="rp-rows">
+        {% if piece.condition_notes %}
+        <details class="rp-row"><summary>Condition</summary><p>{{ piece.condition_notes }}</p></details>
+        {% endif %}
+        <details class="rp-row"><summary>Cared for by LAVE</summary>
+          <p>Cleaned, restored and checked by our atelier before it's offered, and delivered to you in LAVE packaging.</p></details>
+        <a class="rp-row rp-link" href="{{ enquire }}&amp;ask=viewing">Book an appointment</a>
+        <a class="rp-row rp-link" href="/contact/?topic=resell">Contact us<span class="rp-sub">For any questions, contact us at <span class="rp-phone">+44 7763 566 145</span></span></a>
+      </div>
+    </div>
   </div>
 </article>
+<script>
+  (() => {  // The right-hand panel and the photos sit just below the sticky header, whatever its height.
+    const header = document.querySelector(".site-header"), rp = document.querySelector(".rp");
+    const fit = () => header && rp && rp.style.setProperty("--rp-top", header.offsetHeight + "px");
+    fit(); addEventListener("resize", fit);
+  })();
+  (() => {  // "See more": open the full description
+    const box = document.querySelector("[data-rp-desc]"), more = box?.querySelector("[data-rp-more]");
+    if (!box) return;
+    const text = box.querySelector(".rp-desc-text");
+    if (text.scrollHeight <= text.clientHeight + 2) { more.hidden = true; return; }
+    more.addEventListener("click", () => {
+      const open = box.classList.toggle("open");
+      more.setAttribute("aria-expanded", String(open));
+      more.firstChild.textContent = open ? "See less " : "See more ";
+    });
+  })();
+</script>
 {% endblock %}

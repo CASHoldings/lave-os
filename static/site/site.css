@@ -742,24 +742,49 @@ html { font-size: 100%; }
 .rs-services a > span > span { display: block; font-size: 0.8125rem; color: var(--muted); }
 .rs-chev { font-size: 1.5rem; color: var(--ink); }
 @media (max-width: 760px) { .rs-services > div { grid-template-columns: 1fr; } .rs-services a + a { border-left: 0; border-top: 1px solid var(--line); } }
-/* A piece: a column of photos beside its details */
-.rs-piece { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: clamp(24px, 5vw, 96px); align-items: start;
-  max-width: 1500px; margin: 0 auto; padding: 28px var(--gutter) 88px; }
-.rs-gallery { display: grid; gap: 12px; }
-.rs-gallery img, .rs-gallery-empty { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--panel); }
-.rs-info { position: sticky; top: 140px; display: grid; gap: 14px; align-content: start; }
-.rs-info h1 { font-size: clamp(1.4rem, 2.4vw, 1.9rem); font-weight: 400; text-wrap: balance; }
-.rs-info .rs-price { font-size: 1rem; color: var(--ink); }
-.rs-info .btn { justify-self: start; }
-.rs-state { margin-left: 10px; font-size: 0.75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.rs-section { border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 8px; }
-.rs-section h2 { font-size: 0.75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.rs-section p, .rs-section .prose { color: var(--ink-soft); font-size: 0.875rem; }
+/* A piece (after Dior's product page): photos edge to edge on the left, a centred panel on the right that stays put
+   while the photos scroll. --rp-top is the height of the sticky header above it. */
+.rp { --rp-top: 132px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; margin-top: 16px; }
+.rp-photos { display: grid; gap: 2px; }
+.rp-photo { margin: 0; height: calc(100vh - var(--rp-top)); min-height: 520px; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, #f6f6f7 0%, #ececee 62%, #e3e3e6 100%); }
+.rp-photo img { width: 100%; height: 100%; object-fit: contain; padding: 7% 12%; box-sizing: border-box; mix-blend-mode: multiply; }
+.rp-info { position: sticky; top: var(--rp-top); height: calc(100vh - var(--rp-top)); min-height: 520px; display: grid; align-items: center;
+  padding: 32px var(--gutter); overflow-y: auto; }
+.rp-inner { width: 100%; max-width: 560px; margin: 0 auto; display: grid; gap: 10px; }
+.rp-condition { text-align: center; font-size: 0.8125rem; color: var(--muted); }
+.rp-name { text-align: center; font-size: clamp(1.15rem, 1.6vw, 1.4rem); font-weight: 400; letter-spacing: .01em; text-wrap: balance; }
+.rp-detail { text-align: center; font-size: 0.9375rem; color: var(--muted); max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+.rp-availability { text-align: center; font-size: 0.875rem; margin-top: 44px; }
+.rp-primary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 28px; margin-top: 6px;
+  background: var(--ink); color: #fff; text-decoration: none; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+.rp-primary:only-child, .rp-primary span:only-child { margin: 0 auto; }
+.rp-primary:hover { background: var(--ink-soft); }
+.rp-secondary { display: block; text-align: center; padding: 20px 28px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 0.9375rem; }
+.rp-secondary:hover { border-color: var(--ink); }
+.rp-desc { margin-top: 52px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.rp-desc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 14px; }
+.rp-desc-head h2 { font-size: 0.9375rem; font-weight: 400; }
+.rp-more { border: 0; background: none; padding: 0; font: inherit; font-size: 0.875rem; color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.rp-desc-text { color: var(--muted); font-size: 0.9375rem; line-height: 1.75; max-height: calc(1.75em * 3); overflow: hidden; }
+.rp-desc-text p { margin: 0 0 .8em; }
+.rp-desc.open .rp-desc-text { max-height: none; }
+.rp-rows { display: grid; margin-top: 12px; }
+.rp-row { display: block; padding: 18px 0; color: var(--ink); text-decoration: none; font-size: 0.9375rem; }
+.rp-row summary, .rp-link { display: flex; justify-content: space-between; align-items: center; cursor: pointer; list-style: none; flex-wrap: wrap; }
+.rp-row summary::-webkit-details-marker { display: none; }
+.rp-row summary::after, .rp-link::after { content: "\203A"; font-size: 1.4rem; line-height: 1; }
+.rp-link::after { order: 1; }
+.rp-row[open] summary::after { transform: rotate(90deg); }
+.rp-row > p { margin-top: 10px; color: var(--muted); font-size: 0.875rem; line-height: 1.7; }
+.rp-sub { order: 2; flex-basis: 100%; margin-top: 8px; color: var(--muted); font-size: 0.875rem; }
+.rp-phone { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 @media (max-width: 860px) {
-  .rs-piece { grid-template-columns: 1fr; }
-  .rs-gallery { grid-auto-flow: column; grid-auto-columns: 86%; overflow-x: auto; scroll-snap-type: x mandatory; }
-  .rs-gallery img { scroll-snap-align: start; }
-  .rs-info { position: static; }
+  .rp { grid-template-columns: 1fr; margin-top: 8px; }
+  .rp-photos { grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .rp-photo { height: auto; min-height: 0; aspect-ratio: 4 / 5; scroll-snap-align: start; }
+  .rp-info { position: static; height: auto; min-height: 0; overflow: visible; padding-top: 28px; padding-bottom: 56px; }
+  .rp-availability { margin-top: 28px; }
 }
 .rs-preview { max-width: 1500px; margin: 16px auto 0; padding: 12px var(--gutter); background: #fbf2e1; color: #7a4d00; font-size: 0.8125rem; text-align: center; }
 .rs-preview a { color: inherit; }
