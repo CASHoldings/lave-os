@@ -87,7 +87,7 @@ SECTIONS: list[Section] = [
         ]),
         SubNav("Rehome", [
             Column("Move Refresh", WP + "2025/05/LAVE_HOME_Fabric_Care.avif", ["Bedding", "Curtains", "Upholstery"], draft=True),
-            Column("Pass On", WP + "2024/07/LAVE-Atelier-Preserve-Renew.avif", ["Resell", "Gift", "Donate"], draft=True),
+            Column("Pass On", "/media/rehome-pass-on.webp", ["Resell", "Gift", "Donate"], draft=True),
             Column("Uniform Refresh", WP + "2025/05/LAVE_GIRL_Fabric_Care.avif", ["Schools", "Families", "Campaign"], draft=True),
         ]),
     ]),

@@ -189,6 +189,36 @@ POLICY_CHANGES = [
 ]
 
 
+# Menu photos changed since launch: (column title, old photo, new photo). Applied on deploy to saved menus where the
+# column still has the old photo; a photo chosen in the admin is left alone.
+MENU_PHOTO_CHANGES = [
+    ("Pass On", WP + "2024/07/LAVE-Atelier-Preserve-Renew.avif", "/media/rehome-pass-on.webp"),
+]
+
+
+def update_menu_photos(db: Session) -> int:
+    """Apply MENU_PHOTO_CHANGES to the saved menus (old WordPress photos may since have moved into the library).
+    Returns how many columns changed."""
+    from app.models import Media
+    row = db.get(SiteContent, "menus")
+    if not row or not row.value:
+        return 0
+    menus, changed = json.loads(json.dumps(row.value)), 0
+    for title, old, new in MENU_PHOTO_CHANGES:
+        olds = {old, *db.scalars(select(Media.url).where(Media.source_url == old))}
+        for section in menus.get("sections", []):
+            for sub in section.get("subnav", []):
+                for col in sub.get("columns", []):
+                    if col.get("title") == title and col.get("image") in olds:
+                        col["image"], changed = new, changed + 1
+    if changed:
+        row.value, row.updated_by = menus, "Menu photos"
+        db.commit()
+        from app.site import store
+        store._cache["stamp"] = None
+    return changed
+
+
 def update_policies(db: Session) -> int:
     """Apply POLICY_CHANGES to live pages, and move their "Last updated" date. Returns how many pages changed."""
     changed = 0

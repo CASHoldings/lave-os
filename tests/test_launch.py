@@ -366,3 +366,27 @@ def test_real_not_found_pages_and_old_links_still_work(api):
     r = api.get("/nothing-here-at-all/")
     assert r.status_code == 404 and "couldn't find that page" in r.text
     assert api.get("/privacy-policy/", follow_redirects=False).headers["location"] == "/policies/privacy/"
+
+
+def test_pass_on_shows_its_new_photo_even_on_a_saved_menu(api, db_session):
+    import json
+    from app.models import SiteContent
+    from app.services import content
+    from app.site import defaults
+    assert "/media/rehome-pass-on.webp" in api.get("/atelier/rehome/").text
+    assert api.get("/media/rehome-pass-on.webp").status_code == 200
+    # A live site whose menus were saved in the admin before this change.
+    menus = json.loads(json.dumps(defaults.menus()))
+    for section in menus["sections"]:
+        for sub in section["subnav"]:
+            for col in sub["columns"]:
+                if col["title"] in ("Pass On", "Re-imagine"):
+                    col["image"] = content.MENU_PHOTO_CHANGES[0][1]
+    with db_session() as db:
+        db.merge(SiteContent(key="menus", value=menus))
+        db.commit()
+        assert content.update_menu_photos(db) == 1
+        assert content.update_menu_photos(db) == 0
+    page = api.get("/atelier/rehome/").text
+    assert "/media/rehome-pass-on.webp" in page
+    assert "LAVE-Atelier-Preserve-Renew" in api.get("/atelier/preserve/").text  # Re-imagine keeps its photo

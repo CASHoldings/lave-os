@@ -18,7 +18,8 @@ from app.db import SessionLocal, engine
 from app.migrate import upgrade
 from app.models import SlotTemplate, StaffRole, StaffUser
 from app.seed import seed_services, seed_slots
-from app.services.content import load_policies, load_starter_content, update_brand_wording, update_policies
+from app.services.content import (load_policies, load_starter_content, update_brand_wording, update_menu_photos,
+                                  update_policies)
 from app.services.shop import load_sample_products
 from app.site.catalogue import load_starting_catalogue
 
@@ -64,6 +65,8 @@ def release() -> list[str]:
                          f"{photos['packs']} packs and {photos['categories']} categories.")
         if added := load_policies(db):
             notes.append(f"Policies: added {added} page(s) (edit them in /admin → Website → Pages).")
+        if photos_changed := update_menu_photos(db):
+            notes.append(f"Menus: updated {photos_changed} photo(s).")
         if updated := update_policies(db):
             notes.append(f"Policies: updated the wording on {updated} page(s).")
         # Collection & delivery (spec v1.4): the launch-zone postcodes, and the old atelier counter slots retired.
