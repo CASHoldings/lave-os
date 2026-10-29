@@ -6,6 +6,7 @@
 {% block head %}{{ piece_jsonld }}{% endblock %}
 {% block main %}
 {% set sold, reserved = piece.status == "sold", piece.status == "reserved" %}
+{% if not piece.show_online %}<p class="rs-preview">Preview: this piece is hidden from customers. Tick <strong>Show on the Resell page</strong> in <a href="/admin#/website/resell/{{ piece.id }}">the admin</a> to publish it.</p>{% endif %}
 <article class="rs-piece">
   <div class="rs-gallery">
     {% for u in piece.images %}<img src="{{ u }}" alt="{{ piece.designer }} {{ piece.title }}{% if not loop.first %}, view {{ loop.index }}{% endif %}" {% if not loop.first %}loading="lazy"{% endif %} decoding="async">

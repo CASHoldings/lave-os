@@ -761,3 +761,6 @@ html { font-size: 100%; }
   .rs-gallery img { scroll-snap-align: start; }
   .rs-info { position: static; }
 }
+.rs-preview { max-width: 1500px; margin: 16px auto 0; padding: 12px var(--gutter); background: #fbf2e1; color: #7a4d00; font-size: 0.8125rem; text-align: center; }
+.rs-preview a { color: inherit; }
+.rs-hidden { position: absolute; top: 14px; right: 16px; padding: 3px 8px; background: var(--ink); color: #fff; font-size: 0.6875rem; letter-spacing: .06em; text-transform: uppercase; }

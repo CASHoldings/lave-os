@@ -35,8 +35,11 @@ def pieces(db: Session, category: str = "", condition: str = "", sort: str = "fe
     return [p for p in rows if p.status != "sold"] + [p for p in rows if p.status == "sold"]
 
 
-def by_slug(db: Session, slug: str) -> ResalePiece | None:
-    return db.scalar(select(ResalePiece).where(ResalePiece.slug == slug, ResalePiece.show_online.is_(True)))
+def by_slug(db: Session, slug: str, include_hidden: bool = False) -> ResalePiece | None:
+    q = select(ResalePiece).where(ResalePiece.slug == slug)
+    if not include_hidden:
+        q = q.where(ResalePiece.show_online.is_(True))
+    return db.scalar(q)
 
 
 def _unique_slug(db: Session, text: str, current: int | None = None) -> str:
@@ -79,6 +82,45 @@ def update(db: Session, piece: ResalePiece, data: dict) -> ResalePiece:
         piece.slug = _unique_slug(db, f"{piece.designer} {piece.title}", piece.id)
     db.commit()
     return piece
+
+
+# Sample pieces so the layout can be seen before real stock arrives: hidden from customers (the team sees them on the
+# page while signed in to LAVE OS), added once, and never again once deleted.
+EXAMPLES_KEY = "resell.examples_loaded"
+EXAMPLES = [
+    ("Velvet Evening Blazer", "Midnight silk velvet, satin lapels", "ready-to-wear", "nearly_new", 128000, "available",
+     ["women-blazer-velvet-silk-satin-trimmed.webp"]),
+    ("Camel Hair Coat", "Pure camel hair, single-breasted", "ready-to-wear", "vintage", 165000, "available",
+     ["women-coat-camel-hair.webp"]),
+    ("Cashmere Wrap Coat", "Ivory double-faced cashmere", "ready-to-wear", "rare", 240000, "reserved",
+     ["women-coat-cashmere.webp"]),
+    ("Jacquard Cardigan", "Metallic jacquard knit", "ready-to-wear", "new", 69000, "available",
+     ["women-cardigan-metallic-jacquard-knit.webp", "women-cardigan-merino-wool.webp"]),
+    ("Trench Jacket", "Stone cotton gabardine", "ready-to-wear", "nearly_new", 88000, "available", ["women-jacket-trench.webp"]),
+    ("Silk Twill Scarf", "Printed silk twill, 90 cm", "accessories", "new", 36000, "available", ["men-accessories-scarf-silk.webp"]),
+    ("Silk Pocket Square", "Hand-rolled silk", "accessories", "new", 9500, "available", ["men-accessories-pocket-square-silk.webp"]),
+    ("Cashmere Gloves", "Charcoal cashmere", "accessories", "nearly_new", 18000, "sold", ["men-accessories-gloves-cashmere.webp"]),
+]
+
+
+def load_examples(db: Session) -> int:
+    """Add the sample pieces, hidden, on a site with no pieces yet. Once only. Returns how many were added."""
+    from app.models import SiteSetting
+    if db.get(SiteSetting, EXAMPLES_KEY):
+        return 0
+    added = 0
+    if not db.scalar(select(ResalePiece.id).limit(1)):
+        for i, (title, detail, category, condition, price, status, images) in enumerate(EXAMPLES):
+            db.add(ResalePiece(slug=_unique_slug(db, f"example {title}"), title=f"[Example] {title}", designer="Example House",
+                               detail=detail, category=category, condition=condition, price_pence=price, status=status,
+                               images=[f"/media/{name}" for name in images], show_online=False, sort=i,
+                               description="A sample piece, so you can see how the Resell page looks. Edit it into a "
+                                           "real piece or delete it in /admin → Website → Resell."))
+            db.flush()
+            added += 1
+    db.add(SiteSetting(key=EXAMPLES_KEY, value="1"))
+    db.commit()
+    return added
 
 
 def describe(p: ResalePiece) -> dict:

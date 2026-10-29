@@ -67,3 +67,39 @@ def test_only_admins_change_pieces(api, staff_headers):
     assert "Reserved" in api.get("/atelier/rehome/resell/").text
     assert api.delete(f"/api/staff/resell/{bag['id']}", headers=staff_headers).status_code == 204
     assert api.get(bag["url"]).status_code == 404
+
+
+def test_example_pieces_are_hidden_but_the_team_sees_them(api, staff_headers, db_session):
+    import inspect
+    from app import release
+    from app.services import resell
+    with db_session() as db:
+        assert resell.load_examples(db) == len(resell.EXAMPLES)
+        assert resell.load_examples(db) == 0  # once only
+    public = api.get("/atelier/rehome/resell/").text
+    assert "[Example]" not in public and "The first pieces arrive soon" in public
+    pieces = api.get("/api/staff/resell", headers=staff_headers).json()["pieces"]
+    assert len(pieces) == len(resell.EXAMPLES) and not any(p["show_online"] for p in pieces)
+    assert api.get(pieces[0]["url"]).status_code == 404  # customers can't open them
+
+    api.cookies.set("lave_staff", staff_headers["Authorization"].removeprefix("Bearer "))
+    preview = api.get("/atelier/rehome/resell/").text
+    assert "[Example] Velvet Evening Blazer" in preview and "Hidden" in preview and "Preview: you" in preview
+    assert "Reserved" in preview and "£1,280" in preview
+    piece = api.get(pieces[0]["url"])
+    assert piece.status_code == 200 and "this piece is hidden from customers" in piece.text
+    api.cookies.clear()
+
+    # Deleted examples don't come back on the next deploy.
+    for p in pieces:
+        api.delete(f"/api/staff/resell/{p['id']}", headers=staff_headers)
+    with db_session() as db:
+        assert resell.load_examples(db) == 0
+    assert "resell.load_examples(db)" in inspect.getsource(release.release)
+
+
+def test_examples_are_not_added_beside_real_pieces(api, staff_headers, db_session):
+    from app.services import resell
+    _piece(api, staff_headers)
+    with db_session() as db:
+        assert resell.load_examples(db) == 0

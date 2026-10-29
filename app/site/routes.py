@@ -44,7 +44,7 @@ TEMPLATES.env.globals["company"] = COMPANY
 TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "60"
+ASSET_VERSION = "61"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -113,13 +113,29 @@ def render(request: Request, template: str, status_code: int = 200, **ctx) -> HT
                                       status_code=status_code)
 
 
+def staff_viewer(request: Request, db: Session):
+    """The LAVE team member looking at the website, if they're signed in to LAVE OS (not drivers), else None."""
+    from app.auth import STAFF_COOKIE, _decode_session
+    from app.models import StaffRole, StaffUser
+    token = request.cookies.get(STAFF_COOKIE)
+    if not token:
+        return None
+    try:
+        claims = _decode_session(token, "staff")
+    except HTTPException:
+        return None
+    staff = db.get(StaffUser, int(claims["sub"])) if not claims.get("lim") else None
+    return staff if staff and staff.active and staff.role != StaffRole.driver else None
+
+
 def resell_page(request: Request, section, db: Session) -> HTMLResponse:
     """Atelier → Rehome → Resell: an editorial banner, then the pieces grouped by category (each group can open with a
     photo banner), Filter & Sort, and the service strip."""
     from app.services import resell
     q = request.query_params
     category, condition, sort = q.get("category", ""), q.get("condition", ""), q.get("sort", "featured")
-    found = resell.pieces(db, category, condition, sort)
+    preview = staff_viewer(request, db) is not None  # the team also sees hidden pieces, marked Hidden
+    found = resell.pieces(db, category, condition, sort, online_only=not preview)
     page = request.state.site.page("resell")
     groups = []
     if sort == "featured" and not category:
@@ -136,14 +152,15 @@ def resell_page(request: Request, section, db: Session) -> HTMLResponse:
                   item="Resell", page=page, groups=groups, count=len(found), intro=ITEM_INTROS[("atelier", "rehome", "resell")],
                   categories=resell.CATEGORIES, conditions=resell.CONDITIONS, sorts=resell.SORTS,
                   chosen={"category": category, "condition": condition, "sort": sort}, filtered=filtered,
-                  condition_names=resell.CONDITION_NAMES, any_pieces=bool(found) or bool(resell.pieces(db)))
+                  condition_names=resell.CONDITION_NAMES, preview=preview,
+                  any_pieces=bool(found) or bool(resell.pieces(db, online_only=not preview)))
 
 
 @router.get("/atelier/rehome/resell/{slug}/", response_class=HTMLResponse)
 def resell_piece(request: Request, slug: str, db: Session = Depends(get_db)):
     from app.services import resell
     from app.services.content import render_markdown
-    piece = resell.by_slug(db, slug)
+    piece = resell.by_slug(db, slug, include_hidden=staff_viewer(request, db) is not None)
     if not piece:
         raise HTTPException(404)
     section = _section(request, "atelier")

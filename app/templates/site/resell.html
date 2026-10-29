@@ -2,8 +2,9 @@
 {% block title %}Resell: Luxury and Rare Pieces | LAVE{% endblock %}
 {% block description %}{{ intro }}{% endblock %}
 {# Filtered views repeat the main page, and an empty edit has nothing to find yet. #}
-{% block robots %}{% if filtered or not any_pieces %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
+{% block robots %}{% if filtered or not any_pieces or preview %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block main %}
+{% if preview %}<p class="rs-preview">Preview: you're signed in to LAVE OS, so hidden pieces show here marked <strong>Hidden</strong>. Customers don't see them. <a href="/admin#/website?tab=resell">Manage pieces</a></p>{% endif %}
 <section class="welcome tight">
   <p class="eyebrow">Rehome</p>
   <h1>Resell</h1>
@@ -36,6 +37,7 @@
           {% if p.images %}<img src="{{ p.images[0]|small }}" alt="{{ p.designer }} {{ p.title }}" loading="lazy" decoding="async">
           {% if p.images|length > 1 %}<img class="rs-alt" src="{{ p.images[1]|small }}" alt="" loading="lazy" decoding="async">{% endif %}{% endif %}
           <span class="rs-label">{{ "Sold" if sold else "Reserved" if reserved else condition_names[p.condition] }}</span>
+          {% if not p.show_online %}<span class="rs-hidden">Hidden</span>{% endif %}
         </span>
         <span class="rs-name">{{ p.title }}</span>
         {% if p.designer or p.detail %}<span class="rs-detail">{{ [p.designer, p.detail]|select|join(" · ") }}</span>{% endif %}

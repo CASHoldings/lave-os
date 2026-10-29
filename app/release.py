@@ -65,6 +65,9 @@ def release() -> list[str]:
                          f"{photos['packs']} packs and {photos['categories']} categories.")
         if added := load_policies(db):
             notes.append(f"Policies: added {added} page(s) (edit them in /admin → Website → Pages).")
+        from app.services import resell
+        if examples := resell.load_examples(db):
+            notes.append(f"Resell: added {examples} hidden example pieces (see them on the page while signed in to the admin).")
         if photos_changed := update_menu_photos(db):
             notes.append(f"Menus: updated {photos_changed} photo(s).")
         if updated := update_policies(db):
