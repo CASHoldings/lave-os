@@ -129,6 +129,13 @@ OLD_BRAND_WORDING = [
     ('"label": "LAVE Run Club"', '"label": "LAVE Strides"'),
     ('"label": "Family yoga"', '"label": "Family LAVEYoga"'),
     ('"label": "LAVE Living by Hope App"', '"label": "LAVE Living"'),
+    # No LAVE Living provider is named until an agreement is signed; it shows as coming soon (1 November 2026).
+    ('{"text": "LAVE Living, delivered by Hope App: wellbeing resources", "soon": false}',
+     '{"text": "LAVE Living: wellbeing resources", "soon": true}'),
+    ('{"text": "Full LAVE Living support, delivered by Hope App", "soon": false}', '{"text": "Full LAVE Living support", "soon": true}'),
+    ('{"text": "LAVE Living for the whole household, delivered by Hope App", "soon": false}',
+     '{"text": "LAVE Living for the whole household", "soon": true}'),
+    ('"label": "LAVE Living (Hope App)"', '"label": "LAVE Living (coming soon)"'),
     ('{"label": "LAVE Living", "href": "/memberships/#compare"}', '{"label": "LAVE Living", "href": "/memberships/living/"}'),
     # LAVEnclave joins Wellbeing, after LAVE Living (only while LAVE Living is still last, so it's added once).
     ('{"label": "LAVE Living", "href": "/memberships/living/"}]',
@@ -170,7 +177,7 @@ def update_brand_wording(db: Session) -> int:
 # Legal pages, from app/site/data/policies/*.md. Added once; after that they're edited in /admin → Website → Pages.
 POLICIES_DIR = Path(__file__).resolve().parent.parent / "site" / "data" / "policies"
 POLICIES_UPDATED = "27 October 2026"
-POLICY_DATES = {"terms": "28 October 2026"}  # pages changed since they first went live
+POLICY_DATES = {"terms": "28 October 2026", "privacy": "1 November 2026"}  # pages changed since they first went live
 POLICIES = [
     ("/policies/", "index", "Policies", "Our terms, and how we look after your pieces, your money and your information."),
     ("/policies/terms/", "terms", "Terms & conditions",
@@ -227,6 +234,10 @@ POLICY_CHANGES = [
      "Your first missed visit in any 12 months is rebooked free. After that, a charge applies for each missed visit: "
      "the collection and delivery charge for that window, or £4.95 for members.",
      "28 October 2026"),
+    ("/policies/privacy/",
+     "LAVE Living is provided by Hope App. We don't share your details with Hope App: if you'd like to use LAVE Living, you sign up with them directly, and their own privacy policy applies.",
+     "LAVE Living, our members' wellbeing service, is coming soon. Before it opens, we'll update this policy to say who provides it and how your information is handled.",
+     "1 November 2026"),
 ]
 
 

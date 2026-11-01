@@ -26,7 +26,7 @@ PLANS = [
                 "A founding welcome kit")),
             ("Member experience", _items(
                 "LAVE Strides: monthly group runs",
-                "LAVE Living, delivered by Hope App: wellbeing resources",
+                ("LAVE Living: wellbeing resources",),
                 "Member prices on extras: £16 per additional bag, £15 a month per storage box",
                 ("LAVE Coffee Lounge access",))),
         ],
@@ -52,7 +52,7 @@ PLANS = [
                 "Monthly LAVEYoga sessions",
                 "LAVE Founders Lab: quarterly evenings for founders and professionals",
                 "Partner gym access and perks",
-                "Full LAVE Living support, delivered by Hope App",
+                ("Full LAVE Living support",),
                 "Priority booking for all member events")),
         ],
         "headline": ["Weekly collection, one-hour windows included", "2 bags, 1 repair and 1 storage box a month", "Wardrobe visits with your Fabric Care Concierge"],
@@ -75,7 +75,7 @@ PLANS = [
             ("Member experience", _items(
                 "LAVE Family: city visits for children, such as a tour of Parliament, museums and behind-the-scenes visits to London landmarks",
                 "Family LAVEYoga sessions",
-                "LAVE Living for the whole household, delivered by Hope App",
+                ("LAVE Living for the whole household",),
                 "A guest place at member events",
                 ("Priority seating at the LAVE Coffee Lounge",))),
         ],
@@ -101,7 +101,7 @@ COMPARE = [
     ]),
     ("Member experience", [
         ("LAVE Strides", ["yes", "yes", "yes"]),
-        ("LAVE Living (Hope App)", ["Wellbeing resources", "Full support", "Whole household"]),
+        ("LAVE Living (coming soon)", ["Wellbeing resources", "Full support", "Whole household"]),
         ("LAVEYoga", ["no", "Monthly", "Monthly, plus family sessions"]),
         ("Founders Lab", ["no", "Quarterly", "Quarterly"]),
         ("Gym partner perks", ["no", "yes", "yes"]),

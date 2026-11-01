@@ -41,7 +41,7 @@ We never sell your information. We share it only with the companies that help us
 | Resend | Sends our emails |
 | Twilio | Sends our text messages |
 
-LAVE Living is provided by Hope App. We don't share your details with Hope App: if you'd like to use LAVE Living, you sign up with them directly, and their own privacy policy applies.
+LAVE Living, our members' wellbeing service, is coming soon. Before it opens, we'll update this policy to say who provides it and how your information is handled.
 
 Our team and drivers see only what they need for their work. We share information with the police or other authorities only when the law requires it.
 

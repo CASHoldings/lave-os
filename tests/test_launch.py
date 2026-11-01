@@ -1,4 +1,8 @@
 """Launch: old WordPress addresses, the not-found page, settings for the host, and the release step."""
+import json
+
+from sqlalchemy import select
+
 from app.config import Settings
 
 
@@ -404,3 +408,28 @@ def test_lave_living_has_its_own_page_linked_from_the_menu(api, db_session):
     assert "Hope App" not in r.text and "Health Assured" not in r.text and "Coming soon" in r.text
     assert 'href="/memberships/living/"' in api.get("/memberships/").text
     assert "/memberships/living/" in api.get("/sitemap.xml").text
+
+
+def test_no_lave_living_provider_is_named_anywhere(api, db_session):
+    from app.models import PageContent, SiteContent
+    from app.services import content
+    from app.site import defaults
+    for path in ("/memberships/", "/memberships/living/", "/memberships/benefits/"):
+        assert "Hope App" not in api.get(path).text
+    assert "LAVE Living (coming soon)" in api.get("/memberships/").text
+    with db_session() as db:
+        content.load_policies(db)
+        db.commit()
+        assert "Hope App" not in db.scalar(select(PageContent).where(PageContent.path == "/policies/privacy/")).body
+        # A live site with the old wording: saved plans and the privacy page are brought up to date on deploy.
+        page = db.scalar(select(PageContent).where(PageContent.path == "/policies/privacy/"))
+        page.body = page.body.replace(content.POLICY_CHANGES[-1][2], content.POLICY_CHANGES[-1][1])
+        old_plans = json.loads(json.dumps(defaults.plans(), ensure_ascii=False)
+                               .replace('{"text": "Full LAVE Living support", "soon": true}',
+                                        '{"text": "Full LAVE Living support, delivered by Hope App", "soon": false}')
+                               .replace('"LAVE Living (coming soon)"', '"LAVE Living (Hope App)"'))
+        db.merge(SiteContent(key="plans", value=old_plans))
+        db.commit()
+        assert content.update_policies(db) == 1 and content.update_brand_wording(db) >= 1
+        assert "Hope App" not in page.body and "*Last updated 1 November 2026.*" in page.body
+        assert "Hope App" not in json.dumps(db.get(SiteContent, "plans").value, ensure_ascii=False)
