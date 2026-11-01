@@ -128,7 +128,9 @@ def test_saved_menus_plans_and_packs_take_the_new_experience_names(db_session):
     from app.site import defaults
     with db_session() as db:
         old_menus = json.loads(json.dumps(defaults.menus()).replace('"LAVE Strides"', '"LAVE Run Club"')
-                               .replace('"LAVEYoga"', '"Yoga"').replace('"LAVE Living"', '"LAVE Living by Hope App"'))
+                               .replace('"LAVEYoga"', '"Yoga"').replace(', {"label": "LAVEnclave", "href": "/memberships/#compare"}', '')
+                               .replace('{"label": "LAVE Living", "href": "/memberships/living/"}',
+                                        '{"label": "LAVE Living by Hope App", "href": "/memberships/#compare"}'))
         old_plans = json.loads(json.dumps(defaults.plans(), ensure_ascii=False).replace("LAVE Strides: monthly", "LAVE Run Club: monthly")
                                .replace("Monthly LAVEYoga sessions", "Monthly yoga sessions").replace('"label": "LAVE Strides"', '"label": "Run Club"'))
         db.add_all([SiteContent(key="menus", value=old_menus), SiteContent(key="plans", value=old_plans),
@@ -138,4 +140,9 @@ def test_saved_menus_plans_and_packs_take_the_new_experience_names(db_session):
         text = json.dumps([db.get(SiteContent, "menus").value, db.get(SiteContent, "plans").value], ensure_ascii=False)
         assert "Run Club" not in text and "LAVE Living by Hope App" not in text and '"Yoga"' not in text and "Monthly yoga" not in text
         assert "LAVE Strides" in text and "LAVEYoga" in text and '"label": "LAVE Living"' in text
+        wellbeing = next(c for s in db.get(SiteContent, "menus").value["sections"] for n in s["subnav"] for c in n["columns"]
+                         if c["title"] == "Wellbeing")
+        assert [link["label"] for link in wellbeing["links"]] == ["LAVE Strides", "LAVEYoga", "LAVE Living", "LAVEnclave"]
+        content.update_brand_wording(db)  # a second deploy doesn't add it again
+        assert text.count("LAVEnclave") == 1 and json.dumps(db.get(SiteContent, "menus").value).count("LAVEnclave") == 1
         assert db.scalars(select(Pack).where(Pack.slug == "active")).one().note == "LAVE Strides, LAVEYoga and gym members"

@@ -141,7 +141,7 @@ SECTIONS: list[Section] = [
                 ("Seasonal storage", "/memberships/#compare"), ("Wardrobe visits", "/memberships/#compare")]),
             Column("Wellbeing", WP + "2025/05/LAVE_WELLNESS_Fabric_Care.avif", [
                 ("LAVE Strides", "/memberships/#compare"), ("LAVEYoga", "/memberships/#compare"),
-                ("LAVE Living", "/memberships/living/")]),
+                ("LAVE Living", "/memberships/living/"), ("LAVEnclave", "/memberships/#compare")]),
             Column("Community", WP + "2025/08/LAVE-Business-Dry-Cleaning-Office-Workers.avif", [
                 ("Founders Lab", "/memberships/#compare"), ("LAVE Family", "/memberships/#eclat"),
                 ("Coffee Lounge (coming soon)", "/memberships/#compare")]),

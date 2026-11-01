@@ -130,6 +130,9 @@ OLD_BRAND_WORDING = [
     ('"label": "Family yoga"', '"label": "Family LAVEYoga"'),
     ('"label": "LAVE Living by Hope App"', '"label": "LAVE Living"'),
     ('{"label": "LAVE Living", "href": "/memberships/#compare"}', '{"label": "LAVE Living", "href": "/memberships/living/"}'),
+    # LAVEnclave joins Wellbeing, after LAVE Living (only while LAVE Living is still last, so it's added once).
+    ('{"label": "LAVE Living", "href": "/memberships/living/"}]',
+     '{"label": "LAVE Living", "href": "/memberships/living/"}, {"label": "LAVEnclave", "href": "/memberships/#compare"}]'),
     ("Run Club, yoga, Founders Lab and LAVE Family visits", "LAVE Strides, LAVEYoga, Founders Lab and LAVE Family visits"),
     ("Run Club, yoga and gym members", "LAVE Strides, LAVEYoga and gym members"),
 ]
