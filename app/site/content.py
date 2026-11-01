@@ -140,8 +140,8 @@ SECTIONS: list[Section] = [
                 ("Fixed collection day", "/memberships/#compare"), ("Repairs and alterations", "/memberships/#compare"),
                 ("Seasonal storage", "/memberships/#compare"), ("Wardrobe visits", "/memberships/#compare")]),
             Column("Wellbeing", WP + "2025/05/LAVE_WELLNESS_Fabric_Care.avif", [
-                ("LAVE Run Club", "/memberships/#compare"), ("Yoga", "/memberships/#compare"),
-                ("LAVE Living by Hope App", "/memberships/#compare")]),
+                ("LAVE Strides", "/memberships/#compare"), ("LAVEYoga", "/memberships/#compare"),
+                ("LAVE Living", "/memberships/living/")]),
             Column("Community", WP + "2025/08/LAVE-Business-Dry-Cleaning-Office-Workers.avif", [
                 ("Founders Lab", "/memberships/#compare"), ("LAVE Family", "/memberships/#eclat"),
                 ("Coffee Lounge (coming soon)", "/memberships/#compare")]),
@@ -151,7 +151,7 @@ SECTIONS: list[Section] = [
                 ("Large houses and mansions", "/contact/?topic=prive"), ("Enquire", "/contact/?topic=prive")]),
             Column("LAVE Experiences", WP + "2025/12/LAVE-Membership.webp", ["Lifestyle", "Sport", "Upcoming events"]),
             Column("LAVE Family", WP + "2025/05/LAVE_GIRL_Fabric_Care.avif", [
-                ("City visits for children", "/memberships/#eclat"), ("Family yoga", "/memberships/#eclat")]),
+                ("City visits for children", "/memberships/#eclat"), ("Family LAVEYoga", "/memberships/#eclat")]),
         ]),
     ]),
     Section("laveworld", "LAVEWorld", "/laveworld/", hero=WP + "2025/11/LAVE-Fabric-Care-Sustainability.webp", subnav=[
@@ -167,7 +167,7 @@ SECTIONS: list[Section] = [
         ]),
         SubNav("Connect", [
             Column("Community", WP + "2025/05/LAVE_WELLNESS_Fabric_Care.avif", [
-                ("LAVE Run Club", "/memberships/#compare"), ("Founders Lab", "/memberships/#compare")], draft=True),
+                ("LAVE Strides", "/memberships/#compare"), ("Founders Lab", "/memberships/#compare")], draft=True),
             Column("Events", WP + "2025/12/LAVE-Membership.webp", [
                 ("Upcoming events", "/laveworld/knowledge/events/"), ("Member experiences", "/memberships/access/upcoming-events/")], draft=True),
             Column("Contact", WP + "2025/05/LAVE_Hotels_Fabric_Care.avif", [

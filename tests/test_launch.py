@@ -390,3 +390,17 @@ def test_pass_on_shows_its_new_photo_even_on_a_saved_menu(api, db_session):
     page = api.get("/atelier/rehome/").text
     assert "/media/rehome-pass-on.webp" in page
     assert "LAVE-Atelier-Preserve-Renew" in api.get("/atelier/preserve/").text  # Re-imagine keeps its photo
+
+
+def test_lave_living_has_its_own_page_linked_from_the_menu(api, db_session):
+    from app.services import content
+    with db_session() as db:
+        content.load_pages(db)
+        db.commit()
+        assert content.load_pages(db) == 0  # added once; edits in the admin are kept
+    r = api.get("/memberships/living/")
+    assert r.status_code == 200
+    assert "<h1>LAVE Living</h1>" in r.text and ("What&#39;s on offer" in r.text or "What's on offer" in r.text)
+    assert "Hope App" not in r.text and "Health Assured" not in r.text and "Coming soon" in r.text
+    assert 'href="/memberships/living/"' in api.get("/memberships/").text
+    assert "/memberships/living/" in api.get("/sitemap.xml").text

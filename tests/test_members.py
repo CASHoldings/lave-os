@@ -1,4 +1,5 @@
 """Members' experience: 'Tell us about you', what's coming up, and birthday gestures the founder approves."""
+import json
 from datetime import date, datetime
 
 from sqlalchemy import select
@@ -50,7 +51,7 @@ def test_suggestion_follows_what_they_send(client_headers, db_session):
         assert any("Sends us mostly shirts" in r for r in s["reasons"]) and "Enjoys running" in s["reasons"]
         gift = next(a for a in s["alternatives"] if a["kind"] == "gift")
         assert "Unscented" in gift["title"]  # fragrance allergy
-        assert any("Run Club" in a["title"] for a in s["alternatives"])
+        assert any("LAVE Strides" in a["title"] for a in s["alternatives"])
         assert s["alternatives"][-1]["kind"] == "note"
 
 
@@ -119,3 +120,22 @@ def test_leap_day_birthdays():
     c = Client(email="x@example.com", birthday_day=29, birthday_month=2)
     assert members.next_birthday(c, date(2027, 1, 1)) == date(2027, 2, 28)
     assert members.next_birthday(c, date(2028, 1, 1)) == date(2028, 2, 29)
+
+
+def test_saved_menus_plans_and_packs_take_the_new_experience_names(db_session):
+    from app.models import Pack, SiteContent
+    from app.services import content
+    from app.site import defaults
+    with db_session() as db:
+        old_menus = json.loads(json.dumps(defaults.menus()).replace('"LAVE Strides"', '"LAVE Run Club"')
+                               .replace('"LAVEYoga"', '"Yoga"').replace('"LAVE Living"', '"LAVE Living by Hope App"'))
+        old_plans = json.loads(json.dumps(defaults.plans(), ensure_ascii=False).replace("LAVE Strides: monthly", "LAVE Run Club: monthly")
+                               .replace("Monthly LAVEYoga sessions", "Monthly yoga sessions").replace('"label": "LAVE Strides"', '"label": "Run Club"'))
+        db.add_all([SiteContent(key="menus", value=old_menus), SiteContent(key="plans", value=old_plans),
+                    Pack(slug="active", name="Active", note="Run Club, yoga and gym members")])
+        db.commit()
+        assert content.update_brand_wording(db) >= 3
+        text = json.dumps([db.get(SiteContent, "menus").value, db.get(SiteContent, "plans").value], ensure_ascii=False)
+        assert "Run Club" not in text and "LAVE Living by Hope App" not in text and '"Yoga"' not in text and "Monthly yoga" not in text
+        assert "LAVE Strides" in text and "LAVEYoga" in text and '"label": "LAVE Living"' in text
+        assert db.scalars(select(Pack).where(Pack.slug == "active")).one().note == "LAVE Strides, LAVEYoga and gym members"

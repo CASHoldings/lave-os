@@ -35,7 +35,9 @@ DESCRIPTIONS = {
                            "storage included, from £29 a month.",
     "/memberships/benefits/": "What LAVE members receive: complimentary Saver collection and return, laundry bags, repairs, "
                               "storage boxes and wardrobe visits.",
-    "/memberships/access/": "Member access at LAVE: Run Club, yoga, Founders Lab, LAVE Living and member events in London.",
+    "/memberships/living/": "LAVE Living: confidential wellbeing support for LAVE members, from a helpline and counselling "
+                            "to practical help with home and work life. Coming soon.",
+    "/memberships/access/": "Member access at LAVE: LAVE Strides, LAVEYoga, Founders Lab, LAVE Living and member events in London.",
     "/laveworld/story/": "The story of LAVE, London's Textile Care Atelier: our purpose, how we began and the craft behind our care.",
     "/laveworld/connect/": "Connect with LAVE: events, partnerships, press and the people behind London's Textile Care Atelier.",
     "/laveworld/impact/": "LAVE's impact: intentional care for people, the planet and the textiles you love, by extending the "

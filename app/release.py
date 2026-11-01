@@ -18,7 +18,7 @@ from app.db import SessionLocal, engine
 from app.migrate import upgrade
 from app.models import SlotTemplate, StaffRole, StaffUser
 from app.seed import seed_services, seed_slots
-from app.services.content import (load_policies, load_starter_content, update_brand_wording, update_menu_photos,
+from app.services.content import (load_pages, load_policies, load_starter_content, update_brand_wording, update_menu_photos,
                                   update_policies, update_resell_photos)
 from app.services.shop import load_sample_products
 from app.site.catalogue import load_starting_catalogue
@@ -65,6 +65,8 @@ def release() -> list[str]:
                          f"{photos['packs']} packs and {photos['categories']} categories.")
         if added := load_policies(db):
             notes.append(f"Policies: added {added} page(s) (edit them in /admin → Website → Pages).")
+        if added := load_pages(db):
+            notes.append(f"Pages: added {added} new page(s), such as LAVE Living (edit them in /admin → Website → Pages).")
         from app.services import resell
         if examples := resell.load_examples(db):
             notes.append(f"Resell: added {examples} hidden example pieces (see them on the page while signed in to the admin).")

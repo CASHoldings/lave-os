@@ -131,7 +131,7 @@ def laveworld_page(request: Request, sub_slug: str, item_slug: str, db: Session 
 
 TOPICS = ["Booking or an order", "Membership", "LAVE Privé", "Resell enquiry", "Consign a piece", "Business enquiry", "Press",
           "Something else"]
-TOPIC_LINKS = {"prive": "LAVE Privé", "resell": "Resell enquiry", "consign": "Consign a piece"}
+TOPIC_LINKS = {"membership": "Membership", "prive": "LAVE Privé", "resell": "Resell enquiry", "consign": "Consign a piece"}
 
 
 @router.get("/contact/", response_class=HTMLResponse)
@@ -185,6 +185,19 @@ def policy(request: Request, slug: str, db: Session = Depends(get_db)):
         raise StarletteHTTPException(404)
     return render(request, "site/content_page.html", section=None, subnav=None, page=page,
                   crumbs=[("Home", "/"), ("Policies", "/policies/"), (page.title, f"/policies/{slug}/")], **_ctx())
+
+
+@router.get("/memberships/living/", response_class=HTMLResponse)
+def lave_living(request: Request, db: Session = Depends(get_db)):
+    page = cms.page(db, "/memberships/living/")
+    if not page:
+        from starlette.exceptions import HTTPException as StarletteHTTPException
+        raise StarletteHTTPException(404)
+    section = request.state.site.by_key["membership"]
+    benefits = next((s for s in section.subnav if s.slug == "benefits"), None)
+    return render(request, "site/content_page.html", section=section, subnav=benefits, page=page,
+                  actions=[("Explore membership", "/memberships/#compare", "dark"), ("Ask us about LAVE Living", "/contact/?topic=membership", "ghost")],
+                  **_ctx())
 
 
 @router.get("/memberships/{sub_slug}/{item_slug}/")

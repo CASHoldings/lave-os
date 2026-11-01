@@ -8,7 +8,7 @@ import markdown
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import PageContent, Post, PostStatus, SiteContent
+from app.models import Pack, PageContent, Post, PostStatus, SiteContent
 from app.services.clock import local_now
 from app.site.content import SERVICE_MESSAGE, SLOGAN, TAGLINE, WP, slugify
 
@@ -119,6 +119,19 @@ OLD_BRAND_WORDING = [
      '{"text": "Complimentary Saver collection and return", "soon": false}, '
      '{"text": "One-hour collection windows: £4.95", "soon": false}'),
     ('"Saver included, one-hour £4.95"', '"Saver complimentary, one-hour £4.95"'),
+    # Member experiences renamed (1 November 2026): Run Club is LAVE Strides, yoga is LAVEYoga.
+    ("LAVE Run Club: monthly group runs", "LAVE Strides: monthly group runs"),
+    ("LAVE Run Club and LAVE Living", "LAVE Strides and LAVE Living"),
+    ("Monthly yoga sessions", "Monthly LAVEYoga sessions"),
+    ("Family yoga sessions", "Family LAVEYoga sessions"),
+    ('"label": "Run Club"', '"label": "LAVE Strides"'),
+    ('"label": "Yoga"', '"label": "LAVEYoga"'),
+    ('"label": "LAVE Run Club"', '"label": "LAVE Strides"'),
+    ('"label": "Family yoga"', '"label": "Family LAVEYoga"'),
+    ('"label": "LAVE Living by Hope App"', '"label": "LAVE Living"'),
+    ('{"label": "LAVE Living", "href": "/memberships/#compare"}', '{"label": "LAVE Living", "href": "/memberships/living/"}'),
+    ("Run Club, yoga, Founders Lab and LAVE Family visits", "LAVE Strides, LAVEYoga, Founders Lab and LAVE Family visits"),
+    ("Run Club, yoga and gym members", "LAVE Strides, LAVEYoga and gym members"),
 ]
 
 
@@ -139,6 +152,10 @@ def update_brand_wording(db: Session) -> int:
         intro, body = swap(page_row.intro or ""), swap(page_row.body or "")
         if (intro, body) != (page_row.intro or "", page_row.body or ""):
             page_row.intro, page_row.body = intro, body
+            changed += 1
+    for pack in db.scalars(select(Pack)):
+        if swap(pack.note or "") != (pack.note or ""):
+            pack.note = swap(pack.note)
             changed += 1
     if changed:
         db.commit()
@@ -162,6 +179,27 @@ POLICIES = [
     ("/policies/cookies/", "cookies", "Cookie notice",
      "We use only the cookies our website needs to work. We don't use advertising or tracking cookies, so we don't ask you to accept cookies."),
 ]
+
+
+# Pages that ship with the code: (path, file in app/site/data/pages, title, intro, photo). Added once on deploy; after
+# that they're edited in /admin → Website → Pages.
+PAGES_DIR = Path(__file__).resolve().parent.parent / "site" / "data" / "pages"
+SHIPPED_PAGES = [
+    ("/memberships/living/", "lave-living", "LAVE Living",
+     "Care, beyond the wardrobe. We look after the textiles you love. LAVE Living looks after you.",
+     WP + "2025/05/LAVE_WELLNESS_Fabric_Care.avif"),
+]
+
+
+def load_pages(db: Session) -> int:
+    """Add any SHIPPED_PAGES page the site doesn't have yet. Returns how many were added. Caller commits."""
+    added = 0
+    for path, name, title, intro, image in SHIPPED_PAGES:
+        if not db.scalar(select(PageContent).where(PageContent.path == path)):
+            db.add(PageContent(path=path, title=title, intro=intro, body=(PAGES_DIR / f"{name}.md").read_text(),
+                               image=image, published=True))
+            added += 1
+    return added
 
 
 def load_policies(db: Session) -> int:
@@ -262,6 +300,7 @@ def load_starter_content(db: Session) -> None:
         if not db.scalar(select(PageContent).where(PageContent.path == path)):
             db.add(PageContent(path=path, title=title, intro=intro, body=body, published=is_published))
     load_policies(db)
+    load_pages(db)
     if not db.scalar(select(Post).limit(1)):
         db.add(Post(slug=slugify(STARTER_POST["title"]), kind="thread", status=PostStatus.draft, **STARTER_POST))
     db.commit()

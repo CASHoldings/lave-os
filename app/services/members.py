@@ -239,8 +239,8 @@ def suggest(db: Session, client: Client, on_day: date) -> dict:
         reasons.append(f"Preparing for {nearby.title} on {nearby.day:%d %B}")
         alternatives.insert(0, {"kind": "experience", "title": f"Priority care for {nearby.title}", "value_pence": 0,
                                 "detail": "Their outfit cleaned, pressed and returned first, with a birthday card."})
-    for interest, title in (("Running", "A guest place at the next Run Club, with a birthday coffee"),
-                            ("Yoga", "A guest place at the next yoga session"),
+    for interest, title in (("Running", "A guest place at the next LAVE Strides run, with a birthday coffee"),
+                            ("Yoga", "A guest place at the next LAVEYoga session"),
                             ("Founder evenings", "A seat at the next Founders Lab evening")):
         if interest in a["interests"]:
             alternatives.append({"kind": "experience", "title": title, "value_pence": 0,

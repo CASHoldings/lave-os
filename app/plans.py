@@ -25,12 +25,12 @@ PLANS = [
                 "A care record for every garment we handle",
                 "A founding welcome kit")),
             ("Member experience", _items(
-                "LAVE Run Club: monthly group runs",
+                "LAVE Strides: monthly group runs",
                 "LAVE Living, delivered by Hope App: wellbeing resources",
                 "Member prices on extras: £16 per additional bag, £15 a month per storage box",
                 ("LAVE Coffee Lounge access",))),
         ],
-        "headline": ["Fortnightly collection, Saver window included", "1 laundry bag a month (6 kg)", "LAVE Run Club and LAVE Living"],
+        "headline": ["Fortnightly collection, Saver window included", "1 laundry bag a month (6 kg)", "LAVE Strides and LAVE Living"],
     },
     {
         "code": "elevate", "name": "Elevate", "tier": 2, "price_pence": 5900, "annual_pence": 59000,
@@ -49,7 +49,7 @@ PLANS = [
                 "2 wardrobe visits a year with your Fabric Care Concierge",
                 "Specialist items (leather, bridal, couture) assessed first and booked with priority")),
             ("Member experience", _items(
-                "Monthly yoga sessions",
+                "Monthly LAVEYoga sessions",
                 "LAVE Founders Lab: quarterly evenings for founders and professionals",
                 "Partner gym access and perks",
                 "Full LAVE Living support, delivered by Hope App",
@@ -74,7 +74,7 @@ PLANS = [
                 "2 wardrobe visits a year, covering the whole household")),
             ("Member experience", _items(
                 "LAVE Family: city visits for children, such as a tour of Parliament, museums and behind-the-scenes visits to London landmarks",
-                "Family yoga sessions",
+                "Family LAVEYoga sessions",
                 "LAVE Living for the whole household, delivered by Hope App",
                 "A guest place at member events",
                 ("Priority seating at the LAVE Coffee Lounge",))),
@@ -100,9 +100,9 @@ COMPARE = [
         ("Wardrobe visits", ["no", "2 a year", "2 a year, whole household"]),
     ]),
     ("Member experience", [
-        ("Run Club", ["yes", "yes", "yes"]),
+        ("LAVE Strides", ["yes", "yes", "yes"]),
         ("LAVE Living (Hope App)", ["Wellbeing resources", "Full support", "Whole household"]),
-        ("Yoga", ["no", "Monthly", "Monthly, plus family sessions"]),
+        ("LAVEYoga", ["no", "Monthly", "Monthly, plus family sessions"]),
         ("Founders Lab", ["no", "Quarterly", "Quarterly"]),
         ("Gym partner perks", ["no", "yes", "yes"]),
         ("LAVE Family city visits", ["no", "no", "yes"]),

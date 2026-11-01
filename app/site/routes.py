@@ -46,7 +46,7 @@ TEMPLATES.env.globals["company"] = COMPANY
 TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "64"
+ASSET_VERSION = "65"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -215,7 +215,7 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
         for n in s.subnav:
             paths.append(f"{s.path}{n.slug}/")
     from app.services import repository as repo
-    paths += ["/atelier/prices/", "/atelier/packs/"]
+    paths += ["/atelier/prices/", "/atelier/packs/", "/memberships/living/"]
     counts = repo.collection_counts(db)
     paths += [f"/atelier/clean/{c}/" for c in repo.COLLECTION_PAGES if counts.get(c)]
     paths += [f"/apothecary/products/{p.slug}/" for p in shop.products(db)]

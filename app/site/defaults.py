@@ -150,7 +150,7 @@ def membership() -> dict:
         "text": "Regular collection, laundry, repairs and storage, with experiences that go beyond the wardrobe. Choose "
                 "monthly, or pay for a year and get two months free.",
         "prive_text": "An exclusive textile care service for large houses and mansions.",
-        "experiences_text": "Run Club, yoga, Founders Lab and LAVE Family visits, with new experiences added through the year.",
+        "experiences_text": "LAVE Strides, LAVEYoga, Founders Lab and LAVE Family visits, with new experiences added through the year.",
     }
 
 
