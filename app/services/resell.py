@@ -71,6 +71,7 @@ def create(db: Session, data: dict) -> ResalePiece:
     piece = ResalePiece(**data, slug=_unique_slug(db, f"{data.get('designer', '')} {data['title']}"))
     db.add(piece)
     db.commit()
+    make_cutouts(piece)
     return piece
 
 
@@ -81,7 +82,19 @@ def update(db: Session, piece: ResalePiece, data: dict) -> ResalePiece:
     if "title" in data or "designer" in data:
         piece.slug = _unique_slug(db, f"{piece.designer} {piece.title}", piece.id)
     db.commit()
+    make_cutouts(piece)
     return piece
+
+
+def make_cutouts(piece: ResalePiece) -> int:
+    """Background-free copies of the piece's photos, so they sit straight on the page's grey (services/cutout.py)."""
+    from app.services import cutout
+    return sum(1 for url in piece.images or [] if cutout.ensure(url))
+
+
+def make_all_cutouts(db: Session) -> int:
+    """For every piece: on deploy, so pieces added before cut-outs existed get them too. Returns how many there are."""
+    return sum(make_cutouts(p) for p in db.scalars(select(ResalePiece)))
 
 
 # Sample pieces so the layout can be seen before real stock arrives: hidden from customers (the team sees them on the

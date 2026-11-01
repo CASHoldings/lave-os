@@ -68,6 +68,8 @@ def release() -> list[str]:
         from app.services import resell
         if examples := resell.load_examples(db):
             notes.append(f"Resell: added {examples} hidden example pieces (see them on the page while signed in to the admin).")
+        if cut := resell.make_all_cutouts(db):
+            notes.append(f"Resell: {cut} photo(s) shown without their studio background.")
         if resell_photos := update_resell_photos(db):
             notes.append(f"Resell page: added {resell_photos} photo(s).")
         if photos_changed := update_menu_photos(db):

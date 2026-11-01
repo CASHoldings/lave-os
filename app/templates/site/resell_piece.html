@@ -13,7 +13,7 @@
   {# Photos: edge to edge on a soft grey backdrop, one under another (a swipe on phones). #}
   <div class="rp-photos">
     {% for u in piece.images %}
-    <figure class="rp-photo"><img src="{{ u }}" alt="{{ piece.designer }} {{ piece.title }}{% if not loop.first %}, view {{ loop.index }}{% endif %}" {% if not loop.first %}loading="lazy"{% endif %} decoding="async"></figure>
+    <figure class="rp-photo"><img src="{{ u|cutout }}" alt="{{ piece.designer }} {{ piece.title }}{% if not loop.first %}, view {{ loop.index }}{% endif %}" {% if not loop.first %}loading="lazy"{% endif %} decoding="async"></figure>
     {% else %}<figure class="rp-photo"></figure>{% endfor %}
   </div>
 

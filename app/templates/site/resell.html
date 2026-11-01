@@ -35,8 +35,8 @@
       {% set sold, reserved = p.status == "sold", p.status == "reserved" %}
       <a class="rs-card{% if sold %} is-sold{% endif %}" href="/atelier/rehome/resell/{{ p.slug }}/">
         <span class="rs-img">
-          {% if p.images %}<img src="{{ p.images[0]|small }}" alt="{{ p.designer }} {{ p.title }}" loading="lazy" decoding="async">
-          {% if p.images|length > 1 %}<img class="rs-alt" src="{{ p.images[1]|small }}" alt="" loading="lazy" decoding="async">{% endif %}{% endif %}
+          {% if p.images %}<img src="{{ p.images[0]|cutout|small }}" alt="{{ p.designer }} {{ p.title }}" loading="lazy" decoding="async">
+          {% if p.images|length > 1 %}<img class="rs-alt" src="{{ p.images[1]|cutout|small }}" alt="" loading="lazy" decoding="async">{% endif %}{% endif %}
           <span class="rs-label">{{ "Sold" if sold else "Reserved" if reserved else condition_names[p.condition] }}</span>
           {% if not p.show_online %}<span class="rs-hidden">Hidden</span>{% endif %}
         </span>

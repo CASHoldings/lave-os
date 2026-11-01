@@ -35,6 +35,8 @@ def _bold(text: str):
 
 
 TEMPLATES.env.filters["bold"] = _bold
+from app.services.cutout import url_for as cutout_url  # noqa: E402
+TEMPLATES.env.filters["cutout"] = cutout_url  # a product photo without its studio background, where there is one
 TEMPLATES.env.filters["small"] = small_url  # the light copy of a photo, for cards, menus and tiles
 # Bot checks on the sign-up and sign-in-link forms (services/bot_guard.py).
 from app.services import bot_guard  # noqa: E402
