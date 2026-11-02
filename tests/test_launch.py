@@ -412,10 +412,33 @@ def test_lave_living_has_its_own_page_linked_from_the_menu(api, db_session):
     assert r.status_code == 200
     assert "<h1>LAVE Living</h1>" in r.text and ("What&#39;s on offer" in r.text or "What's on offer" in r.text)
     assert "Hope App" not in r.text and "Health Assured" not in r.text and "Coming soon" in r.text
-    assert r.text.count('class="benefit-card"') == 5 and r.text.count("<svg") >= 5  # the offer, as cards with icons
-    assert "<strong>Essence:</strong>" in r.text  # the plan list stays a list
+    # Laid out like LAVEWorld: a photo banner, five offer cards with icons, three plan cards linking to each plan,
+    # a photo-and-text panel, then the small print.
+    assert 'class="hero"' in r.text and 'class="values cols-5"' in r.text and r.text.count('class="benefit-icon"') == 5
+    assert 'class="values cols-3"' in r.text and 'href="/memberships/#essence"' in r.text and "See Éclat" in r.text
+    assert 'class="split-feature"' in r.text and "LAVE_Fabricare_Service_Bedroom" in r.text
+    assert 'class="small-print"' in r.text and "116 123" in r.text
     assert 'href="/memberships/living/"' in api.get("/memberships/").text
     assert "/memberships/living/" in api.get("/sitemap.xml").text
+
+
+def test_a_live_lave_living_page_takes_the_new_layout_on_deploy(api, db_session):
+    from app.models import PageContent
+    from app.services import content
+    old = (content.PAGES_DIR / "lave-living.md").read_text().replace("## Support · What's on offer", "## What's on offer") \
+        .replace("## Membership · With your membership", "## With your membership")
+    old = content._PHOTO.sub("", old).replace("## Privacy · Private, always\n\n\n", "## Private, always\n")
+    with db_session() as db:
+        content.load_pages(db)
+        page = db.scalar(select(PageContent).where(PageContent.path == "/memberships/living/"))
+        page.body = old  # as it went live on 1 November
+        db.commit()
+        assert content.update_brand_wording(db) >= 1 and content.update_brand_wording(db) == 0  # once only
+        assert page.body == (content.PAGES_DIR / "lave-living.md").read_text()
+    layout = content.landing(page.body)
+    assert [(s["eyebrow"], len(s["cards"]), bool(s["photo"])) for s in layout["sections"]] == [
+        ("Support", 5, False), ("Membership", 3, False), ("Privacy", 0, True)]
+    assert layout["note"].startswith("<p>LAVE Living is provided") and "Coming soon" in layout["intro"]
 
 
 def test_no_lave_living_provider_is_named_anywhere(api, db_session):

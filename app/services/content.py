@@ -23,7 +23,7 @@ def render_markdown(text: str) -> str:
     return SAFE_URL.sub(r'\1="#"', out)
 
 
-# Line icons for benefit cards, picked by a word in the card's title (thin strokes, like the rest of the site's icons).
+# Line icons for cards, picked by a word in the card's title (thin strokes, like the rest of the site's icons).
 _ICON = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{}</svg>'
 CARD_ICONS = [
     (("talk", "listen", "counsel"), '<path d="M4 5h16v11H10l-4 3.5V16H4z"/><path d="M8 9.5h8M8 12.5h5"/>'),
@@ -33,18 +33,43 @@ CARD_ICONS = [
     (("app", "phone"), '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17.5h2"/>'),
 ]
 _DEFAULT_ICON = '<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>'
-_CARD_LIST = re.compile(r"<ul>\s*((?:<li><strong>[^<]+\.</strong>.*?</li>\s*)+)</ul>", re.S)
-_CARD_ITEM = re.compile(r"<li><strong>([^<]+)\.</strong>\s*(.*?)</li>", re.S)
+_CARD_ITEM = re.compile(r"^[-*] \*\*([^*]+?)([.:])\*\*\s*(.*)$")
+_PHOTO = re.compile(r"!\[[^\]]*\]\(((?:https?://|/)[^\s)]+)\)")
+_SMALL_PRINT = re.compile(r"\n\s*\*([^*\n][^\n]*[^*\n])\*\s*$")
 
 
-def as_cards(page_html: str) -> str:
-    """Show the first list whose every item starts with a bold title ending in a full stop ("**Help at home.** ...")
-    as benefit cards with icons. Lists like "**Essence:** ..." stay as lists."""
-    def card(m: re.Match) -> str:
-        title, text = m.group(1).strip(), m.group(2).strip()
-        icon = next((svg for words, svg in CARD_ICONS if any(w in title.lower() for w in words)), _DEFAULT_ICON)
-        return f'<li class="benefit-card"><span class="benefit-icon">{_ICON.format(icon)}</span><h3>{title}</h3><p>{text}</p></li>'
-    return _CARD_LIST.sub(lambda m: '<ul class="benefit-cards">' + _CARD_ITEM.sub(card, m.group(1)) + "</ul>", page_html, count=1)
+def card_icon(title: str) -> str:
+    icon = next((svg for words, svg in CARD_ICONS if any(w in title.lower() for w in words)), _DEFAULT_ICON)
+    return _ICON.format(icon)
+
+
+def landing(body: str) -> dict:
+    """Lay a page out like the LAVEWorld page. The text before the first "## " heading opens the page. Each
+    "## Eyebrow · Heading" section becomes a row of cards when its list items start with a bold title
+    ("- **Help at home.** ..." gets an icon, "- **Essence:** ..." doesn't), or otherwise a photo-and-text panel,
+    using the first image in the section. A closing paragraph in italics becomes the small print."""
+    body = (body or "").replace("\r\n", "\n")
+    note = ""
+    if m := _SMALL_PRINT.search(body):
+        note, body = render_markdown(m.group(1)), body[:m.start()]
+    intro, *chunks = re.split(r"^## +", body, flags=re.M)
+    sections = []
+    for chunk in chunks:
+        heading_line, _, text = chunk.partition("\n")
+        eyebrow, _, heading = heading_line.strip().rpartition(" · ")
+        cards, rest = [], []
+        for line in text.split("\n"):
+            if m := _CARD_ITEM.match(line.strip()):
+                title, mark, words = m.groups()
+                words = words[:1].upper() + words[1:]  # "**Essence:** wellbeing resources" reads as a sentence on its own card
+                cards.append({"title": title.strip(), "html": render_markdown(words), "icon": card_icon(title) if mark == "." else None})
+            else:
+                rest.append(line)
+        rest = "\n".join(rest)
+        photo = _PHOTO.search(rest)
+        sections.append({"eyebrow": eyebrow, "heading": heading, "cards": cards, "photo": photo.group(1) if photo else "",
+                         "html": render_markdown(_PHOTO.sub("", rest).strip())})
+    return {"intro": render_markdown(intro.strip()), "sections": sections, "note": note}
 
 
 def unique_slug(db: Session, title: str, model=Post, current_id: int | None = None) -> str:
@@ -166,6 +191,10 @@ OLD_BRAND_WORDING = [
      '{"label": "LAVE Living", "href": "/memberships/living/"}, {"label": "LAVEnclave", "href": "/memberships/#compare"}]'),
     ("Run Club, yoga, Founders Lab and LAVE Family visits", "LAVE Strides, LAVEYoga, Founders Lab and LAVE Family visits"),
     ("Run Club, yoga and gym members", "LAVE Strides, LAVEYoga and gym members"),
+    # The LAVE Living page laid out like LAVEWorld: an eyebrow over each heading, and a photo beside "Private, always".
+    ("## What's on offer", "## Support · What's on offer"),
+    ("## With your membership", "## Membership · With your membership"),
+    ("## Private, always", "## Privacy · Private, always\n\n![](" + WP + "2024/07/LAVE_Fabricare_Service_Bedroom.webp)"),
 ]
 
 

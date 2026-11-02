@@ -195,9 +195,9 @@ def lave_living(request: Request, db: Session = Depends(get_db)):
         raise StarletteHTTPException(404)
     section = request.state.site.by_key["membership"]
     benefits = next((s for s in section.subnav if s.slug == "benefits"), None)
-    return render(request, "site/content_page.html", section=section, subnav=benefits, page=page,
-                  body_html=cms.as_cards(cms.render_markdown(page.body)), actions=[("Explore membership", "/memberships/#compare", "dark"), ("Ask us about LAVE Living", "/contact/?topic=membership", "ghost")],
-                  **_ctx())
+    plan_links = {p["name"]: f"/memberships/#{p['code']}" for p in request.state.site.plans}
+    return render(request, "site/living.html", section=section, subnav=benefits, page=page, layout=cms.landing(page.body),
+                  plan_links=plan_links, **_ctx())
 
 
 @router.get("/memberships/{sub_slug}/{item_slug}/")
