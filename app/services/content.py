@@ -23,6 +23,30 @@ def render_markdown(text: str) -> str:
     return SAFE_URL.sub(r'\1="#"', out)
 
 
+# Line icons for benefit cards, picked by a word in the card's title (thin strokes, like the rest of the site's icons).
+_ICON = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{}</svg>'
+CARD_ICONS = [
+    (("talk", "listen", "counsel"), '<path d="M4 5h16v11H10l-4 3.5V16H4z"/><path d="M8 9.5h8M8 12.5h5"/>'),
+    (("home", "money", "household"), '<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>'),
+    (("work", "career"), '<rect x="3.5" y="7.5" width="17" height="12" rx="1"/><path d="M9 7.5V5h6v2.5M3.5 12.5h17"/>'),
+    (("step", "plan", "feel"), '<path d="M5 19c0-8 5.5-13 15-14 0 9.5-5.5 14-15 14z"/><path d="M5 19l8.5-8.5"/>'),
+    (("app", "phone"), '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17.5h2"/>'),
+]
+_DEFAULT_ICON = '<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>'
+_CARD_LIST = re.compile(r"<ul>\s*((?:<li><strong>[^<]+\.</strong>.*?</li>\s*)+)</ul>", re.S)
+_CARD_ITEM = re.compile(r"<li><strong>([^<]+)\.</strong>\s*(.*?)</li>", re.S)
+
+
+def as_cards(page_html: str) -> str:
+    """Show the first list whose every item starts with a bold title ending in a full stop ("**Help at home.** ...")
+    as benefit cards with icons. Lists like "**Essence:** ..." stay as lists."""
+    def card(m: re.Match) -> str:
+        title, text = m.group(1).strip(), m.group(2).strip()
+        icon = next((svg for words, svg in CARD_ICONS if any(w in title.lower() for w in words)), _DEFAULT_ICON)
+        return f'<li class="benefit-card"><span class="benefit-icon">{_ICON.format(icon)}</span><h3>{title}</h3><p>{text}</p></li>'
+    return _CARD_LIST.sub(lambda m: '<ul class="benefit-cards">' + _CARD_ITEM.sub(card, m.group(1)) + "</ul>", page_html, count=1)
+
+
 def unique_slug(db: Session, title: str, model=Post, current_id: int | None = None) -> str:
     base = slugify(title)[:150] or "post"
     slug, n = base, 2

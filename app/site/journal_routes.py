@@ -196,7 +196,7 @@ def lave_living(request: Request, db: Session = Depends(get_db)):
     section = request.state.site.by_key["membership"]
     benefits = next((s for s in section.subnav if s.slug == "benefits"), None)
     return render(request, "site/content_page.html", section=section, subnav=benefits, page=page,
-                  actions=[("Explore membership", "/memberships/#compare", "dark"), ("Ask us about LAVE Living", "/contact/?topic=membership", "ghost")],
+                  body_html=cms.as_cards(cms.render_markdown(page.body)), actions=[("Explore membership", "/memberships/#compare", "dark"), ("Ask us about LAVE Living", "/contact/?topic=membership", "ghost")],
                   **_ctx())
 
 

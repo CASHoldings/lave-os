@@ -406,6 +406,8 @@ def test_lave_living_has_its_own_page_linked_from_the_menu(api, db_session):
     assert r.status_code == 200
     assert "<h1>LAVE Living</h1>" in r.text and ("What&#39;s on offer" in r.text or "What's on offer" in r.text)
     assert "Hope App" not in r.text and "Health Assured" not in r.text and "Coming soon" in r.text
+    assert r.text.count('class="benefit-card"') == 5 and r.text.count("<svg") >= 5  # the offer, as cards with icons
+    assert "<strong>Essence:</strong>" in r.text  # the plan list stays a list
     assert 'href="/memberships/living/"' in api.get("/memberships/").text
     assert "/memberships/living/" in api.get("/sitemap.xml").text
 
