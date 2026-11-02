@@ -1088,7 +1088,7 @@ def message_handled(message_id: int, staff: StaffUser = Depends(ops), db: Sessio
 from fastapi import BackgroundTasks  # noqa: E402
 
 from app.models import Media, SiteContent  # noqa: E402
-from app.schemas import ContentSave, MediaPatch, ProductIn, ProductPatch, VariantIn  # noqa: E402
+from app.schemas import ContentSave, MediaPatch, ProductIn, ProductPatch, TestEmailIn, VariantIn  # noqa: E402
 from app.services import media as media_svc  # noqa: E402
 from app.site import store  # noqa: E402
 from app.site.defaults import DOCUMENTS  # noqa: E402
@@ -1207,14 +1207,16 @@ def email_status(staff: StaffUser = Depends(admin_only)):
 
 
 @router.post("/email/test")
-def email_test(staff: StaffUser = Depends(admin_only)):
+def email_test(body: TestEmailIn | None = None, staff: StaffUser = Depends(admin_only)):
+    # Any address can be chosen, so the founder can check mail reaches outside inboxes (Gmail, iCloud), not just lavelondon.com.
+    to = (body and body.to) or staff.email
     try:
-        mailer.send(staff.email, "LAVE OS test email",
-                    f"Hello {staff.name},\n\nThis is a test from LAVE OS. If you can read it, sign-in links, password resets "
-                    f"and receipts will reach your clients.\n\nLAVE", raise_errors=True)
+        mailer.send(to, "LAVE OS test email",
+                    "Hello,\n\nThis is a test from LAVE OS. If you can read it, sign-in links, password resets "
+                    "and receipts will reach your clients.\n\nLAVE", raise_errors=True)
     except mailer.MailError as e:
         raise HTTPException(502, str(e))
-    return {"sent_to": staff.email}
+    return {"sent_to": to}
 
 
 # Product repository (admins only: it carries costs and margins)

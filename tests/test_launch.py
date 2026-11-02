@@ -126,6 +126,12 @@ def test_test_email_button(api, staff_headers, monkeypatch):
     assert api.post("/api/staff/email/test", headers=staff_headers).json() == {"sent_to": "admin@lavelondon.com"}
     assert ("smtp.sendgrid.net", 587) in sent and ("login", "apikey") in sent
 
+    # Any address can be typed in, to check mail reaches outside inboxes; a bad one is refused before sending.
+    r = api.post("/api/staff/email/test", json={"to": "someone@gmail.com"}, headers=staff_headers)
+    assert r.json() == {"sent_to": "someone@gmail.com"} and sent[-1][1] == "someone@gmail.com"
+    assert api.post("/api/staff/email/test", json={"to": None}, headers=staff_headers).json() == {"sent_to": "admin@lavelondon.com"}
+    assert api.post("/api/staff/email/test", json={"to": "not-an-address"}, headers=staff_headers).status_code == 422
+
     class RejectingSMTP(FakeSMTP):
         def login(self, user, password):
             import smtplib

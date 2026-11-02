@@ -1809,14 +1809,17 @@
         ${e.configured ? `<p class="ok small">Set up: sending through <strong>${esc(e.host)}</strong> as <strong>${esc(e.mail_from)}</strong>.</p>`
           : `<p class="notice">Not set up yet, so sign-in links, password resets and receipts aren't being sent. Add the LAVE_SMTP_ settings in Render → lave-os → Environment.</p>`}
         <dl class="kv"><dt>Mail server</dt><dd>${esc(e.host || "–")}${e.host ? ":" + e.port : ""}</dd><dt>Username</dt><dd>${esc(e.user || "–")}</dd><dt>Sent from</dt><dd>${esc(e.mail_from)}</dd></dl>
-        <div class="row"><button class="btn primary" data-test-email>Send a test email to ${esc(e.send_to)}</button></div>
+        <form class="row" id="test-email"><input name="to" type="email" value="${esc(e.send_to)}" aria-label="Send the test to" style="min-width:300px">
+          <button class="btn primary">Send a test email</button></form>
+        <p class="small muted">Try a Gmail or iCloud address too: it shows emails reach clients' inboxes, not only lavelondon.com.</p>
         <p class="small muted" id="email-result" role="status"></p></section>`;
-      pane.querySelector("[data-test-email]").addEventListener("click", async (ev) => {
-        const out = pane.querySelector("#email-result");
-        ev.target.disabled = true; out.textContent = "Sending…";
-        try { const r = await api("POST", "/api/staff/email/test"); out.className = "small ok"; out.textContent = `Sent. Check the inbox for ${r.sent_to} (and the spam folder, the first time).`; }
+      pane.querySelector("#test-email").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const out = pane.querySelector("#email-result"), btn = ev.target.querySelector("button");
+        btn.disabled = true; out.className = "small muted"; out.textContent = "Sending…";
+        try { const r = await api("POST", "/api/staff/email/test", { to: ev.target.to.value.trim() || null }); out.className = "small ok"; out.textContent = `Sent. Check the inbox for ${r.sent_to} (and the spam folder, the first time).`; }
         catch (ex) { out.className = "small error"; out.textContent = ex.message; }
-        ev.target.disabled = false;
+        btn.disabled = false;
       });
     }
 

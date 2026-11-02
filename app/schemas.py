@@ -452,3 +452,7 @@ class UnbookedDropOff(BaseModel):
     atelier_id: int
     bags: int = Field(1, ge=1, le=20)
     note: str = Field("", max_length=1000)
+
+
+class TestEmailIn(BaseModel):
+    to: EmailStr | None = None  # empty: the signed-in admin's own address
