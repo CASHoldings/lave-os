@@ -5,7 +5,7 @@ import re
 
 def _piece(api, h, **kw):
     body = {"title": "Quilted Shoulder Bag", "designer": "Maison Example", "detail": "Black lambskin", "category": "bags",
-            "condition": "nearly_new", "price_pence": 185000, "images": ["/media/rehome-pass-on.webp"], **kw}
+            "condition": "nearly_new", "price_pence": 185000, "images": ["/media/rehome-pass-on-tote.webp"], **kw}
     r = api.post("/api/staff/resell", headers=h, json=body)
     assert r.status_code == 201, r.text
     return r.json()

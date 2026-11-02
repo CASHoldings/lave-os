@@ -383,8 +383,8 @@ def test_pass_on_shows_its_new_photo_even_on_a_saved_menu(api, db_session):
     from app.models import SiteContent
     from app.services import content
     from app.site import defaults
-    assert "/media/rehome-pass-on.webp" in api.get("/atelier/rehome/").text
-    assert api.get("/media/rehome-pass-on.webp").status_code == 200
+    assert "/media/rehome-pass-on-tote.webp" in api.get("/atelier/rehome/").text
+    assert api.get("/media/rehome-pass-on-tote.webp").status_code == 200
     # A live site whose menus were saved in the admin before this change.
     menus = json.loads(json.dumps(defaults.menus()))
     for section in menus["sections"]:
@@ -398,7 +398,16 @@ def test_pass_on_shows_its_new_photo_even_on_a_saved_menu(api, db_session):
         assert content.update_menu_photos(db) == 1
         assert content.update_menu_photos(db) == 0
     page = api.get("/atelier/rehome/").text
-    assert "/media/rehome-pass-on.webp" in page
+    assert "/media/rehome-pass-on-tote.webp" in page
+    # A live site already showing the first Pass On photo moves to the tote, and the old photo no longer ships.
+    with db_session() as db:
+        row = db.get(SiteContent, "menus")
+        saved = json.loads(json.dumps(row.value).replace("rehome-pass-on-tote.webp", "rehome-pass-on.webp"))
+        row.value = saved
+        db.commit()
+        assert content.update_menu_photos(db) == 1
+    assert "rehome-pass-on.webp" not in api.get("/atelier/rehome/").text
+    assert api.get("/media/rehome-pass-on.webp").status_code == 404
     assert "LAVE-Atelier-Preserve-Renew" in api.get("/atelier/preserve/").text  # Re-imagine keeps its photo
 
 

@@ -297,7 +297,10 @@ POLICY_CHANGES = [
 # Menu photos changed since launch: (column title, old photo, new photo). Applied on deploy to saved menus where the
 # column still has the old photo; a photo chosen in the admin is left alone.
 MENU_PHOTO_CHANGES = [
-    ("Pass On", WP + "2024/07/LAVE-Atelier-Preserve-Renew.avif", "/media/rehome-pass-on.webp"),
+    ("Pass On", WP + "2024/07/LAVE-Atelier-Preserve-Renew.avif", "/media/rehome-pass-on-tote.webp"),
+    # The first Pass On photo was a designer's own product shot; replaced by a free Pexels photo (José Martin Segura
+    # Benites, pexels.com/photo/26736140), widened to the menu's 4:3 frame.
+    ("Pass On", "/media/rehome-pass-on.webp", "/media/rehome-pass-on-tote.webp"),
 ]
 
 
