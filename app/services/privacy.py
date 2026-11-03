@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import (AreaWaitlistEntry, Booking, Client, ClientGesture, ClientOccasion, ContactMessage, Garment,
-                        LoginToken, Membership, MembershipStatus, Order, OrderStatus, ShopOrder, VaultItem, VaultStatus,
-                        WaitlistEntry, WardrobeItem)
+                        LoginToken, Membership, MembershipStatus, NewsletterSignup, Order, OrderStatus, ShopOrder, VaultItem,
+                        VaultStatus, WaitlistEntry, WardrobeItem)
 from app.services.clock import local_now
 
 log = logging.getLogger("lave.privacy")
@@ -35,6 +35,7 @@ def export(db: Session, client: Client) -> dict:
     occasions = db.scalars(select(ClientOccasion).where(ClientOccasion.client_id == client.id)).all()
     area_wait = db.scalars(select(AreaWaitlistEntry).where(AreaWaitlistEntry.email == client.email)).all()
     shop_wait = db.scalars(select(WaitlistEntry).where(WaitlistEntry.email == client.email)).all()
+    news = db.scalar(select(NewsletterSignup).where(NewsletterSignup.email == client.email))
     messages = db.scalars(select(ContactMessage).where(ContactMessage.email == client.email)).all()
     m = client.membership
     return {
@@ -55,7 +56,8 @@ def export(db: Session, client: Client) -> dict:
         "apothecary_orders": [{"ref": s.ref, "status": s.status.value, "total_pence": s.total_pence, "at": _iso(s.created_at),
                                "shipping_address": s.shipping_address} for s in shop],
         "waitlists": [{"list": "Service area", "postcode": w.postcode, "at": _iso(w.created_at)} for w in area_wait]
-                     + [{"list": "Apothecary", "at": _iso(w.created_at)} for w in shop_wait],
+                     + [{"list": "Apothecary", "at": _iso(w.created_at)} for w in shop_wait]
+                     + ([{"list": "Newsletter", "at": _iso(news.created_at)}] if news else []),
         "messages_to_us": [{"topic": x.topic, "message": x.message, "at": _iso(x.created_at)} for x in messages],
     }
 
@@ -128,7 +130,8 @@ def erase(db: Session, client: Client, by: str) -> None:
         db.execute(delete(model).where(model.client_id == client.id))
     for s in db.scalars(select(ShopOrder).where((ShopOrder.client_id == client.id) | (ShopOrder.email == email))):
         s.email, s.shipping_address = "", {}
-    for model in (AreaWaitlistEntry, WaitlistEntry, ContactMessage):
+    # Newsletter: removed here; Klaviyo keeps its own copy, which is deleted there by hand.
+    for model in (AreaWaitlistEntry, WaitlistEntry, NewsletterSignup, ContactMessage):
         db.execute(delete(model).where(model.email == email))
     client.first_name, client.last_name = "Deleted", "client"
     client.email = f"deleted-{client.id}@deleted.invalid"

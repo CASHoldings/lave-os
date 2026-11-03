@@ -514,7 +514,7 @@ html { font-size: 100%; }
 }
 
 .compare { max-width: 1320px; margin: 0 auto; padding: 48px var(--gutter) 40px; }
-.compare-scroll { overflow-x: auto; border: 1px solid var(--line); }
+.compare-scroll { position: relative; overflow-x: auto; border: 1px solid var(--line); } /* relative: keeps hidden labels inside the scroll */
 .compare-scroll:focus-visible { outline: 2px solid var(--ink); }
 .compare table { width: 100%; border-collapse: collapse; min-width: 720px; font-variant-numeric: tabular-nums; }
 .compare th, .compare td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -803,3 +803,28 @@ html { font-size: 100%; }
 .rs-preview { max-width: 1500px; margin: 16px auto 0; padding: 12px var(--gutter); background: #fbf2e1; color: #7a4d00; font-size: 0.8125rem; text-align: center; }
 .rs-preview a { color: inherit; }
 .rs-hidden { position: absolute; top: 14px; right: 16px; padding: 3px 8px; background: var(--ink); color: #fff; font-size: 0.6875rem; letter-spacing: .06em; text-transform: uppercase; }
+
+/* Newsletter box: a small card at the bottom left, a slim panel along the bottom on phones. Shown by site.js. */
+.signup { position: fixed; left: 24px; bottom: 24px; z-index: 39; width: min(420px, calc(100vw - 48px)); background: var(--white);
+  border: 1px solid var(--line); box-shadow: 0 12px 40px rgba(25, 32, 51, .14); padding: 30px 28px 24px; display: grid; gap: 10px;
+  opacity: 0; transform: translateY(12px); transition: opacity .35s ease, transform .35s ease; }
+.signup.in { opacity: 1; transform: none; }
+.signup[hidden] { display: none; }
+.signup h2 { font-size: 1.25rem; font-weight: 600; line-height: 1.3; padding-right: 28px; }
+.signup > p { color: var(--ink-soft); font-size: 0.8125rem; }
+.signup form { display: grid; gap: 10px; margin-top: 6px; }
+.signup-row { display: flex; gap: 8px; }
+.signup-row input { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border: 1px solid #c9cad0; font: inherit; color: var(--ink); background: var(--white); }
+.signup-row input:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+.signup-row .btn { padding: 0 22px; }
+.signup-note { color: var(--muted); font-size: 0.6875rem; }
+.signup-msg:empty { display: none; }
+.signup-msg { font-size: 0.8125rem; }
+.signup-msg.err { color: var(--err); }
+.signup-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; background: none; cursor: pointer; color: var(--ink); }
+.signup-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.signup.done form { display: none; }
+@media (max-width: 600px) {
+  .signup { left: 0; right: 0; bottom: 0; width: auto; border-width: 1px 0 0; padding: 22px 16px calc(18px + env(safe-area-inset-bottom)); gap: 6px; }
+  .signup h2 { font-size: 1.0625rem; }
+}

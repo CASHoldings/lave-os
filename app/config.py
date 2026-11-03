@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     turnstile_secret: str = ""
     # Cloudflare Web Analytics (free, no cookies): the token from dash.cloudflare.com → Analytics & Logs → Web Analytics.
     cf_analytics_token: str = ""
+    # Newsletter sign-ups (the box at the bottom of the site) go to this Klaviyo list. The public key is the 6-character
+    # Site ID from Klaviyo → Settings → API keys, not a private key. Without them, sign-ups are kept in LAVE OS only.
+    klaviyo_public_key: str = ""
+    klaviyo_list_id: str = ""
     # Where error alerts go (services/alerts.py). Empty: the contact address.
     alert_email: str = ""
     # Text messages (Twilio). Without them, "driver on the way" messages go by email instead.

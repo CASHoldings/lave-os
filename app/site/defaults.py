@@ -198,6 +198,17 @@ def resell() -> dict:
     }
 
 
+def signup() -> dict:
+    """The newsletter box at the bottom left of the site (services/newsletter.py)."""
+    return {
+        "heading": "The Atelier and Apothecary open soon.",
+        "text": "Join the list to hear first, before anything goes on sale.",
+        "button": "Join",
+        "note": "Occasional emails from LAVE. Unsubscribe at any time.",
+        "thanks": "Thank you. Please check your inbox and confirm your email to join the list.",
+    }
+
+
 # What /admin → Website lists, in order. "locked" lists can't have entries added or removed; "readonly" fields can't change.
 DOCUMENTS = {
     "home": {"title": "Home page", "help": "The two halves of the home page.", "default": home},
@@ -218,4 +229,7 @@ DOCUMENTS = {
                     "default": resell, "locked": ["categories"], "readonly": ["key"]},
     "footer": {"title": "Footer", "help": "Use **double asterisks** around words to make them bold.", "default": footer,
                "locked": ["social"], "readonly": ["name"]},
+    "signup": {"title": "Newsletter box", "help": "The small box at the bottom left that invites visitors to join the "
+               "list. \"Thanks\" shows after they sign up. See who has joined under Journal → Newsletter.",
+               "default": signup},
 }

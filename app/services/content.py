@@ -291,6 +291,23 @@ POLICY_CHANGES = [
      "LAVE Living is provided by Hope App. We don't share your details with Hope App: if you'd like to use LAVE Living, you sign up with them directly, and their own privacy policy applies.",
      "LAVE Living, our members' wellbeing service, is coming soon. Before it opens, we'll update this policy to say who provides it and how your information is handled.",
      "1 November 2026"),
+    # The newsletter box: Klaviyo sends the emails, and the browser remembers when the box was closed or answered.
+    ("/policies/privacy/",
+     'your name, email and postcode if you join our area or Apothecary waitlist.',
+     'your name, email and postcode if you join our area or Apothecary waitlist, and your email address if you sign up for our news.',
+     "3 November 2026"),
+    ("/policies/privacy/",
+     '| Twilio | Sends our text messages |\n\nLAVE Living',
+     '| Twilio | Sends our text messages |\n| Klaviyo | Sends our news emails to people who sign up |\n\nLAVE Living',
+     "3 November 2026"),
+    ("/policies/privacy/",
+     'or you ask us to remove you.\n\n## 8.',
+     'or you ask us to remove you.\n- News emails: your email address, until you unsubscribe.\n\n## 8.',
+     "3 November 2026"),
+    ("/policies/cookies/",
+     "They're cleared when you close the tab.\n\n## Managing cookies",
+     "They're cleared when you close the tab.\n- If you close or answer the box inviting you to join our list, your browser remembers it (lave_signup, in local storage) so the box doesn't keep appearing: for 30 days if you close it, a year if you join.\n\n## Managing cookies",
+     "3 November 2026"),
 ]
 
 

@@ -463,7 +463,8 @@ def test_no_lave_living_provider_is_named_anywhere(api, db_session):
         assert "Hope App" not in db.scalar(select(PageContent).where(PageContent.path == "/policies/privacy/")).body
         # A live site with the old wording: saved plans and the privacy page are brought up to date on deploy.
         page = db.scalar(select(PageContent).where(PageContent.path == "/policies/privacy/"))
-        page.body = page.body.replace(content.POLICY_CHANGES[-1][2], content.POLICY_CHANGES[-1][1])
+        hope = next(c for c in content.POLICY_CHANGES if "Hope App" in c[1])
+        page.body = page.body.replace(hope[2], hope[1])
         old_plans = json.loads(json.dumps(defaults.plans(), ensure_ascii=False)
                                .replace('{"text": "Full LAVE Living support", "soon": true}',
                                         '{"text": "Full LAVE Living support, delivered by Hope App", "soon": false}')

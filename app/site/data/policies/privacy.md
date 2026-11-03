@@ -11,7 +11,7 @@ LAVE LTD (company number 16329170, 438 Streatham High Road, London SW16 3PX) is 
 - **Membership:** your plan, its status and your billing period.
 - **"Tell us about you" (optional, for members):** what you'd like us to call you, your birthday (day and month only), how and when you like us to be in touch, special pieces, interests, household members you choose to tell us about, occasions you're preparing for, dietary preferences and allergies.
 - **Messages:** emails, texts and contact form messages between us.
-- **Waitlists:** your name, email and postcode if you join our area or Apothecary waitlist.
+- **Waitlists:** your name, email and postcode if you join our area or Apothecary waitlist, and your email address if you sign up for our news.
 - **Website use:** the cookies described in our [Cookie notice](/policies/cookies/), security checks on our sign-up form, and anonymous visitor counts.
 
 ## 3. Why we use it, and our legal basis
@@ -40,6 +40,7 @@ We never sell your information. We share it only with the companies that help us
 | Cloudflare | Stores photos, runs security checks on sign-up, and counts visitors anonymously |
 | Resend | Sends our emails |
 | Twilio | Sends our text messages |
+| Klaviyo | Sends our news emails to people who sign up |
 
 LAVE Living, our members' wellbeing service, is coming soon. Before it opens, we'll update this policy to say who provides it and how your information is handled.
 
@@ -56,6 +57,7 @@ Some of these providers process data outside the UK, including in the United Sta
 - "Tell us about you": until you change or delete it, or your account is closed.
 - Sign-ups that are never confirmed: removed within a few days.
 - Waitlists: until we've told you we've opened or reached your area, or you ask us to remove you.
+- News emails: your email address, until you unsubscribe.
 
 ## 8. Keeping it safe
 

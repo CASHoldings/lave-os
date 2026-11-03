@@ -1082,6 +1082,26 @@ def message_handled(message_id: int, staff: StaffUser = Depends(ops), db: Sessio
     return {"id": m.id, "handled": m.handled}
 
 
+@router.get("/newsletter")
+def newsletter_list(staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.models import NewsletterSignup
+    from app.services import newsletter
+    rows = db.scalars(select(NewsletterSignup).order_by(NewsletterSignup.created_at.desc())).all()
+    return {"klaviyo": newsletter.configured(),
+            "signups": [{"email": n.email, "page": n.page, "created_at": ser.iso(n.created_at),
+                         "sent_at": ser.iso(n.sent_to_klaviyo_at), "error": n.klaviyo_error} for n in rows]}
+
+
+@router.post("/newsletter/send")
+def newsletter_send(staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """Send sign-ups Klaviyo doesn't have yet: those from before it was set up, or when it didn't answer."""
+    from app.services import newsletter
+    if not newsletter.configured():
+        raise HTTPException(400, "Klaviyo isn't set up: add LAVE_KLAVIYO_PUBLIC_KEY and LAVE_KLAVIYO_LIST_ID in Render → lave-os → Environment.")
+    sent, waiting = newsletter.push_waiting(db)
+    return {"sent": sent, "waiting": waiting}
+
+
 
 # Website editing: content documents, image library, products
 

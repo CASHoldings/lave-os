@@ -955,7 +955,7 @@
   async function viewJournal(params) {
     const tab = params.get("tab") || "posts";
     const c = shell("journal", "Journal", `<a class="btn primary" href="#/journal/new">New post</a>`);
-    c.innerHTML = `<div class="row">${[["posts", "Posts"], ["pages", "LAVEWorld pages"], ["messages", "Messages"]]
+    c.innerHTML = `<div class="row">${[["posts", "Posts"], ["pages", "LAVEWorld pages"], ["messages", "Messages"], ["newsletter", "Newsletter"]]
       .map(([k, l]) => `<a class="btn ${k === tab ? "primary" : ""}" href="#/journal?tab=${k}">${l}</a>`).join("")}</div><div id="pane"><p class="loading">Loading…</p></div>`;
     const pane = c.querySelector("#pane");
     if (tab === "posts") {
@@ -993,6 +993,32 @@
           <div><button class="btn sm ${m.handled ? "ghost" : ""}" data-handled="${m.id}">${m.handled ? "Mark as not handled" : "Mark handled"}</button></div></section>`).join("")
         : `<p class="empty">No messages yet.</p>`;
       pane.querySelectorAll("[data-handled]").forEach((b) => b.addEventListener("click", act(() => api("POST", `/api/staff/messages/${b.dataset.handled}/handled`))));
+    }
+    if (tab === "newsletter") {
+      const n = await api("GET", "/api/staff/newsletter");
+      const waiting = n.signups.filter((s) => !s.sent_at).length;
+      pane.innerHTML = `<section class="panel stack">
+        <h2>Newsletter sign-ups (${n.signups.length})</h2>
+        ${n.klaviyo ? `<p class="ok small">Connected to Klaviyo: new sign-ups go straight to your list, and Klaviyo emails them to confirm.</p>`
+          : `<p class="notice">Klaviyo isn't connected yet, so sign-ups are kept here only. Add LAVE_KLAVIYO_PUBLIC_KEY and LAVE_KLAVIYO_LIST_ID in Render → lave-os → Environment.</p>`}
+        <div class="row">${n.klaviyo && waiting && me.role === "admin" ? `<button class="btn primary" id="nl-send">Send ${waiting} waiting to Klaviyo</button>` : ""}
+          ${n.signups.length ? `<button class="btn" id="nl-csv">Download CSV</button>` : ""}
+          <a class="btn ghost" href="#/website/content/signup">Edit the box's wording</a></div>
+        ${n.signups.length ? `<div class="table-wrap"><table><thead><tr><th>Email</th><th>Signed up on</th><th>Joined</th><th>In Klaviyo</th></tr></thead>
+          <tbody>${n.signups.map((s) => `<tr><td>${esc(s.email)}</td><td class="small">${esc(s.page || "–")}</td><td class="small">${DT.format(parse(s.created_at))}</td>
+            <td class="small">${s.sent_at ? D.format(parse(s.sent_at)) : s.error ? `<span class="error" title="${esc(s.error)}">Not sent</span>` : "Waiting"}</td></tr>`).join("")}</tbody></table></div>`
+          : `<p class="empty">Nobody yet.</p>`}</section>`;
+      pane.querySelector("#nl-send")?.addEventListener("click", act(async () => {
+        const r = await api("POST", "/api/staff/newsletter/send");
+        toast(r.waiting ? `${r.sent} sent, ${r.waiting} still waiting: check the Klaviyo settings.` : `${r.sent} sent to Klaviyo.`, !!r.waiting);
+      }));
+      pane.querySelector("#nl-csv")?.addEventListener("click", () => {
+        const q = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
+        const csv = ["Email,Signed up on,Joined", ...n.signups.map((s) => [s.email, s.page, s.created_at].map(q).join(","))].join("\n");
+        const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "lave-newsletter.csv" });
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
     }
   }
 

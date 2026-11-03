@@ -86,3 +86,61 @@
   set();
   addEventListener("resize", set);
 })();
+
+// Newsletter box: appears after 20 seconds or halfway down the page, never on arrival. Closing it hides it for 30 days,
+// joining for a year (remembered in this browser only; see the cookie notice).
+(() => {
+  const box = document.querySelector("[data-signup]");
+  if (!box) return;
+  const KEY = "lave_signup";
+  const DAY = 864e5;
+  const quietUntil = () => { try { return Number(localStorage.getItem(KEY)) || 0; } catch (_) { return 0; } };
+  const quiet = (days) => { try { localStorage.setItem(KEY, String(Date.now() + days * DAY)); } catch (_) { /* private mode */ } };
+  if (quietUntil() > Date.now()) return;
+
+  let timer;
+  const show = () => {
+    if (!box.hidden) return;
+    clearTimeout(timer);
+    removeEventListener("scroll", onScroll);
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add("in"));
+  };
+  const onScroll = () => {
+    const page = document.documentElement.scrollHeight - innerHeight;
+    if (page > 0 && scrollY / page >= 0.5) show();
+  };
+  timer = setTimeout(show, 20000);
+  addEventListener("scroll", onScroll, { passive: true });
+
+  const close = () => {
+    quiet(box.classList.contains("done") ? 365 : 30);
+    box.classList.remove("in");
+    setTimeout(() => { box.hidden = true; }, 350);
+  };
+  box.querySelector("[data-signup-close]").addEventListener("click", close);
+  box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } });
+
+  const form = box.querySelector("[data-signup-form]");
+  const msg = box.querySelector("[data-signup-msg]");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector("button");
+    msg.className = "signup-msg";
+    msg.textContent = "";
+    if (!form.email.checkValidity()) { msg.classList.add("err"); msg.textContent = "Please enter a valid email address."; form.email.focus(); return; }
+    btn.disabled = true;
+    try {
+      const res = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { Accept: "application/json" }, credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Something went wrong. Please try again.");
+      box.classList.add("done");
+      msg.textContent = data.confirm ? form.dataset.thanks : "Thank you. You're on the list.";
+      quiet(365);
+    } catch (err) {
+      msg.classList.add("err");
+      msg.textContent = err.message;
+    }
+    btn.disabled = false;
+  });
+})();

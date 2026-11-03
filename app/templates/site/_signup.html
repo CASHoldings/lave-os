@@ -1,0 +1,16 @@
+<aside class="signup" data-signup hidden aria-labelledby="signup-heading">
+  <button class="signup-close" type="button" data-signup-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <h2 id="signup-heading">{{ signup.heading }}</h2>
+  <p>{{ signup.text }}</p>
+  <form method="post" action="/subscribe/" data-signup-form data-thanks="{{ signup.thanks }}">
+    <input type="hidden" name="page" value="{{ request.url.path }}">
+    <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <div class="signup-row">
+      <label class="sr" for="signup-email">Email</label>
+      <input id="signup-email" name="email" type="email" required autocomplete="email" maxlength="255" placeholder="*Email">
+      <button class="btn dark" type="submit">{{ signup.button }}</button>
+    </div>
+    <p class="signup-note">{{ signup.note }} <a href="/policies/privacy/">Privacy policy</a></p>
+  </form>
+  <p class="signup-msg" role="status" data-signup-msg></p>
+</aside>

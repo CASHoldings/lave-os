@@ -78,6 +78,11 @@ services:
         sync: false
       - key: LAVE_ALERT_EMAIL
         sync: false
+      # Newsletter box → Klaviyo list: the public Site ID (6 characters) and the list's ID. Neither is secret.
+      - key: LAVE_KLAVIYO_PUBLIC_KEY
+        sync: false
+      - key: LAVE_KLAVIYO_LIST_ID
+        sync: false
       # Stripe (phase 7, step 3). Test keys until launch.
       - key: LAVE_STRIPE_SECRET_KEY
         sync: false

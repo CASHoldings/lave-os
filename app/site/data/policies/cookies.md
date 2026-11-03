@@ -13,6 +13,7 @@
 - **Cloudflare Turnstile** checks that people signing up are human. It's used only for security.
 - **Cloudflare Web Analytics** counts page visits without cookies and without identifying you.
 - Our booking page keeps a few website settings in your browser during your visit, so it loads faster. They're cleared when you close the tab.
+- If you close or answer the box inviting you to join our list, your browser remembers it (lave_signup, in local storage) so the box doesn't keep appearing: for 30 days if you close it, a year if you join.
 
 ## Managing cookies
 

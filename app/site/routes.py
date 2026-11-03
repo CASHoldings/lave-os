@@ -46,7 +46,7 @@ TEMPLATES.env.globals["company"] = COMPANY
 TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "67"
+ASSET_VERSION = "69"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -88,6 +88,15 @@ def breadcrumbs(request: Request, ctx: dict) -> list[tuple[str, str]]:
     return trail
 
 
+# The sign-up box stays off pages where someone is busy with a form (booking, paying, signing in, writing to us), on
+# the policies, on the Apothecary page (it has its own waitlist), and for signed-in clients.
+SIGNUP_HIDDEN = ("/account/", "/book/", "/basket/", "/checkout/", "/atelier/list/", "/contact/", "/policies/")
+
+
+def show_signup(path: str, viewer) -> bool:
+    return not viewer and path != "/apothecary/" and not path.startswith(SIGNUP_HIDDEN)
+
+
 def render(request: Request, template: str, status_code: int = 200, **ctx) -> HTMLResponse:
     viewer = peek_client(request.cookies.get(CLIENT_COOKIE))
     basket_count = sum(shop.parse_basket(request.cookies.get(BASKET_COOKIE)).values())
@@ -109,6 +118,7 @@ def render(request: Request, template: str, status_code: int = 200, **ctx) -> HT
         "canonical": get_settings().site_url.rstrip("/") + request.url.path,
         "meta_description": seo.DESCRIPTIONS.get(request.url.path, ""),
         "og_default": seo.OG_IMAGE, "jsonld": seo.jsonld,
+        "signup": site.docs["signup"] if show_signup(request.url.path, viewer) else None,
     }
     base["crumbs"] = breadcrumbs(request, ctx)
     return TEMPLATES.TemplateResponse(request, template, {**base, **{k: v for k, v in ctx.items() if k != "crumbs"}},
@@ -262,6 +272,24 @@ def join_waitlist(first_name: str = Form(""), surname: str = Form(""), email: st
                              source=source.strip()[:60]))
         db.commit()
     return RedirectResponse("/apothecary/?waitlist=joined#waitlist", status_code=303)
+
+
+@router.post("/subscribe/")
+def subscribe(request: Request, email: str = Form(""), page: str = Form(""), website: str = Form(""),
+              db: Session = Depends(get_db)):
+    """The sign-up box at the bottom of the site. Answers in JSON for the box's script; `confirm` says whether
+    Klaviyo has it, and so will email them to confirm."""
+    from fastapi.responses import JSONResponse
+    from app.services import accounts, newsletter
+    if website:  # honeypot filled in: a bot
+        return {"ok": True, "confirm": newsletter.configured()}
+    email = email.strip().lower()
+    if len(email) > 255 or not EMAIL_RE.match(email):
+        return JSONResponse({"detail": "Please enter a valid email address."}, status_code=400)
+    if not accounts.allow("newsletter:" + (request.client.host if request.client else "?"), 10, 3600):
+        return JSONResponse({"detail": "Too many tries. Please try again later."}, status_code=429)
+    entry = newsletter.subscribe(db, email, page if page.startswith("/") else "")
+    return {"ok": True, "confirm": bool(entry.sent_to_klaviyo_at)}
 
 
 @router.get("/atelier/services/{slug}/")

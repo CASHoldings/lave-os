@@ -476,6 +476,17 @@ class WaitlistEntry(Base):
     notified_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
+class NewsletterSignup(Base):
+    """Emails from the sign-up box. Kept here as well as in Klaviyo, so none are lost if Klaviyo isn't set up or is down."""
+    __tablename__ = "newsletter_signups"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    page: Mapped[str] = mapped_column(String(200), default="")  # where they signed up
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    sent_to_klaviyo_at: Mapped[datetime | None] = mapped_column(DateTime)
+    klaviyo_error: Mapped[str] = mapped_column(String(300), default="")
+
+
 class LoginToken(Base):
     """Single-use emailed links: sign in, verify an email, or reset a password. Only the hash is stored."""
     __tablename__ = "login_tokens"
