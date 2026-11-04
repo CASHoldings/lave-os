@@ -412,6 +412,37 @@ def manual_payment(order_id: int, body: ManualPayment, staff: StaffUser = Depend
     return ser.order(o, staff_view=True, detail=True)
 
 
+@router.get("/orders/{order_id}/delete-check")
+def order_delete_check(order_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    o = _order(db, order_id)
+    return {"blockers": order_svc.delete_blockers(db, o), "garments": len(o.items), "bookings": len(o.bookings)}
+
+
+@router.post("/orders/{order_id}/delete")
+def delete_order(order_id: int, body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """Admin only: remove an order made by mistake, with its garments, bookings and history, keeping a short record
+    of what it was and why (Orders → Deleted orders). Not once money has changed hands: those stay for the accounts."""
+    reason = str(body.get("reason") or "").strip()
+    if len(reason) < 3:
+        raise HTTPException(400, "Say briefly why the order is being deleted, for the record.")
+    o = _order(db, order_id)
+    if problems := order_svc.delete_blockers(db, o):
+        raise HTTPException(409, "This order can't be deleted: " + "; ".join(problems) + ".")
+    ref, client_id = o.ref, o.client_id
+    order_svc.delete(db, o, staff.name, reason)
+    db.commit()
+    return {"deleted": ref, "client_id": client_id}
+
+
+@router.get("/deleted-orders")
+def deleted_orders(staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.models import DeletedOrder
+    rows = db.scalars(select(DeletedOrder).order_by(DeletedOrder.id.desc()).limit(200))
+    return [{"ref": d.ref, "client_id": d.client_id, "summary": d.summary, "total_pence": d.total_pence,
+             "order_created_at": ser.iso(d.order_created_at), "reason": d.reason, "deleted_by": d.deleted_by,
+             "deleted_at": ser.iso(d.deleted_at)} for d in rows]
+
+
 EDITABLE_ITEM_ORDER_STATES = {OrderStatus.collected, OrderStatus.inspected, OrderStatus.in_care, OrderStatus.quality_check}
 
 

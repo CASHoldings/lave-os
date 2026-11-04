@@ -768,6 +768,21 @@ class OrderPayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class DeletedOrder(Base):
+    """What's left of an order deleted as a mistake: what it was, who removed it, when and why. No names or emails,
+    so it can stay even if the client later asks to be erased."""
+    __tablename__ = "deleted_orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ref: Mapped[str] = mapped_column(String(12), index=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id", ondelete="SET NULL"))
+    summary: Mapped[str] = mapped_column(Text, default="")
+    total_pence: Mapped[int] = mapped_column(Integer, default=0)
+    order_created_at: Mapped[datetime | None] = mapped_column(DateTime)
+    reason: Mapped[str] = mapped_column(String(300), default="")
+    deleted_by: Mapped[str] = mapped_column(String(120), default="")
+    deleted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class ClientCredit(Base):
     """A client's LAVE account credit: + credit given (e.g. an order came to less), − credit used or refunded."""
     __tablename__ = "client_credits"

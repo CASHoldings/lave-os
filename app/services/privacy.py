@@ -12,7 +12,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import (AreaWaitlistEntry, Booking, Client, ClientGesture, ClientOccasion, ContactMessage, Garment,
+from app.models import (AreaWaitlistEntry, Booking, Client, ClientGesture, ClientOccasion, ContactMessage, DeletedOrder, Garment,
                         LoginToken, Membership, MembershipStatus, NewsletterSignup, Order, OrderStatus, ShopOrder, VaultItem,
                         VaultStatus, WaitlistEntry, WardrobeItem)
 from app.services.clock import local_now
@@ -36,6 +36,7 @@ def export(db: Session, client: Client) -> dict:
     area_wait = db.scalars(select(AreaWaitlistEntry).where(AreaWaitlistEntry.email == client.email)).all()
     shop_wait = db.scalars(select(WaitlistEntry).where(WaitlistEntry.email == client.email)).all()
     news = db.scalar(select(NewsletterSignup).where(NewsletterSignup.email == client.email))
+    deleted = db.scalars(select(DeletedOrder).where(DeletedOrder.client_id == client.id)).all()
     messages = db.scalars(select(ContactMessage).where(ContactMessage.email == client.email)).all()
     m = client.membership
     return {
@@ -50,6 +51,7 @@ def export(db: Session, client: Client) -> dict:
         "membership": {"plan": m.plan.value, "status": m.status.value, "since": _iso(m.created_at)} if m else None,
         "orders": [{**ser.order(o, detail=True), "payments": [{"kind": p.kind, "amount_pence": p.amount_pence, "status": p.status,
                                                                 "at": _iso(p.created_at)} for p in o.payments]} for o in orders],
+        "orders_deleted_as_mistakes": [{"ref": d.ref, "summary": d.summary, "deleted_at": _iso(d.deleted_at)} for d in deleted],
         "vault": [ser.vault_item(v) for v in vault],
         "wardrobe": [{"name": w.name, "colour": w.colour, "brand": w.brand, "fibre": w.fibre, "hidden": w.hidden} for w in wardrobe],
         "lave_account_credit": {"balance_pence": billing.credit_balance(db, client), "history": billing.credit_history(db, client)},

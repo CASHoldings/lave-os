@@ -384,6 +384,13 @@
           <td class="small muted">${D.format(parse(o.created_at))}</td></tr>`;
       }).join("")}</tbody></table></div>` : `<p class="empty">No orders match.</p>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
+    if (me.role === "admin") {
+      const gone = await api("GET", "/api/staff/deleted-orders");
+      if (gone.length) c.insertAdjacentHTML("beforeend", `<details class="panel" style="margin-top:24px"><summary><strong>Deleted orders (${gone.length})</strong> <span class="small muted">a record of orders removed as mistakes</span></summary>
+        <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Order</th><th>Client</th><th>What it was</th><th class="num">Total</th><th>Why</th><th>Deleted</th></tr></thead>
+        <tbody>${gone.map((d) => `<tr><td class="tag">${esc(d.ref)}</td><td>${d.client_id ? `<a href="#/clients/${d.client_id}">Open</a>` : "–"}</td><td class="small">${esc(d.summary)}</td>
+          <td class="num">${money(d.total_pence)}</td><td class="small">${esc(d.reason)}</td><td class="small muted">${DT.format(parse(d.deleted_at))}<br>${esc(d.deleted_by)}</td></tr>`).join("")}</tbody></table></div></details>`);
+    }
   }
 
   async function viewOrder(id) {
@@ -493,6 +500,7 @@
             <button class="btn sm" id="save-notes">Save notes</button></section>
           <section class="panel"><h2>History</h2>
             <ul class="timeline">${o.timeline.slice().reverse().map((e) => `<li><span class="small muted">${DT.format(parse(e.at))}</span><span>${esc(STATUS_LABEL[e.status] || human(e.status))}${e.note ? ` <span class="muted">· ${esc(e.note)}</span>` : ""}</span></li>`).join("")}</ul></section>
+          ${me.role === "admin" ? `<p class="small" id="order-delete-box"><button class="link small danger-text" id="order-delete">Delete this order…</button></p>` : ""}
         </div>
       </div>
       <div class="tags-print">${o.items.map((i) => `<div><strong>${esc(i.tag_code)}</strong>${esc(o.client.name)}<br>${esc(i.description)}<br>${esc(i.service?.name || "")}</div>`).join("")}</div>`;
@@ -506,6 +514,26 @@
       else toast("Inspected. Nothing more to charge.");
       route();
     };
+    c.querySelector("#order-delete")?.addEventListener("click", async () => {
+      const box = c.querySelector("#order-delete-box");
+      try {
+        const chk = await api("GET", `/api/staff/orders/${id}/delete-check`);
+        if (chk.blockers.length) {
+          box.innerHTML = `<span class="small">This order can't be deleted: ${chk.blockers.map(esc).join("; ")}.</span>`;
+          return;
+        }
+        const parts = [chk.garments && `${chk.garments} garment${chk.garments === 1 ? "" : "s"}`, chk.bookings && `${chk.bookings} booking${chk.bookings === 1 ? "" : "s"}`, "its history"].filter(Boolean);
+        box.innerHTML = `<span class="small">Delete order ${esc(o.ref)} completely, with ${parts.join(", ")}? Use this only for an order made by mistake. This can't be undone. A short record of what it was stays under Orders → Deleted orders.</span>
+          <form class="stack" style="margin-top:8px"><label>Why?<input name="reason" required minlength="3" maxlength="300" placeholder="e.g. Created by mistake while testing"></label>
+          <span class="row"><button class="btn danger sm">Delete order</button><button class="btn ghost sm" type="button" data-no>Keep it</button></span></form>`;
+        box.querySelector("[data-no]").addEventListener("click", () => route());
+        box.querySelector("form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          try { const r = await api("POST", `/api/staff/orders/${id}/delete`, { reason: e.target.reason.value }); toast(`Order ${r.deleted} deleted`); location.hash = "#/clients/" + r.client_id; }
+          catch (ex) { toast(ex.message, true); }
+        });
+      } catch (ex) { toast(ex.message, true); }
+    });
     c.querySelector("#call-done")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       try { reviewToast(await api("POST", `/api/staff/orders/${id}/status`, { status: "inspected", note: e.target.note.value })); }
