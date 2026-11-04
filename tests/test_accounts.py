@@ -111,3 +111,38 @@ def test_letters_escape_names_and_fall_back_to_hello():
     assert text.startswith("Hello <b>Ada</b>,") and "Go:\nhttps://x.test/?a=1&b=2" in text
     assert "&lt;b&gt;Ada&lt;/b&gt;" in html and "<b>Ada" not in html and 'href="https://x.test/?a=1&amp;b=2"' in html
     assert letters.hello("") == "Hello," and letters.hello(None) == "Hello,"
+
+
+class _FakeSMTP:
+    """Accepts every email, as Resend would."""
+    def __init__(self, *a, **k): pass
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def starttls(self): pass
+    def login(self, *a): pass
+    def send_message(self, msg): pass
+
+
+def test_admin_resends_the_confirmation_link(api, staff_headers, monkeypatch):
+    from app.config import get_settings
+    _register(api)
+    api.cookies.clear()
+    (row,) = api.get("/api/staff/clients?unconfirmed=true&q=new@example.com", headers=staff_headers).json()
+    assert row["unconfirmed"]
+    url = f"/api/staff/clients/{row['id']}/confirmation-link"
+
+    # No mail server: the admin is told, rather than shown "sent".
+    assert api.post(url, headers=staff_headers).status_code == 502
+
+    monkeypatch.setattr(get_settings(), "smtp_host", "smtp.example.com")
+    monkeypatch.setattr(mailer.smtplib, "SMTP", _FakeSMTP)
+    mailer.OUTBOX.clear()
+    r = api.post(url, headers=staff_headers)
+    assert r.status_code == 200 and r.json() == {"sent_to": "new@example.com"}
+    msg = mailer.last_to("new@example.com")
+    assert msg["subject"] == "Confirm your LAVE account" and "junk folder" in msg["text"]
+
+    # The new link confirms the account; after that there's nothing to resend.
+    assert api.get(_link("new@example.com"), follow_redirects=False).headers["location"] == "/account/"
+    assert not api.get(f"/api/staff/clients/{row['id']}", headers=staff_headers).json()["unconfirmed"]
+    assert api.post(url, headers=staff_headers).status_code == 400

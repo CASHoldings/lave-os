@@ -514,6 +514,21 @@ def remove_unconfirmed(body: dict, staff: StaffUser = Depends(admin_only), db: S
     return {"removed": removed}
 
 
+@router.post("/clients/{client_id}/confirmation-link")
+def resend_confirmation(client_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Email a website sign-up a fresh link to confirm their email, e.g. when the first one went to junk."""
+    from app.services import accounts
+    c = db.get(Client, client_id)
+    if not c or c.deleted_at:
+        raise HTTPException(404, "Client not found.")
+    if not accounts.awaiting_confirmation(c):
+        raise HTTPException(400, "This client's email is already confirmed.")
+    # On a developer's machine there's no mail server: the email is only logged, which is fine.
+    if not accounts.resend_confirmation(db, c) and not get_settings().is_dev:
+        raise HTTPException(502, "The email couldn't be sent. Check Settings → Email, then try again.")
+    return {"sent_to": c.email}
+
+
 @router.get("/clients")
 def list_clients(q: str | None = None, unconfirmed: bool = False, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
     query = select(Client) if unconfirmed else select(Client).where(~_unconfirmed())

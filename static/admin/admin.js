@@ -622,7 +622,7 @@
     const qs = new URLSearchParams({ ...(q ? { q } : {}), ...(showAll ? { unconfirmed: "true" } : {}) });
     const [rows, unconf] = await Promise.all([api("GET", "/api/staff/clients?" + qs), api("GET", "/api/staff/clients/unconfirmed")]);
     if (unconf.count) {
-      c.querySelector("#list").insertAdjacentHTML("beforebegin", `<p class="notice small">${unconf.count} website sign-up${unconf.count === 1 ? "" : "s"} never confirmed their email (mostly bots using other people's addresses) ${showAll ? "are shown below" : "are hidden"}.
+      c.querySelector("#list").insertAdjacentHTML("beforebegin", `<p class="notice small">${unconf.count} website sign-up${unconf.count === 1 ? "" : "s"} never confirmed their email ${showAll ? "are shown below" : "are hidden"}. Most are bots using other people's addresses, but a real client may be waiting because our email went to junk: open them to send a new link.
         <a href="#/clients?${showAll ? "" : "unconfirmed=1"}">${showAll ? "Hide them" : "Show them"}</a>${me.role === "admin" ? ` · <button class="link small" id="purge">Remove those older than 2 days</button>` : ""}</p>`);
       c.querySelector("#purge")?.addEventListener("click", (e) => {
         e.target.outerHTML = `<span class="small">Delete unconfirmed sign-ups older than 2 days that have no orders, bookings, membership or address? This can't be undone. <button class="btn danger sm" id="purge-yes">Remove</button></span>`;
@@ -634,7 +634,7 @@
     }
     c.querySelector("#list").innerHTML = rows.length ? `<div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Membership</th><th>Card</th><th>Joined</th></tr></thead>
-      <tbody>${rows.map((x) => `<tr class="click" data-href="#/clients/${x.id}"><td><strong>${esc(x.full_name)}</strong>${x.deletion_requested_at && !x.deleted_at ? ' <span class="pill warn">Asked to delete</span>' : ""}</td><td>${esc(x.email)}</td><td>${esc(x.phone)}</td>
+      <tbody>${rows.map((x) => `<tr class="click" data-href="#/clients/${x.id}"><td><strong>${esc(x.full_name)}</strong>${x.deletion_requested_at && !x.deleted_at ? ' <span class="pill warn">Asked to delete</span>' : ""}${x.unconfirmed ? ' <span class="pill warn">Not confirmed</span>' : ""}</td><td>${esc(x.email)}</td><td>${esc(x.phone)}</td>
         <td>${x.membership ? pill(x.membership.status === "active" ? x.membership.plan_name : x.membership.status) : "–"}</td><td>${x.has_card_on_file ? "On file" : "–"}</td>
         <td class="small muted">${D.format(parse(x.created_at))}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No clients found.</p>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
@@ -653,6 +653,8 @@
         ${me.role === "admin" && x.membership && x.membership.status !== "cancelled" ? `<span id="end-box"><button class="link small danger-text" id="end-membership">End membership</button></span>` : ""}</div>
         <div class="row"><button class="btn primary" id="book-for">Book a collection</button><button class="btn" id="walk-in">New walk-in order</button></div></div>
       <div id="book-for-box" hidden></div>
+      ${x.unconfirmed && !x.deleted_at ? `<div class="notice row between"><span><strong>Email not confirmed yet.</strong> They signed up on the website on ${D.format(parse(x.created_at))} but haven't clicked the link we emailed them. If it went to their junk folder, send a new one.</span>
+        <span id="confirm-box"><button class="btn sm" id="resend-confirm">Send a new confirmation link</button></span></div>` : ""}
       ${x.deleted_at ? `<p class="notice">This client was deleted on ${D.format(parse(x.deleted_at))}. Their orders are kept for the records, without personal details.</p>` : ""}
       ${x.deletion_requested_at && !x.deleted_at ? `<div class="notice row between"><span><strong>Asked to delete their account</strong> on ${D.format(parse(x.deletion_requested_at))}. Respond within one month.</span>${me.role === "admin" ? `<span id="delete-box"><button class="btn danger sm" id="delete-client">Delete client…</button></span>` : ""}</div>` : ""}
       <div class="cols-3">
@@ -690,6 +692,13 @@
       </div>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
     c.querySelector("#client-edit").addEventListener("submit", act((e) => { e.preventDefault(); return api("PATCH", "/api/staff/clients/" + id, Object.fromEntries(new FormData(e.target).entries())); }, "Saved"));
+    c.querySelector("#resend-confirm")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        const r = await api("POST", `/api/staff/clients/${id}/confirmation-link`);
+        c.querySelector("#confirm-box").innerHTML = `<span class="small">Sent to ${esc(r.sent_to)}. The link works for 24 hours.</span>`;
+      } catch (ex) { e.target.disabled = false; toast(ex.message, true); }
+    });
     c.querySelector("#end-membership")?.addEventListener("click", () => {
       const box = c.querySelector("#end-box");
       box.innerHTML = `<span class="small">End ${esc(x.membership.plan_name)} now? Billing stops and benefits end today.</span>

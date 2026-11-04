@@ -154,6 +154,23 @@ def authenticate(db: Session, email: str, password: str) -> Client:
     return client
 
 
+def awaiting_confirmation(client: Client) -> bool:
+    """Signed up on the website with a password but hasn't clicked the confirmation link yet."""
+    return bool(client.password_hash and not client.email_verified_at)
+
+
+def resend_confirmation(db: Session, client: Client) -> bool:
+    """A fresh confirmation link, sent by LAVE from the admin (e.g. when the first one went to junk). Returns True
+    if the mail server accepted it."""
+    link = issue_link(db, client, "verify")
+    return letters.send(client.email, "Confirm your LAVE account", client.first_name, [
+        "Here is a new link to confirm your email address and finish setting up your LAVE account.",
+        letters.Button("Confirm my email", link),
+        "This link works once and expires in 24 hours. If our earlier email went to your junk folder, marking this "
+        "one as not junk helps our emails reach your inbox in future.",
+    ], letters.SOON)
+
+
 def send_signin_link(db: Session, email: str, next_path: str, purpose: str = "signin") -> None:
     """Email a sign-in (or reset) link if the account exists. Silent either way."""
     email = normalise_email(email)

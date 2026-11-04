@@ -58,6 +58,7 @@ def client(c: Client, staff_view: bool = False) -> dict:
         db = object_session(c)
         out.update(staff_notes=c.staff_notes, wp_user_id=c.wp_user_id, stripe_customer_id=c.stripe_customer_id,
                    created_at=iso(c.created_at), deleted_at=iso(c.deleted_at),
+                   unconfirmed=bool(c.password_hash and not c.email_verified_at),
                    missed_12m=missed_recently(db, c.id) if db else 0)
     return out
 
