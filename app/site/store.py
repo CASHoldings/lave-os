@@ -1,4 +1,5 @@
 """Loads editable website content for each request, and validates edits before they're saved."""
+import time
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -6,6 +7,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
 from app.models import Media, SiteContent
 from app.site.content import BRAND, Column, Section, SubNav
@@ -125,26 +127,37 @@ def sections_from(doc: dict) -> list[Section]:
                             for c in n["columns"]]) for n in s["subnav"]]) for s in doc["sections"]]
 
 
-_cache: dict = {"stamp": None, "site": None}
+_cache: dict = {"stamp": None, "site": None, "checked": 0.0}
 CURRENT: dict = {}  # last loaded documents, for code that runs outside a request (e.g. plan names in emails)
+# How long a page may use the loaded wording before checking the database for edits. Saving in the admin clears the
+# cache at once (one process serves the site), so this only spares a database connection on every page view: with
+# a burst of visitors or crawlers, those connections ran out (5 November 2026). Tests check every time.
+RECHECK_SECONDS = 0 if get_settings().env == "test" else 15
 
 
 def load(db: Session) -> Site:
+    now = time.monotonic()
+    if _cache["stamp"] is not None and _cache["site"] is not None and now - _cache["checked"] < RECHECK_SECONDS:
+        return _cache["site"]
     rows = db.execute(select(SiteContent.key, SiteContent.updated_at)).all()
     stamp = tuple(sorted((k, str(t)) for k, t in rows))
     if _cache["stamp"] == stamp and _cache["site"] is not None:
+        _cache["checked"] = now
         return _cache["site"]
     saved = {r.key: r.value for r in db.scalars(select(SiteContent))}
     docs = {k: saved.get(k) or spec["default"]() for k, spec in DOCUMENTS.items()}
     copies = dict(db.execute(select(Media.source_url, Media.url).where(Media.source_url.in_(BRAND.values()))).all())
     site = Site(docs, sections_from(docs["menus"]), {k: copies.get(u, u) for k, u in BRAND.items()})
-    _cache.update(stamp=stamp, site=site)
+    _cache.update(stamp=stamp, site=site, checked=now)
     CURRENT.update(docs)
     return site
 
 
 def site_dependency(request: Request, db: Session = Depends(get_db)) -> Site:
     request.state.site = load(db)
+    # Hand the connection back now rather than holding it while the page is built; the page's own queries, if
+    # any, take one again. Nothing has been changed yet, so there's nothing to lose.
+    db.rollback()
     return request.state.site
 
 
