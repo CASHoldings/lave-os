@@ -16,15 +16,16 @@ class MailError(Exception):
 
 
 def send(to: str, subject: str, text: str, reply_to: str | None = None, raise_errors: bool = False,
-         html: str | None = None) -> bool:
-    """Send an email: plain text, plus a designed version when `html` is given (see letters.py). Returns True if the
-    mail server accepted it.
+         html: str | None = None, attachments: list[tuple[str, bytes, str]] | None = None) -> bool:
+    """Send an email: plain text, plus a designed version when `html` is given (see letters.py), plus any
+    attachments as (filename, bytes, type), e.g. an invoice PDF. Returns True if the mail server accepted it.
 
     Normally never raises, so a client's request doesn't fail because email is down; `raise_errors=True`
     (the admin's test button) raises MailError with the reason instead.
     """
     settings = get_settings()
-    OUTBOX.appendleft({"to": to, "subject": subject, "text": text, "html": html})
+    OUTBOX.appendleft({"to": to, "subject": subject, "text": text, "html": html,
+                       "attachments": [name for name, _, _ in attachments or []]})
     if not settings.smtp_host:
         # Emails can hold sign-in links, so only print the body on a developer's machine.
         if settings.is_dev:
@@ -43,6 +44,9 @@ def send(to: str, subject: str, text: str, reply_to: str | None = None, raise_er
     msg.set_content(text)
     if html:
         msg.add_alternative(html, subtype="html")
+    for name, data, kind in attachments or []:
+        maintype, subtype = kind.split("/", 1)
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=name)
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:
             smtp.starttls()

@@ -293,12 +293,10 @@ def receipt(db: Session, order: Order) -> bool:
     if order.discount_pence:
         items.append(("Discount", "−" + _pounds(order.discount_pence)))
     items.append(("Total", _pounds(order.total_pence)))
-    paid = [("Paid at booking", sum(p.amount_pence for p in order.payments if p.kind == "booking" and p.status == "succeeded")),
-            ("Paid after review", sum(p.amount_pence for p in order.payments if p.kind == "adjustment" and p.status == "succeeded")),
-            ("LAVE account credit used", order.credit_used_pence),
-            ("Credited to your LAVE account", -order.credited_pence)]
-    rows = [(k, ("−" if v < 0 else "") + _pounds(abs(v))) for k, v in paid if v]
-    rows.append(("Still to pay", _pounds(max(0, order.balance_pence))))
+    from app.services import documents
+    paid, due = documents.settlement(order)
+    rows = [(k, ("−" if v < 0 else "") + _pounds(abs(v))) for k, v in paid]
+    rows.append(("Still to pay", _pounds(due)))
     paid_on = order.paid_at or local_now()
     letters.send(order.client.email, f"Your LAVE receipt: order {order.ref}", order.client.first_name, [
         f"Thank you. Here is your receipt for order {order.ref}, settled on {paid_on:%A} {paid_on.day} {paid_on:%B %Y}.",
@@ -307,6 +305,7 @@ def receipt(db: Session, order: Order) -> bool:
         *(["The difference has been added to your LAVE account and is used automatically on your next booking. If "
            "you'd rather have it back on your card, simply reply to this email."] if order.credited_pence else []),
         letters.Button("View your order", f"{get_settings().site_url}/account/orders/"),
+        "You can download this receipt as a PDF from your order in your LAVE account.",
         "LAVE isn't VAT-registered, so no VAT is charged. If anything doesn't look right, simply reply to this email.",
     ])
     return True

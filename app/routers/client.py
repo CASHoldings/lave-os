@@ -372,12 +372,47 @@ def my_orders(client: Client = Depends(current_client), db: Session = Depends(ge
     return [ser.order(o) for o in rows]
 
 
-@router.get("/orders/{ref}")
-def my_order(ref: str, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+def _my_order(db: Session, client: Client, ref: str) -> Order:
     o = db.scalar(select(Order).where(Order.ref == ref.upper(), Order.client_id == client.id))
     if not o:
         raise HTTPException(404, "Order not found.")
-    return ser.order(o, detail=True)
+    return o
+
+
+@router.get("/orders/{ref}")
+def my_order(ref: str, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    from app.models import Invoice
+    from app.services import documents
+    o = _my_order(db, client, ref)
+    invoices = db.scalars(select(Invoice).where(Invoice.order_id == o.id, Invoice.voided_at.is_(None)).order_by(Invoice.id))
+    return {**ser.order(o, detail=True), "receipt_available": documents.receipt_available(o),
+            "invoices": [{"number": i.number, "issued_on": i.issued_on.isoformat(), "due_pence": i.due_pence} for i in invoices]}
+
+
+def _pdf(data: bytes, filename: str) -> Response:
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"',
+                                                                 "Cache-Control": "no-store"})
+
+
+@router.get("/orders/{ref}/receipt.pdf")
+def my_receipt(ref: str, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    from app.services import documents
+    o = _my_order(db, client, ref)
+    try:
+        return _pdf(documents.receipt_pdf(o), f"LAVE-receipt-{o.ref}.pdf")
+    except documents.DocumentError as e:
+        raise HTTPException(409, str(e))
+
+
+@router.get("/invoices/{number}.pdf")
+def my_invoice(number: str, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    from app.models import Invoice
+    from app.services import documents
+    inv = db.scalar(select(Invoice).where(Invoice.number == number.upper(), Invoice.client_id == client.id,
+                                          Invoice.voided_at.is_(None)))
+    if not inv:
+        raise HTTPException(404, "Invoice not found.")
+    return _pdf(documents.invoice_pdf(db, inv), f"LAVE-{inv.number}.pdf")
 
 
 # Wardrobe

@@ -40,9 +40,10 @@ def hello(first_name: str | None) -> str:
     return f"Hello {name}," if name else "Hello,"
 
 
-def send(to: str, subject: str, first_name: str | None, blocks: list[Block], closing: str = AGAIN) -> bool:
+def send(to: str, subject: str, first_name: str | None, blocks: list[Block], closing: str = AGAIN,
+         attachments: list[tuple[str, bytes, str]] | None = None) -> bool:
     text, html = compose(subject, hello(first_name), blocks, closing)
-    return mailer.send(to, subject, text, html=html)
+    return mailer.send(to, subject, text, html=html, attachments=attachments)
 
 
 def compose(subject: str, greeting: str, blocks: list[Block], closing: str) -> tuple[str, str]:

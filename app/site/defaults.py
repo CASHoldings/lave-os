@@ -209,6 +209,16 @@ def signup() -> dict:
     }
 
 
+def invoices() -> dict:
+    """Wording on invoices and their emails (services/documents.py). Terms: 0 (due on receipt), 7, 14 or 30 days."""
+    return {
+        "terms_days": "14",
+        "how_to_pay": "To pay, reply to this email and we'll send you a secure card payment link, or ask us for our "
+                      "bank details.",
+        "thanks": "Thank you for choosing LAVE.",
+    }
+
+
 # What /admin → Website lists, in order. "locked" lists can't have entries added or removed; "readonly" fields can't change.
 DOCUMENTS = {
     "home": {"title": "Home page", "help": "The two halves of the home page.", "default": home},
@@ -232,4 +242,7 @@ DOCUMENTS = {
     "signup": {"title": "Newsletter box", "help": "The small box at the bottom left that invites visitors to join the "
                "list. \"Thanks\" shows after they sign up. See who has joined under Journal → Newsletter.",
                "default": signup},
+    "invoices": {"title": "Invoices", "help": "Default payment terms (0 for due on receipt, or 7, 14 or 30 days), how "
+                 "clients can pay, and the closing line. Add your bank details to \"How to pay\" if you take bank "
+                 "transfers. Each invoice keeps the terms it was issued with.", "default": invoices},
 }

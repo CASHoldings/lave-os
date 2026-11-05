@@ -272,6 +272,25 @@
       return data;
     }
 
+    /* A PDF (receipt, invoice) fetched with the same sign-in as the API, then saved by the browser. */
+    async download(path, filename, button) {
+      const headers = this.token ? { Authorization: "Bearer " + this.token } : {};
+      if (button) button.disabled = true;
+      try {
+        const res = await fetch(this.api + path, { headers, credentials: this.sameOrigin ? "same-origin" : "omit" });
+        if (!res.ok) throw new Error(errorText(await res.json().catch(() => ({})), res.status));
+        const url = URL.createObjectURL(await res.blob());
+        const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } catch (e) {
+        button?.insertAdjacentHTML("afterend", `<p class="error">${esc(e.message)}</p>`);
+      }
+      finally { if (button) button.disabled = false; }
+    }
+
     /* What collection & delivery costs this client (labels for slot cells, notes under the pickers). */
     async loadTerms() {
       try { this.terms = await this.call("GET", "/api/me/delivery-terms"); }
@@ -950,12 +969,15 @@
             ${o.credited_pence ? `<tr><td colspan="4">Credited to your LAVE account</td><td class="num">${money(o.credited_pence)}</td></tr>` : ""}
           </tfoot></table></div>`
         : `<p class="notice">We'll list every item here, with its tag and price, once we've inspected your order.${o.paid_pence ? ` You've paid ${money(o.paid_pence)} so far.` : ""}</p>`}
+        ${o.receipt_available || o.invoices?.length ? `<div class="row">${o.receipt_available ? `<button class="btn" data-download="/api/me/orders/${encodeURIComponent(o.ref)}/receipt.pdf" data-name="LAVE-receipt-${esc(o.ref)}.pdf">Download receipt (PDF)</button>` : ""}
+          ${(o.invoices || []).map((i) => `<button class="btn" data-download="/api/me/invoices/${encodeURIComponent(i.number)}.pdf" data-name="LAVE-${esc(i.number)}.pdf">Invoice ${esc(i.number)} (PDF)</button>`).join("")}</div>` : ""}
         ${o.status === "awaiting_customer_call" ? `<p class="notice">Something in your order differs from your booking. We'll call you to agree it before anything else is charged.</p>` : ""}
         <div class="stack"><p class="eyebrow">Bookings</p>${o.bookings.map((b) => `<p>${b.atelier ? `Drop-off at ${esc(b.atelier.name)}` : b.kind === "collection" ? "Collection" : "Return"}: ${esc(when(b))} <span class="status ${b.status === "completed" ? "done" : b.status === "cancelled" ? "warn" : ""}">${esc(b.status)}</span>${b.bag_codes?.length ? `<br><span class="muted small">Bag labels: ${b.bag_codes.map(esc).join(", ")}</span>` : ""}</p>`).join("")}
           ${this.canBookReturn(o) ? `<div class="row"><button class="btn" id="book-return">Book your return</button></div><div id="return-box" class="stack" hidden></div>` : ""}</div>
         <div class="stack"><p class="eyebrow">History</p><ul class="timeline">${o.timeline.slice().reverse().map((e) => `<li><span class="muted small">${DAY.format(parse(e.at))}, ${hour(e.at)}</span><span>${esc(e.label)}${e.note ? ` <span class="muted">· ${esc(e.note)}</span>` : ""}</span></li>`).join("")}</ul></div>`;
       this.$("#back").addEventListener("click", () => this.show());
       this.$("#book-return")?.addEventListener("click", () => this.bookReturn(o));
+      this.$$("[data-download]").forEach((b) => b.addEventListener("click", () => this.download(b.dataset.download, b.dataset.name, b)));
     }
 
     canBookReturn(o) {

@@ -783,6 +783,37 @@ class DeletedOrder(Base):
     deleted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class Invoice(Base):
+    """An invoice for an order, usually for a business client: who it's billed to, a fixed copy of the lines and
+    totals at the time it was issued, and when it's due. Never deleted; a wrong one is voided and a new one issued."""
+    __tablename__ = "invoices"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(20), unique=True)  # INV-0001
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="SET NULL"), index=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id", ondelete="SET NULL"), index=True)
+    order_ref: Mapped[str] = mapped_column(String(12), default="")
+    company: Mapped[str] = mapped_column(String(160))
+    contact_name: Mapped[str] = mapped_column(String(160), default="")
+    address: Mapped[str] = mapped_column(Text, default="")
+    email: Mapped[str] = mapped_column(String(255), default="")
+    po_ref: Mapped[str] = mapped_column(String(80), default="")  # the client's purchase order or reference
+    issued_on: Mapped[date] = mapped_column(Date)
+    due_on: Mapped[date] = mapped_column(Date)
+    terms_days: Mapped[int] = mapped_column(Integer, default=14)
+    # [{"what": str, "detail": str, "amount_pence": int}], then totals: what's already paid and what's due.
+    lines: Mapped[list] = mapped_column(JSON, default=list)
+    total_pence: Mapped[int] = mapped_column(Integer, default=0)
+    paid_pence: Mapped[int] = mapped_column(Integer, default=0)
+    due_pence: Mapped[int] = mapped_column(Integer, default=0)
+    estimate: Mapped[bool] = mapped_column(Boolean, default=False)  # issued before the atelier counted the items
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime)
+    void_reason: Mapped[str] = mapped_column(String(300), default="")
+
+
 class ClientCredit(Base):
     """A client's LAVE account credit: + credit given (e.g. an order came to less), − credit used or refunded."""
     __tablename__ = "client_credits"

@@ -13,8 +13,9 @@ alembic==1.20.0
 pytest==9.1.1
 httpx==0.28.1
 Jinja2==3.1.6
-fonttools==4.66.1  # dev only: font conversion
+fonttools==4.66.1  # font conversion; also needed by fpdf2
 Markdown==3.11
 Pillow==12.2.0
 boto3==1.43.118  # photo storage (Cloudflare R2)
 segno==1.6.6  # QR code for two-step sign-in setup
+fpdf2==2.8.9  # PDF receipts and invoices

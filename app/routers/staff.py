@@ -48,6 +48,7 @@ from app.schemas import (
     ClientPatch,
     GarmentIn,
     GarmentPatch,
+    InvoiceIn,
     ManualPayment,
     OrderPatch,
     OrderStatusChange,
@@ -59,8 +60,8 @@ from app.schemas import (
     StaffCreate,
     StaffForgot,
     StaffLogin,
-    StaffReset,
     StaffPatch,
+    StaffReset,
     TwoStepCode,
     VaultPatch,
     WalkInOrder,
@@ -432,6 +433,99 @@ def delete_order(order_id: int, body: dict, staff: StaffUser = Depends(admin_onl
     order_svc.delete(db, o, staff.name, reason)
     db.commit()
     return {"deleted": ref, "client_id": client_id}
+
+
+# Receipts and invoices (services/documents.py)
+
+def _pdf(data: bytes, filename: str) -> Response:
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"',
+                                                                 "Cache-Control": "no-store"})
+
+
+@router.get("/orders/{order_id}/receipt.pdf")
+def order_receipt(order_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import documents
+    o = _order(db, order_id)
+    try:
+        return _pdf(documents.receipt_pdf(o), f"LAVE-receipt-{o.ref}.pdf")
+    except documents.DocumentError as e:
+        raise HTTPException(409, str(e))
+
+
+@router.get("/orders/{order_id}/invoices")
+def order_invoices(order_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.models import Invoice
+    from app.services import documents
+    o = _order(db, order_id)
+    rows = db.scalars(select(Invoice).where(Invoice.order_id == o.id).order_by(Invoice.id.desc()))
+    return {"invoices": [documents.invoice_row(i) for i in rows], "bill_to": documents.bill_to_suggestion(db, o),
+            "terms_days": documents.invoice_settings(db)["terms_days"], "terms": documents.TERMS}
+
+
+@router.post("/orders/{order_id}/invoices", status_code=201)
+def create_invoice(order_id: int, body: InvoiceIn, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import documents
+    o = _order(db, order_id)
+    try:
+        inv = documents.issue_invoice(db, o, company=body.company, contact_name=body.contact_name, address=body.address,
+                                      email=body.email or "", po_ref=body.po_ref, terms_days=body.terms_days,
+                                      note=body.note, by=staff.name)
+    except documents.DocumentError as e:
+        raise HTTPException(400, str(e))
+    order_svc.log(db, o, "invoice", f"Invoice {inv.number} issued by {staff.name}.", staff.id, visible=False)
+    db.commit()
+    sent = None
+    if body.send:
+        sent = documents.send_invoice(db, inv)
+        db.commit()
+    return {**documents.invoice_row(inv), "emailed": sent}
+
+
+def _invoice(db: Session, invoice_id: int):
+    from app.models import Invoice
+    inv = db.get(Invoice, invoice_id)
+    if not inv:
+        raise HTTPException(404, "Invoice not found.")
+    return inv
+
+
+@router.get("/invoices/{invoice_id}.pdf")
+def invoice_download(invoice_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import documents
+    inv = _invoice(db, invoice_id)
+    return _pdf(documents.invoice_pdf(db, inv), f"LAVE-{inv.number}.pdf")
+
+
+@router.post("/invoices/{invoice_id}/send")
+def invoice_send(invoice_id: int, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    from app.services import documents
+    inv = _invoice(db, invoice_id)
+    try:
+        sent = documents.send_invoice(db, inv)
+    except documents.DocumentError as e:
+        raise HTTPException(400, str(e))
+    # On a developer's machine there's no mail server: the email is only logged, which is fine.
+    if not sent and not get_settings().is_dev:
+        raise HTTPException(502, "The email couldn't be sent. Check Settings → Email, then try again.")
+    db.commit()
+    return documents.invoice_row(inv)
+
+
+@router.post("/invoices/{invoice_id}/void")
+def invoice_void(invoice_id: int, body: dict, staff: StaffUser = Depends(admin_only), db: Session = Depends(get_db)):
+    """A wrong invoice isn't deleted: it's marked void (with why), and a new one can be issued."""
+    from app.services import documents
+    reason = str(body.get("reason") or "").strip()
+    if len(reason) < 3:
+        raise HTTPException(400, "Say briefly why the invoice is void, for the record.")
+    inv = _invoice(db, invoice_id)
+    if inv.voided_at:
+        raise HTTPException(409, "This invoice is already void.")
+    inv.voided_at, inv.void_reason = local_now(), reason[:300]
+    if inv.order_id and (o := db.get(Order, inv.order_id)):
+        order_svc.log(db, o, "invoice", f"Invoice {inv.number} voided by {staff.name}: {reason}", staff.id, visible=False)
+    db.commit()
+    return documents.invoice_row(inv)
 
 
 @router.get("/deleted-orders")

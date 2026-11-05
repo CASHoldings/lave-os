@@ -475,7 +475,9 @@
               <button class="btn primary" id="charge" ${o.items.length && o.status !== "awaiting_customer_call" && (o.balance_pence <= 0 || o.client.has_card_on_file) ? "" : "disabled"}>${o.balance_pence > 0 ? `Charge ${money(o.balance_pence)} to card` : o.balance_pence < 0 ? `Credit ${money(-o.balance_pence)} to their account` : "Settle"}</button>
               ${me.role === "admin" ? `<button class="btn" data-manual="paid">Record paid in person</button><button class="btn ghost" data-manual="waived">Waive</button>` : ""}
             </div>` : ""}
+            ${o.payment_status === "paid" ? `<p style="margin-top:12px"><a class="btn sm ghost" href="/api/staff/orders/${id}/receipt.pdf">Download receipt (PDF)</a></p>` : ""}
           </section>
+          <section class="panel" id="invoices"><h2>Invoices</h2><p class="loading">Loading…</p></section>
         </div>
         <div class="stack">
           <section class="panel"><h2>Bookings</h2>
@@ -514,6 +516,58 @@
       else toast("Inspected. Nothing more to charge.");
       route();
     };
+    // Invoices: issued from here (admin), kept forever; a wrong one is voided with a reason and a new one issued.
+    const loadInvoices = async () => {
+      const box = c.querySelector("#invoices");
+      const data = await api("GET", `/api/staff/orders/${id}/invoices`);
+      const canIssue = me.role === "admin" && o.status !== "cancelled";
+      const b = data.bill_to;
+      box.innerHTML = `<h2>Invoices</h2>
+        ${data.invoices.length ? `<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Bill to</th><th class="num">Due</th><th>Status</th><th></th></tr></thead>
+          <tbody>${data.invoices.map((i) => `<tr><td class="tag"><strong>${esc(i.number)}</strong><br><span class="small muted">${D.format(parse(i.issued_on))} · ${esc(i.terms)}</span></td>
+            <td>${esc(i.company)}<br><span class="small muted">${esc(i.email)}</span></td><td class="num">${money(i.due_pence)}<br><span class="small muted">by ${D.format(parse(i.due_on))}</span></td>
+            <td>${i.voided_at ? `<span class="pill err">Void</span><br><span class="small muted">${esc(i.void_reason)}</span>` : i.sent_at ? `<span class="pill ok">Sent</span><br><span class="small muted">${DT.format(parse(i.sent_at))}</span>` : `<span class="pill">Not sent</span>`}${i.estimate ? '<br><span class="small muted">From the booking, before the count</span>' : ""}</td>
+            <td class="small"><a href="/api/staff/invoices/${i.id}.pdf">PDF</a>${me.role === "admin" && !i.voided_at ? ` · <button class="link small" data-inv-send="${i.id}">${i.sent_at ? "Send again" : "Send"}</button> · <button class="link small danger-text" data-inv-void="${i.id}">Void</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+          : `<p class="muted small">No invoices yet. Clients get a receipt automatically once the order is paid; issue an invoice when a business client needs one.</p>`}
+        ${canIssue ? `<details id="inv-new"><summary class="small">Create an invoice</summary>
+          <form class="form-grid" style="margin-top:10px">
+            <label style="grid-column:span 2">Company (or person) to bill<input name="company" required maxlength="160" value="${esc(b.company)}" placeholder="e.g. Haydon Hotels Ltd"></label>
+            <label>Contact name<input name="contact_name" maxlength="160" value="${esc(b.contact_name)}"></label>
+            <label>Email to send it to<input name="email" type="email" value="${esc(b.email)}"></label>
+            <label style="grid-column:span 2">Billing address<textarea name="address" rows="3" maxlength="600">${esc(b.address)}</textarea></label>
+            <label>Their reference or PO number<input name="po_ref" maxlength="80" placeholder="Optional"></label>
+            <label>Payment terms<select name="terms_days">${Object.entries(data.terms).map(([d, label]) => `<option value="${d}" ${Number(d) === data.terms_days ? "selected" : ""}>${esc(label)}</option>`).join("")}</select></label>
+            <label style="grid-column:span 2">Note on the invoice<input name="note" maxlength="1000" placeholder="Optional, e.g. Monthly linen for October"></label>
+            ${o.items.length ? "" : `<p class="small notice" style="grid-column:1/-1">The items haven't been counted yet, so this invoice uses what was booked. You can void it and issue a new one after the count.</p>`}
+            <div class="row" style="grid-column:1/-1"><button class="btn primary" name="go" value="send">Create and email</button><button class="btn" name="go" value="keep">Create only</button></div>
+          </form></details>` : ""}`;
+      box.querySelector("#inv-new form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.target).entries());
+        try {
+          const r = await api("POST", `/api/staff/orders/${id}/invoices`, { ...f, email: f.email || null, terms_days: Number(f.terms_days), send: e.submitter?.value === "send" });
+          toast(r.emailed ? `Invoice ${r.number} created and emailed to ${r.email}` : r.emailed === false ? `Invoice ${r.number} created, but the email couldn't be sent` : `Invoice ${r.number} created`, r.emailed === false);
+          loadInvoices();
+        } catch (ex) { toast(ex.message, true); }
+      });
+      box.querySelectorAll("[data-inv-send]").forEach((btn) => btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try { const r = await api("POST", `/api/staff/invoices/${btn.dataset.invSend}/send`); toast(`Invoice ${r.number} emailed to ${r.email}`); loadInvoices(); }
+        catch (ex) { btn.disabled = false; toast(ex.message, true); }
+      }));
+      box.querySelectorAll("[data-inv-void]").forEach((btn) => btn.addEventListener("click", () => {
+        const cell = btn.closest("td");
+        cell.innerHTML = `<form class="stack" style="gap:6px"><input name="reason" required minlength="3" maxlength="300" placeholder="Why is it void?" aria-label="Why is it void?">
+          <span class="row"><button class="btn danger sm">Void invoice</button><button class="btn ghost sm" type="button" data-no>Keep</button></span></form>`;
+        cell.querySelector("[data-no]").addEventListener("click", () => loadInvoices());
+        cell.querySelector("form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          try { const r = await api("POST", `/api/staff/invoices/${btn.dataset.invVoid}/void`, { reason: e.target.reason.value }); toast(`Invoice ${r.number} voided`); loadInvoices(); }
+          catch (ex) { toast(ex.message, true); }
+        });
+      }));
+    };
+    loadInvoices().catch((ex) => { c.querySelector("#invoices").innerHTML = `<h2>Invoices</h2><p class="small err-text">${esc(ex.message)}</p>`; });
     c.querySelector("#order-delete")?.addEventListener("click", async () => {
       const box = c.querySelector("#order-delete-box");
       try {

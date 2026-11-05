@@ -182,6 +182,17 @@ class ManualPayment(BaseModel):
     note: str = ""
 
 
+class InvoiceIn(BaseModel):
+    company: str = Field(min_length=1, max_length=160)
+    contact_name: str = Field("", max_length=160)
+    address: str = Field("", max_length=600)
+    email: EmailStr | None = None
+    po_ref: str = Field("", max_length=80)
+    terms_days: int | None = None  # 0, 7, 14 or 30; the default from Website → Invoices when empty
+    note: str = Field("", max_length=1000)
+    send: bool = False
+
+
 class WalkInOrder(BaseModel):
     client_id: int
     client_notes: str = ""

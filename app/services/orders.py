@@ -123,10 +123,10 @@ def _complete_booking(order: Order, kind: str) -> None:
 
 
 def delete_blockers(db: Session, order: Order) -> list[str]:
-    """Why an order can't be deleted: money changed hands (the record must stay for the accounts), or pieces are in
-    the Vault. A mistaken or test order with neither can go completely."""
+    """Why an order can't be deleted: money changed hands or an invoice was issued (the records must stay for the
+    accounts), or pieces are in the Vault. A mistaken or test order with neither can go completely."""
     from sqlalchemy import func, select
-    from app.models import ClientCredit
+    from app.models import ClientCredit, Invoice
     out = []
     if order.payment_status in (PaymentStatus.paid, PaymentStatus.refunded) or any(
             p.status in ("succeeded", "pending") for p in order.payments):
@@ -137,6 +137,8 @@ def delete_blockers(db: Session, order: Order) -> list[str]:
     garment_ids = [g.id for g in order.items]
     if garment_ids and db.scalar(select(func.count()).select_from(VaultItem).where(VaultItem.garment_id.in_(garment_ids))):
         out.append("Some of its pieces are in the Vault")
+    if db.scalar(select(func.count()).select_from(Invoice).where(Invoice.order_id == order.id)):
+        out.append("An invoice was issued for it. Keep it for your accounts, and void the invoice if it was a mistake")
     return out
 
 
