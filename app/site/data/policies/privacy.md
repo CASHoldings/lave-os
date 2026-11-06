@@ -6,7 +6,7 @@ LAVE LTD (company number 16329170, 438 Streatham High Road, London SW16 3PX) is 
 
 - **Your account:** name, email address, mobile number and password (stored only in a scrambled form we can't read).
 - **Addresses:** where we collect and deliver, and any access instructions you give us.
-- **Bookings and orders:** what you book, the pieces we care for (description, brand, colour, condition), your care preferences and notes, and notes from calls about your order.
+- **Bookings and orders:** what you book, the pieces we care for (description, brand, colour, condition, and photos of them when they arrive, which only you and our team can see), your care preferences and notes, and notes from calls about your order.
 - **Payments:** handled by Stripe. We keep a record of what you paid and any account credit, but never your full card number.
 - **Membership:** your plan, its status and your billing period.
 - **"Tell us about you" (optional, for members):** what you'd like us to call you, your birthday (day and month only), how and when you like us to be in touch, special pieces, interests, household members you choose to tell us about, occasions you're preparing for, dietary preferences and allergies.

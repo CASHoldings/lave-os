@@ -308,6 +308,11 @@ POLICY_CHANGES = [
      "They're cleared when you close the tab.\n\n## Managing cookies",
      "They're cleared when you close the tab.\n- If you close or answer the box inviting you to join our list, your browser remembers it (lave_signup, in local storage) so the box doesn't keep appearing: for 30 days if you close it, a year if you join.\n\n## Managing cookies",
      "3 November 2026"),
+    ("/policies/privacy/",
+     "the pieces we care for (description, brand, colour, condition),",
+     "the pieces we care for (description, brand, colour, condition, and photos of them when they arrive, which only you "
+     "and our team can see),",
+     "6 November 2026"),
 ]
 
 
