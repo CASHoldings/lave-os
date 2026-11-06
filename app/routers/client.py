@@ -404,6 +404,19 @@ def my_receipt(ref: str, client: Client = Depends(current_client), db: Session =
         raise HTTPException(409, str(e))
 
 
+@router.get("/garment-photos/{photo_id}")
+def my_piece_photo(photo_id: int, client: Client = Depends(current_client), db: Session = Depends(get_db)):
+    """A photo of one of the client's pieces, taken when it arrived. Only theirs."""
+    from fastapi.responses import FileResponse
+    from app.models import Garment, GarmentPhoto
+    from app.services import tracking
+    p = db.scalar(select(GarmentPhoto).join(Garment).join(Order).where(GarmentPhoto.id == photo_id,
+                                                                       Order.client_id == client.id))
+    if not p:
+        raise HTTPException(404, "Photo not found.")
+    return FileResponse(tracking.photo_file(p), headers={"Cache-Control": "private, max-age=86400"})
+
+
 @router.get("/invoices/{number}.pdf")
 def my_invoice(number: str, client: Client = Depends(current_client), db: Session = Depends(get_db)):
     from app.models import Invoice

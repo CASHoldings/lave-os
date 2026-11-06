@@ -53,6 +53,13 @@ ITEM_FOLLOWS: dict[OrderStatus, ItemStatus] = {
 
 NEEDS_PAYMENT = {S.out_for_delivery, S.delivered}
 
+# A piece's stages in order. Pieces can be scanned ahead of their order (services/tracking.py), so an order moving
+# forward never pulls a piece back; an order sent back (quality check to care) takes every piece with it.
+ITEM_RANK = {ItemStatus.received: 0, ItemStatus.inspected: 1, ItemStatus.in_care: 2, ItemStatus.quality_check: 3,
+             ItemStatus.ready: 4, ItemStatus.returned: 5, ItemStatus.in_vault: 5}
+ORDER_RANK = {st: i for i, st in enumerate([S.awaiting_collection, S.collected, S.awaiting_customer_call, S.inspected,
+                                            S.in_care, S.quality_check, S.ready, S.out_for_delivery, S.delivered])}
+
 
 def log(db: Session, order: Order, status_: str, note: str = "", staff_id: int | None = None,
         garment_id: int | None = None, visible: bool = True) -> None:
@@ -93,6 +100,7 @@ def advance(db: Session, order: Order, target: OrderStatus, staff_id: int | None
         # Items all going to the Vault still need paying for; nothing leaves unpaid.
         raise HTTPException(status.HTTP_409_CONFLICT, "Take payment (or waive it) before this order leaves the atelier.")
 
+    forward = ORDER_RANK.get(target, 0) > ORDER_RANK.get(order.status, 0)
     order.status = target
     if item_status := ITEM_FOLLOWS.get(target):
         for g in order.items:
@@ -100,7 +108,7 @@ def advance(db: Session, order: Order, target: OrderStatus, staff_id: int | None
                 continue
             if target == S.ready and g.send_to_vault:
                 move_to_vault(db, order, g)
-            else:
+            elif not forward or ITEM_RANK[g.status] < ITEM_RANK[item_status]:
                 g.status = item_status
 
     if target == S.collected:

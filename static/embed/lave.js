@@ -118,6 +118,8 @@
   .status { display: inline-block; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; background: var(--btn); white-space: nowrap; }
   .status.done { background: #e9f1e4; color: var(--ok); }
   .status.warn { background: #fbf0ef; color: var(--err); }
+  .piece-photos { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .piece-photo { width: 56px; height: 56px; padding: 0; border: 1px solid var(--line, #e2e3e6); background: #f3f3f3 center / cover no-repeat; cursor: zoom-in; }
   .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; list-style: none; padding: 0; margin: 0; counter-reset: s; }
   .tracker li { position: relative; padding-top: 22px; font-size: 0.75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); text-align: center; }
   .tracker li::before { content: ""; position: absolute; top: 5px; left: 50%; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #c9cbd1; transform: translateX(-50%); z-index: 1; }
@@ -270,6 +272,21 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw Object.assign(new Error(errorText(data, res.status)), { status: res.status });
       return data;
+    }
+
+    /* Photos of the client's pieces, taken when they arrived: fetched with the client's sign-in (they're private),
+       shown small, and opened full size when tapped. */
+    async showPhotos() {
+      const headers = this.token ? { Authorization: "Bearer " + this.token } : {};
+      for (const b of this.$$("[data-photo]")) {
+        try {
+          const res = await fetch(`${this.api}/api/me/garment-photos/${b.dataset.photo}`, { headers, credentials: this.sameOrigin ? "same-origin" : "omit" });
+          if (!res.ok) { b.hidden = true; continue; }
+          const url = URL.createObjectURL(await res.blob());
+          b.style.backgroundImage = `url("${url}")`;
+          b.addEventListener("click", () => window.open(url, "_blank", "noopener"));
+        } catch (_) { b.hidden = true; }
+      }
     }
 
     /* A PDF (receipt, invoice) fetched with the same sign-in as the API, then saved by the browser. */
@@ -956,7 +973,7 @@
         ${o.status === "cancelled" ? "" : `<ol class="tracker">${STAGES.map(([, l], i) => `<li class="${i <= idx ? "on" : ""}">${l}</li>`).join("")}</ol>`}
         ${o.items.length ? `<div class="grid-scroll" style="display:block"><table class="items">
           <thead><tr><th>Tag</th><th>Item</th><th>Service</th><th>Status</th><th class="num">Price</th></tr></thead>
-          <tbody>${o.items.map((i) => `<tr><td class="tag">${esc(i.tag_code)}</td><td>${esc([i.colour, i.brand, i.description].filter(Boolean).join(" "))}${i.condition_notes ? `<br><span class="muted small">${esc(i.condition_notes)}</span>` : ""}</td>
+          <tbody>${o.items.map((i) => `<tr><td class="tag">${esc(i.tag_code)}</td><td>${esc([i.colour, i.brand, i.description].filter(Boolean).join(" "))}${i.condition_notes ? `<br><span class="muted small">${esc(i.condition_notes)}</span>` : ""}${i.photo_ids?.length ? `<span class="piece-photos">${i.photo_ids.map((pid) => `<button type="button" class="piece-photo" data-photo="${pid}" aria-label="Photo of ${esc(i.description)} when it arrived"></button>`).join("")}</span>` : ""}</td>
             <td>${esc(i.service?.name || "")}</td><td>${i.status === "in_vault" ? "In the Vault" : esc(i.status.replace(/_/g, " "))}</td><td class="num">${money(i.price_pence)}</td></tr>`).join("")}</tbody>
           <tfoot>
             ${o.minimum_top_up_pence ? `<tr><td colspan="4">Minimum order ${money(o.minimum_pence)} <span class="muted small">your items came to less</span></td><td class="num">${money(o.minimum_top_up_pence)}</td></tr>` : ""}
@@ -978,6 +995,7 @@
       this.$("#back").addEventListener("click", () => this.show());
       this.$("#book-return")?.addEventListener("click", () => this.bookReturn(o));
       this.$$("[data-download]").forEach((b) => b.addEventListener("click", () => this.download(b.dataset.download, b.dataset.name, b)));
+      this.showPhotos();
     }
 
     canBookReturn(o) {

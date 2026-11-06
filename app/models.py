@@ -420,6 +420,18 @@ class Garment(Timestamped, Base):
 
     order: Mapped[Order] = relationship(back_populates="items")
     service: Mapped[Service | None] = relationship()
+    photos: Mapped[list["GarmentPhoto"]] = relationship(cascade="all, delete-orphan", order_by="GarmentPhoto.id")
+
+
+class GarmentPhoto(Base):
+    """A photo of a piece, usually taken when it arrives: its condition on record, for staff and the client only.
+    The file is in photo storage under garments/, which the public /media/ address never serves."""
+    __tablename__ = "garment_photos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    garment_id: Mapped[int] = mapped_column(ForeignKey("garments.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))  # garments/202611-<random>.jpg
+    taken_by: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class OrderEvent(Base):

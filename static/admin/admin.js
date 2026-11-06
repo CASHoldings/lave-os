@@ -58,6 +58,18 @@
     return data;
   }
 
+  /* A photo of a piece (from the phone's camera or a file), then the piece as the tag page shows it. */
+  async function uploadPhoto(garmentId, file) {
+    const fd = new FormData(); fd.append("photo", file);
+    const res = await fetch(`/api/staff/items/${garmentId}/photos`, { method: "POST", body: fd, credentials: "same-origin" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "The photo couldn't be uploaded. Try again.");
+    return data;
+  }
+
+  // What a tag's QR code or a scanner gives (lavelondon.com/t/LV-7K2M9P-01), or a typed tag: the tag itself.
+  const tagFrom = (text) => { const m = String(text).trim().match(/\/t\/([A-Za-z0-9-]+)/); return (m ? m[1] : String(text).trim()).toUpperCase(); };
+
   function toast(msg, isErr = false) {
     const t = document.createElement("div");
     t.className = "toast" + (isErr ? " err" : "");
@@ -205,11 +217,12 @@
     document.getElementById("logout").addEventListener("click", async () => { await api("POST", "/api/staff/auth/logout"); me = null; renderLogin(); });
     document.getElementById("scan").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const code = e.target.code.value.trim();
+      const code = tagFrom(e.target.code.value);
       if (!code) return;
       try {
         const r = await api("GET", "/api/staff/tags/" + encodeURIComponent(code));
-        location.hash = r.order ? `#/orders/${r.order.id}` : `#/clients/${r.vault_item.client.id}`;
+        e.target.code.value = "";
+        location.hash = r.garment ? `#/tag/${encodeURIComponent(code)}?scan=1` : `#/clients/${r.vault_item.client.id}`;
       } catch (ex) { toast(ex.message, true); }
     });
     const content = document.getElementById("content");
@@ -384,6 +397,17 @@
           <td class="small muted">${D.format(parse(o.created_at))}</td></tr>`;
       }).join("")}</tbody></table></div>` : `<p class="empty">No orders match.</p>`;
     c.querySelectorAll("tr[data-href]").forEach((tr) => tr.addEventListener("click", () => { location.hash = tr.dataset.href; }));
+    const ta = await api("GET", "/api/staff/turnaround").catch(() => null);
+    if (ta) {
+      const h = (x) => x == null ? "–" : hoursText(x);
+      if (ta.waiting.length) c.insertAdjacentHTML("afterbegin", `<div class="notice stack" style="margin-bottom:16px"><strong>${ta.waiting.length} piece${ta.waiting.length === 1 ? " has" : "s have"} waited over ${ta.stuck_after_hours} hours in one stage</strong>
+        <ul class="plain-list small">${ta.waiting.map((w) => `<li><a href="#/tag/${encodeURIComponent(w.tag_code)}" class="tag">${esc(w.tag_code)}</a> ${esc(w.description)} · ${esc(w.stage)} for ${h(w.hours)} · <a href="#/orders/${w.order_id}">${esc(w.order_ref)}</a></li>`).join("")}</ul></div>`);
+      c.insertAdjacentHTML("beforeend", `<details class="panel" style="margin-top:24px"><summary><strong>Turnaround, last ${ta.days} days</strong> <span class="small muted">arrival to ready: ${h(ta.arrival_to_ready.median_hours)} typically (${ta.arrival_to_ready.pieces} pieces)</span></summary>
+        <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Stage</th><th class="num">Pieces</th><th class="num">Typical</th><th class="num">Average</th></tr></thead>
+        <tbody>${ta.steps.map((st) => `<tr><td>${esc(st.label)}</td><td class="num">${st.pieces}</td><td class="num">${h(st.median_hours)}</td><td class="num">${h(st.average_hours)}</td></tr>`).join("")}
+        <tr><td><strong>Arrival to ready</strong></td><td class="num">${ta.arrival_to_ready.pieces}</td><td class="num"><strong>${h(ta.arrival_to_ready.median_hours)}</strong></td><td class="num">${h(ta.arrival_to_ready.average_hours)}</td></tr></tbody></table></div>
+        <p class="small muted" style="margin-top:8px">Each scan of a tag is time-stamped. "Typical" is the middle value, so one slow piece doesn't skew it.</p></details>`);
+    }
     if (me.role === "admin") {
       const gone = await api("GET", "/api/staff/deleted-orders");
       if (gone.length) c.insertAdjacentHTML("beforeend", `<details class="panel" style="margin-top:24px"><summary><strong>Deleted orders (${gone.length})</strong> <span class="small muted">a record of orders removed as mistakes</span></summary>
@@ -391,6 +415,85 @@
         <tbody>${gone.map((d) => `<tr><td class="tag">${esc(d.ref)}</td><td>${d.client_id ? `<a href="#/clients/${d.client_id}">Open</a>` : "–"}</td><td class="small">${esc(d.summary)}</td>
           <td class="num">${money(d.total_pence)}</td><td class="small">${esc(d.reason)}</td><td class="small muted">${DT.format(parse(d.deleted_at))}<br>${esc(d.deleted_by)}</td></tr>`).join("")}</tbody></table></div></details>`);
     }
+  }
+
+  /* A piece's tag page: what scanning its QR code opens. One big button moves it to its next stage, and every move
+     is time-stamped for the turnaround figures on the Orders page. */
+  const AUTO_KEY = "lave_scan_moves";
+  const autoMove = () => { try { return localStorage.getItem(AUTO_KEY) === "1"; } catch (_) { return false; } };
+  const hoursText = (h) => h < 1 ? `${Math.max(1, Math.round(h * 60))} minutes` : h < 48 ? `${Math.round(h)} hour${Math.round(h) === 1 ? "" : "s"}` : `${Math.round(h / 24)} days`;
+  const sentence = (s) => { const t = human(s); return t.charAt(0).toUpperCase() + t.slice(1); };
+
+  async function viewTag(code, params) {
+    const c = shell("orders", "Piece");
+    c.innerHTML = `<p class="loading">Loading…</p>`;
+    const r = await api("GET", "/api/staff/tags/" + encodeURIComponent(code));
+    if (!r.garment) { location.hash = `#/clients/${r.vault_item.client.id}`; return; }
+    const gid = r.garment.id;
+    const move = (to) => api("POST", `/api/staff/items/${gid}/move`, { to });
+    let piece = r.piece, moved = null;
+    if (params.get("scan") === "1") {
+      history.replaceState(null, "", `#/tag/${encodeURIComponent(code)}`);  // so a refresh doesn't move it again
+      if (autoMove() && piece.next) {
+        const from = piece.stage;
+        try { piece = await move(piece.next); moved = { back: from, label: piece.stage_label }; }
+        catch (ex) { toast(ex.message, true); }
+      }
+    }
+
+    const draw = () => {
+      const p = piece, g = p.garment, o = p.order;
+      document.querySelector(".top h1").textContent = g.tag_code;
+      const idx = p.stages.findIndex((st) => st.key === p.stage);
+      c.innerHTML = `<div class="piece stack">
+        ${moved ? `<div class="notice row between"><span><strong>Moved to ${esc(moved.label)}.</strong></span><button class="btn sm" id="undo">Undo</button></div>` : ""}
+        <div class="row between"><div>
+          <p class="tag-code">${esc(g.tag_code)}</p>
+          <p>${esc([g.colour, g.brand, g.description].filter(Boolean).join(" "))}${g.service ? ` · ${esc(g.service.name)}` : ""}</p>
+          <p class="small muted">Piece ${o.number} of ${o.pieces} · <a href="#/orders/${o.id}">Order ${esc(o.ref)}</a> · ${esc(o.client_name)} · ${esc(o.status_label)}</p></div>
+          ${g.send_to_vault ? '<span class="pill">To the Vault</span>' : ""}</div>
+        <ol class="stages">${p.stages.map((st, i) => `<li class="${idx >= 0 && i < idx ? "done" : i === idx ? "now" : ""}">${esc(st.label)}<span>${st.at ? DT.format(parse(st.at)) : "–"}</span></li>`).join("")}</ol>
+        ${idx < 0 ? `<p class="notice">${esc(p.stage_label)}.</p>` : ""}
+        ${p.stage === "received" ? `<p class="notice">Inspect and price <a href="#/orders/${o.id}">order ${esc(o.ref)}</a> before its pieces go into care.</p>` : ""}
+        ${p.next ? `<button class="btn primary huge" id="next">Move to ${esc(p.next_label)}</button>` : ""}
+        ${p.waiting_hours != null ? `<p class="small ${p.waiting_hours >= 24 ? "warn-text" : "muted"}">${esc(p.stage_label)} for ${hoursText(p.waiting_hours)}.</p>` : ""}
+        ${p.previous && !moved ? `<p><button class="link small" id="back">${p.stage === "quality_check" ? "Send back to care" : `Move back to ${esc(p.previous_label.toLowerCase())}`}</button></p>` : ""}
+        ${o.can_mark_ready ? `<div class="notice row between"><span>All ${o.ready_pieces} piece${o.ready_pieces === 1 ? " is" : "s are"} ready.</span><button class="btn primary" id="order-ready">Mark the order ready</button></div>`
+          : p.stage === "ready" && o.pieces > 1 ? `<p class="small muted">${o.ready_pieces} of ${o.pieces} pieces ready.</p>` : ""}
+        <section class="panel stack"><div class="row between"><h2>Photos</h2>
+          <label class="camera btn sm">Take a photo<input type="file" accept="image/*" capture="environment" id="photo"></label></div>
+          ${g.photo_ids.length ? `<div class="photos">${g.photo_ids.map((pid) => `<figure><a href="/api/staff/garment-photos/${pid}" target="_blank" rel="noopener"><img src="/api/staff/garment-photos/${pid}" alt="Photo of ${esc(g.description)}"></a></figure>`).join("")}</div>`
+            : `<p class="muted small">No photos yet. A photo when a piece arrives puts its condition on record, and the client sees it in their account.</p>`}
+        </section>
+        <section class="panel"><h2>History</h2><ul class="timeline">${p.history.slice().reverse().map((e) => `<li><span class="small muted">${DT.format(parse(e.at))}</span><span>${esc(STATUS_LABEL[e.status] || sentence(e.status.replace(/^item_/, "")))}${e.note ? ` <span class="muted">· ${esc(e.note)}</span>` : ""}</span></li>`).join("")}</ul></section>
+        <label class="check-label small"><input type="checkbox" id="auto" ${autoMove() ? "checked" : ""}> Move pieces on as soon as I scan them, on this device</label>
+      </div>`;
+      const step = (to, after) => async (e) => {
+        e.target.disabled = true;
+        try { piece = await move(to); moved = after ? after() : null; draw(); }
+        catch (ex) { e.target.disabled = false; toast(ex.message, true); }
+      };
+      const from = p.stage;
+      c.querySelector("#next")?.addEventListener("click", step(p.next, () => ({ back: from, label: piece.stage_label })));
+      c.querySelector("#undo")?.addEventListener("click", step(moved?.back));
+      c.querySelector("#back")?.addEventListener("click", step(p.previous));
+      c.querySelector("#order-ready")?.addEventListener("click", async (e) => {
+        e.target.disabled = true;
+        try {
+          if (o.status === "in_care") await api("POST", `/api/staff/orders/${o.id}/status`, { status: "quality_check" });
+          await api("POST", `/api/staff/orders/${o.id}/status`, { status: "ready" });
+          toast(`Order ${o.ref} is ready`);
+          piece = (await api("GET", "/api/staff/tags/" + encodeURIComponent(g.tag_code))).piece; moved = null; draw();
+        } catch (ex) { e.target.disabled = false; toast(ex.message, true); }
+      });
+      c.querySelector("#photo").addEventListener("change", async (e) => {
+        if (!e.target.files[0]) return;
+        try { piece = await uploadPhoto(gid, e.target.files[0]); toast("Photo added"); draw(); }
+        catch (ex) { toast(ex.message, true); }
+      });
+      c.querySelector("#auto").addEventListener("change", (e) => { try { localStorage.setItem(AUTO_KEY, e.target.checked ? "1" : "0"); } catch (_) { /* private browsing */ } });
+    };
+    draw();
   }
 
   async function viewOrder(id) {
@@ -434,7 +537,9 @@
             ${o.items.length ? `<div class="table-wrap"><table>
               <thead><tr><th>Tag</th><th>Item</th><th>Service</th><th>Status</th><th>Vault</th><th class="num">Price</th><th></th></tr></thead>
               <tbody>${o.items.map((i) => `<tr>
-                <td class="tag">${esc(i.tag_code)}</td>
+                <td class="tag"><a href="#/tag/${encodeURIComponent(i.tag_code)}">${esc(i.tag_code)}</a>
+                  <div class="thumb-row" style="margin-top:4px">${i.photo_ids.map((pid) => `<a href="/api/staff/garment-photos/${pid}" target="_blank" rel="noopener"><img src="/api/staff/garment-photos/${pid}" alt="Photo of ${esc(i.description)}" loading="lazy"></a>`).join("")}
+                    <label class="camera link small">${i.photo_ids.length ? "+ Photo" : "Add photo"}<input type="file" accept="image/*" capture="environment" data-item-photo="${i.id}"></label></div></td>
                 <td>${esc([i.colour, i.brand, i.description].filter(Boolean).join(" "))}${i.fibre ? `<br><span class="small muted">${esc(i.fibre)}</span>` : ""}${i.condition_notes ? `<br><span class="small muted">${esc(i.condition_notes)}</span>` : ""}</td>
                 <td>${itemsEditable ? `<select data-item-svc="${i.id}" aria-label="Service">${svcOptions(i.service?.id)}</select>` : esc(i.service?.name || "–")}</td>
                 <td>${pill(i.status)}</td>
@@ -505,7 +610,7 @@
           ${me.role === "admin" ? `<p class="small" id="order-delete-box"><button class="link small danger-text" id="order-delete">Delete this order…</button></p>` : ""}
         </div>
       </div>
-      <div class="tags-print">${o.items.map((i) => `<div><strong>${esc(i.tag_code)}</strong>${esc(o.client.name)}<br>${esc(i.description)}<br>${esc(i.service?.name || "")}</div>`).join("")}</div>`;
+      <div class="tags-print" id="tags-print"></div>`;
 
     const reviewToast = (r) => {
       const v = r.review || {};
@@ -653,7 +758,21 @@
     c.querySelector("#save-notes").addEventListener("click", act(() => api("PATCH", `/api/staff/orders/${id}`, { staff_notes: c.querySelector("#staff-notes").value }), "Notes saved"));
     c.querySelector("#charge")?.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/charge`), "Payment taken"));
     c.querySelectorAll("[data-manual]").forEach((b) => b.addEventListener("click", act(() => api("POST", `/api/staff/orders/${id}/payment`, { status: b.dataset.manual }), "Payment recorded")));
-    c.querySelector("#print")?.addEventListener("click", () => window.print());
+    c.querySelector("#print")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        const tags = await api("GET", `/api/staff/orders/${id}/tags`);
+        c.querySelector("#tags-print").innerHTML = tags.map((t) => `<div>${t.qr_svg}<div><strong>${esc(t.tag_code)}</strong>
+          <span class="of">${t.number} of ${t.of} · ${esc(t.order_ref)}</span><br>${esc(t.description)}${t.service ? `<br>${esc(t.service)}` : ""}${t.vault ? "<br>To the Vault" : ""}</div></div>`).join("");
+        window.print();
+      } catch (ex) { toast(ex.message, true); }
+      finally { e.target.disabled = false; }
+    });
+    c.querySelectorAll("[data-item-photo]").forEach((input) => input.addEventListener("change", async () => {
+      if (!input.files[0]) return;
+      try { await uploadPhoto(input.dataset.itemPhoto, input.files[0]); toast("Photo added"); route(); }
+      catch (ex) { toast(ex.message, true); }
+    }));
     const rf = c.querySelector("#return-form");
     if (rf) {
       let ready = null;
@@ -2312,7 +2431,8 @@
     }
     if (me.role === "driver" && parts[0] !== "today") { location.hash = "#/today"; return; }
     try {
-      if (parts[0] === "orders" && parts[1]) await viewOrder(parts[1]);
+      if (parts[0] === "tag" && parts[1]) await viewTag(decodeURIComponent(parts[1]), params);
+      else if (parts[0] === "orders" && parts[1]) await viewOrder(parts[1]);
       else if (parts[0] === "orders") await viewOrders(params);
       else if (parts[0] === "clients" && parts[1]) await viewClient(parts[1]);
       else if (parts[0] === "clients") await viewClients(params);

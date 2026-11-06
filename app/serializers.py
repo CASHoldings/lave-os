@@ -99,6 +99,7 @@ def garment(g: Garment) -> dict:
         "fibre": g.fibre, "condition_notes": g.condition_notes, "price_pence": g.price_pence,
         "status": g.status.value, "send_to_vault": g.send_to_vault,
         "service": service(g.service) if g.service else None,
+        "photo_ids": [p.id for p in g.photos],
     }
 
 

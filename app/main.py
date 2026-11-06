@@ -131,6 +131,12 @@ def create_app() -> FastAPI:
 
     app.mount("/static/site", StaticFiles(directory=STATIC / "site"), name="site-assets")
 
+    # What each tag's QR code opens: the piece in the admin (services/tracking.py). Short, so the code stays small.
+    @app.get("/t/{code}", include_in_schema=False)
+    def tag_link(code: str):
+        clean = re.sub(r"[^A-Za-z0-9-]", "", code)[:30].upper()
+        return RedirectResponse(f"/admin#/tag/{clean}?scan=1", status_code=302)
+
     # Library photos (uploads, journal covers, page images), from photo storage, and the price-list photos that ship
     # with the code.
     @app.api_route("/media/{name:path}", methods=["GET", "HEAD"], include_in_schema=False)

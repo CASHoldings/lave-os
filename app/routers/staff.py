@@ -1,7 +1,7 @@
 """Endpoints for the staff dashboard."""
 from datetime import date, datetime, time, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -600,11 +600,80 @@ def lookup_tag(code: str, staff: StaffUser = anyone, db: Session = Depends(get_d
     v = db.scalar(select(VaultItem).where(VaultItem.tag_code == code))
     if not g and not v:
         raise HTTPException(404, f"No item with tag {code}.")
+    from app.services import tracking
     return {
         "garment": ser.garment(g) if g else None,
         "order": ser.order(g.order, staff_view=True) if g else None,
         "vault_item": ser.vault_item(v, True) if v else None,
+        "piece": tracking.piece(db, g) if g else None,
     }
+
+
+# Following each piece: scans, photos, tag sheets, turnaround (services/tracking.py)
+
+@router.post("/items/{garment_id}/move")
+def move_item(garment_id: int, body: dict, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """A scan moves a piece one stage on; undo (or back to care) moves it one stage back."""
+    from app.services import tracking
+    g = _garment(db, garment_id)
+    try:
+        to = ItemStatus(str(body.get("to") or ""))
+    except ValueError:
+        raise HTTPException(400, "Say which stage to move the piece to.")
+    tracking.move(db, g, to, staff.id, staff.name)
+    db.commit()
+    return tracking.piece(db, g)
+
+
+@router.post("/items/{garment_id}/photos", status_code=201)
+def add_item_photo(garment_id: int, photo: UploadFile = File(...), staff: StaffUser = anyone,
+                   db: Session = Depends(get_db)):
+    from app.services import tracking
+    g = _garment(db, garment_id)
+    tracking.add_photo(db, g, photo.file.read(tracking.MAX_PHOTO + 1), staff.name, staff.id)
+    db.commit()
+    return tracking.piece(db, g)
+
+
+@router.get("/garment-photos/{photo_id}")
+def item_photo(photo_id: int, staff: StaffUser = anyone, db: Session = Depends(get_db)):
+    from fastapi.responses import FileResponse
+    from app.models import GarmentPhoto
+    from app.services import tracking
+    p = db.get(GarmentPhoto, photo_id)
+    if not p:
+        raise HTTPException(404, "Photo not found.")
+    return FileResponse(tracking.photo_file(p), headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.delete("/garment-photos/{photo_id}")
+def delete_item_photo(photo_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.models import GarmentPhoto
+    p = db.get(GarmentPhoto, photo_id)
+    if not p:
+        raise HTTPException(404, "Photo not found.")
+    g = p.garment_id
+    db.delete(p)
+    order_svc.log(db, _garment(db, g).order, "item_photo_removed", f"Photo removed by {staff.name}", staff.id,
+                  garment_id=g, visible=False)
+    db.commit()
+    return {"removed": photo_id}
+
+
+@router.get("/orders/{order_id}/tags")
+def order_tags(order_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """What each printed tag shows: a QR code, the tag, "1 of 3", the piece and its care. No client name."""
+    from app.services import tracking
+    o = _order(db, order_id)
+    return [{"tag_code": g.tag_code, "number": i + 1, "of": len(o.items), "order_ref": o.ref,
+             "description": " ".join(x for x in (g.colour, g.description) if x), "service": g.service.name if g.service else "",
+             "vault": g.send_to_vault, "qr_svg": tracking.qr_svg(g.tag_code)} for i, g in enumerate(o.items)]
+
+
+@router.get("/turnaround")
+def turnaround(days: int = Query(30, ge=1, le=365), staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    from app.services import tracking
+    return tracking.turnaround(db, days)
 
 
 # Clients

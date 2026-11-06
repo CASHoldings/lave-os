@@ -14,8 +14,9 @@ from pathlib import Path
 
 from app.config import get_settings
 
-# A photo's name inside the library: 202610-1a2b3c4d5e6f7a8b.webp, or thumbs/ followed by one.
-NAME = re.compile(r"(thumbs/)?[A-Za-z0-9][A-Za-z0-9._-]*$")
+# A photo's name inside the library: 202610-1a2b3c4d5e6f7a8b.webp, or thumbs/ followed by one; garments/ for pieces.
+NAME = re.compile(r"(thumbs/|garments/)?[A-Za-z0-9][A-Za-z0-9._-]*$")
+PRIVATE = "garments/"  # clients' pieces: served only through signed-in addresses (services/tracking.py)
 
 
 def valid(name: str) -> bool:
@@ -123,7 +124,7 @@ def current() -> Folder | Bucket:
 def find(name: str) -> Path | None:
     """The file to send for /media/<name>: from storage, then the old image disk while photos are being moved off it,
     then the price-list photos that ship with the code."""
-    if not valid(name):
+    if not valid(name) or name.startswith(PRIVATE):
         return None
     from app.services.repository import IMAGES_DIR
     store = current()
