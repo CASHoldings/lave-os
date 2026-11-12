@@ -660,6 +660,7 @@ class Post(Timestamped, Base):
     event_note: Mapped[str] = mapped_column(String(400), default="")  # e.g. "6.30pm to 8pm. £15 for guests."
     event_link: Mapped[str] = mapped_column(String(400), default="")  # where "Book now" goes; else the event's page
     event_link_label: Mapped[str] = mapped_column(String(60), default="")
+    event_audiences: Mapped[list] = mapped_column(JSON, default=list)  # e.g. ["founders", "professionals"]; [] = everyone
     # Press
     outlet: Mapped[str] = mapped_column(String(120), default="")
     external_url: Mapped[str] = mapped_column(String(400), default="")

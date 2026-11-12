@@ -100,21 +100,24 @@ def post_page(request: Request, slug: str, lave_staff: str | None = Cookie(defau
 @router.get("/memberships/access/{item_slug}/", response_class=HTMLResponse)
 def experiences(request: Request, item_slug: str, db: Session = Depends(get_db)):
     MEMBERSHIP = request.state.site.by_key["membership"]
-    themes = {"lifestyle": "lifestyle", "sport": "sport", "upcoming-events": None}
-    if item_slug not in themes:
+    if item_slug in ("lifestyle", "sport"):  # the tabs before experiences were grouped by who they're for
+        return RedirectResponse("/memberships/access/upcoming-events/", status_code=301)
+    if item_slug != "upcoming-events" and item_slug not in cms.AUDIENCES:
         return item_page(request, "memberships", "access", item_slug, db)
-    theme = themes[item_slug]
+    group = None if item_slug == "upcoming-events" else item_slug
     page = request.state.site.page("experiences")
     # One row per experience, photo on the left: dated events from the Journal first, then those that run all year.
     dated = [{"title": p.title, "eyebrow": (p.event_theme or "LAVE Experiences").capitalize(), "members": p.members_only,
               "when": cms.event_when(p.event_starts_at, p.event_ends_at), "where": p.event_location, "who": "",
               "text": p.excerpt, "note": p.event_note, "image": p.cover_image,
               "link_label": p.event_link_label or ("Book now" if p.event_link else "Find out more"),
-              "link_href": p.event_link or f"/journal/{p.slug}/"} for p in cms.upcoming_events(db, theme)]
-    ongoing = [{**o, "members": False, "where": "", "note": ""} for o in page["ongoing"] if not theme or o["theme"] == theme]
+              "link_href": p.event_link or f"/journal/{p.slug}/"} for p in cms.upcoming_events(db, group)]
+    def groups(o):
+        return {g.strip().lower() for g in str(o.get("groups", "")).split(",") if g.strip()}
+    ongoing = [{**o, "members": False, "where": "", "note": ""} for o in page["ongoing"] if not group or group in groups(o)]
     return render(request, "site/experiences.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3], page=page,
-                  heading=page["title"] + (f": {theme.capitalize()}" if theme else ""), theme=theme or "",
-                  dated=dated, ongoing=ongoing, **_ctx())
+                  heading=page["title"] + (f": {cms.AUDIENCES[group]}" if group else ""), group=group or "",
+                  audiences=cms.AUDIENCES, dated=dated, ongoing=ongoing, **_ctx())
 
 
 @router.get("/laveworld/{sub_slug}/{item_slug}/", response_class=HTMLResponse)

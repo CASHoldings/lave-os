@@ -29,10 +29,13 @@ def test_events_need_a_date_and_list_by_theme(api, staff_headers):
     assert api.post(f"/api/staff/posts/{e['id']}/publish", headers=staff_headers, json={"publish": True}).status_code == 409
     api.patch(f"/api/staff/posts/{e['id']}", headers=staff_headers, json={"title": "Polo at Hurlingham", "kind": "event", "body": "Join us.",
                                                                            "event_theme": "sport", "event_starts_at": "2026-11-20T14:00",
-                                                                           "event_location": "Hurlingham Club"})
+                                                                           "event_location": "Hurlingham Club",
+                                                                           "event_audiences": ["families", "children"]})
     api.post(f"/api/staff/posts/{e['id']}/publish", headers=staff_headers, json={"publish": True})
-    assert "Polo at Hurlingham" in api.get("/memberships/access/sport/").text
-    assert "Polo at Hurlingham" not in api.get("/memberships/access/lifestyle/").text
+    assert "Polo at Hurlingham" in api.get("/memberships/access/families/").text
+    assert "Polo at Hurlingham" in api.get("/memberships/access/children/").text
+    assert "Polo at Hurlingham" not in api.get("/memberships/access/founders/").text
+    assert "Polo at Hurlingham" in api.get("/memberships/access/upcoming-events/").text
     assert "Polo at Hurlingham" in api.get("/laveworld/knowledge/events/").text
 
 

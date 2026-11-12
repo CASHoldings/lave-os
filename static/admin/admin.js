@@ -1236,7 +1236,7 @@
     const isNew = id === "new";
     const c = shell("journal", isNew ? "New post" : "Edit post");
     const p = isNew ? { kind: "thread", title: "", excerpt: "", body: "", cover_image: "", author: "LAVE", status: "draft", event_location: "",
-      event_theme: "", members_only: false, outlet: "", external_url: "", event_starts_at: null, event_ends_at: null, event_note: "", event_link: "", event_link_label: "" } : await api("GET", "/api/staff/posts/" + id);
+      event_theme: "", members_only: false, outlet: "", external_url: "", event_starts_at: null, event_ends_at: null, event_note: "", event_link: "", event_link_label: "", event_audiences: [] } : await api("GET", "/api/staff/posts/" + id);
     const local = (iso) => (iso ? iso.slice(0, 16) : "");
     c.innerHTML = `
       <form id="post" class="cols-3">
@@ -1272,7 +1272,10 @@
             <label>Starts<input type="datetime-local" name="event_starts_at" value="${local(p.event_starts_at)}"></label>
             <label>Ends <span class="muted small">(optional: the last day of a run, or when the evening ends)</span><input type="datetime-local" name="event_ends_at" value="${local(p.event_ends_at)}"></label>
             <label>Location<input name="event_location" value="${esc(p.event_location)}" placeholder="e.g. The atelier, Streatham"></label>
-            <label>Theme<select name="event_theme">${["", "lifestyle", "sport", "wellbeing", "family"].map((t) => `<option value="${t}" ${p.event_theme === t ? "selected" : ""}>${t ? t[0].toUpperCase() + t.slice(1) : "None"}</option>`).join("")}</select></label>
+            <label>Kind <span class="muted small">(the small label above the title)</span><select name="event_theme">${[...new Set(["", "lifestyle", "sport", "wellbeing", "talks", "culture", "workshops", p.event_theme || ""])].map((t) => `<option value="${t}" ${(p.event_theme || "") === t ? "selected" : ""}>${t ? t[0].toUpperCase() + t.slice(1) : "None"}</option>`).join("")}</select></label>
+            <fieldset class="stack" style="border:0;padding:0;margin:0;gap:4px"><legend class="small">For <span class="muted">(tick any; none means everyone, shown under All)</span></legend>
+              ${Object.entries({ families: "Families", founders: "Founders", professionals: "Professionals", children: "Children", businesses: "Businesses" }).map(([k, l]) => `<label class="check-label"><input type="checkbox" name="event_audiences" value="${k}" ${(p.event_audiences || []).includes(k) ? "checked" : ""}> ${l}</label>`).join("")}
+            </fieldset>
             <label class="check-label"><input type="checkbox" name="members_only" ${p.members_only ? "checked" : ""}> Members only</label>
             <label>Extra line <span class="muted small">(time, price or what to bring)</span><input name="event_note" maxlength="400" value="${esc(p.event_note)}" placeholder="e.g. 6.30pm to 8pm. Free for members; £15 for a guest."></label>
             <label>Booking link <span class="muted small">(optional; otherwise "Find out more" opens this event's page)</span><input name="event_link" maxlength="400" value="${esc(p.event_link)}" placeholder="https://"></label>
@@ -1294,6 +1297,7 @@
       event_location: f.event_location.value, event_theme: f.event_theme.value, members_only: f.members_only.checked,
       event_ends_at: f.event_ends_at.value || null, event_note: f.event_note.value, event_link: f.event_link.value,
       event_link_label: f.event_link_label.value,
+      event_audiences: [...f.querySelectorAll('[name="event_audiences"]:checked')].map((x) => x.value),
       outlet: f.outlet.value, external_url: f.external_url.value,
     });
     const save = async () => {

@@ -1152,7 +1152,7 @@ def _post(p: Post, full: bool = False) -> dict:
         out.update(body=p.body, author=p.author, event_location=p.event_location, event_theme=p.event_theme,
                    members_only=p.members_only, outlet=p.outlet, external_url=p.external_url,
                    event_ends_at=ser.iso(p.event_ends_at), event_note=p.event_note, event_link=p.event_link,
-                   event_link_label=p.event_link_label)
+                   event_link_label=p.event_link_label, event_audiences=p.event_audiences or [])
     return out
 
 
@@ -1169,6 +1169,8 @@ def _event_end(body: PostIn):
     starts, ends = _parse_dt(body.event_starts_at), _parse_dt(body.event_ends_at)
     if ends and starts and ends < starts:
         raise HTTPException(400, "The event can't end before it starts.")
+    if unknown := set(body.event_audiences) - set(cms.AUDIENCES):
+        raise HTTPException(400, f"Unknown group: {', '.join(sorted(unknown))}.")
     if body.event_link and not body.event_link.startswith(("https://", "http://", "/")):
         raise HTTPException(400, "The booking link should start with https:// (or / for a page on lavelondon.com).")
     return ends

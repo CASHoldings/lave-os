@@ -9,10 +9,10 @@
   <h1>{{ heading }}</h1>
   {% if page.intro %}<p>{{ page.intro }}</p>{% endif %}
 </section>
-<nav class="tabs" aria-label="Experiences">
-  <a href="/memberships/access/upcoming-events/" {% if not theme %}aria-current="page"{% endif %}>All</a>
-  <a href="/memberships/access/lifestyle/" {% if theme == "lifestyle" %}aria-current="page"{% endif %}>Lifestyle</a>
-  <a href="/memberships/access/sport/" {% if theme == "sport" %}aria-current="page"{% endif %}>Sport</a>
+<nav class="tabs" aria-label="Who it's for">
+  <a href="/memberships/access/upcoming-events/" {% if not group %}aria-current="page"{% endif %}>All</a>
+  {% for key, label in audiences.items() %}<a href="/memberships/access/{{ key }}/" {% if group == key %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
 </nav>
 
 {% macro row(e, first=False) %}

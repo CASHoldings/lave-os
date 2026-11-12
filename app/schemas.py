@@ -415,6 +415,7 @@ class PostIn(BaseModel):
     event_note: str = Field("", max_length=400)
     event_link: str = Field("", max_length=400)
     event_link_label: str = Field("", max_length=60)
+    event_audiences: list[str] = []
     outlet: str = ""
     external_url: str = ""
 

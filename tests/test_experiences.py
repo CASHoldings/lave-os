@@ -23,14 +23,25 @@ def test_year_round_experiences_show_even_with_no_dates(api):
         assert name in page
     assert 'class="exp"' in page and 'href="/memberships/#eclat"' in page
     assert 'name="robots" content="noindex' not in page  # a real page now, worth finding
-    sport = api.get("/memberships/access/sport/").text
-    assert "<h3>LAVE Strides</h3>" in sport and "<h3>LAVEYoga</h3>" in sport and "<h3>Founders Lab</h3>" not in sport
-    assert "<h3>Founders Lab</h3>" in api.get("/memberships/access/lifestyle/").text
+    for tab in ("All", "Families", "Founders", "Professionals", "Children", "Businesses"):
+        assert f">{tab}</a>" in page
+    founders = api.get("/memberships/access/founders/").text
+    assert "<h3>Founders Lab</h3>" in founders and "<h3>LAVE Strides</h3>" not in founders
+    assert "LAVE Experiences: Founders" in founders
+    assert "<h3>Founders Lab</h3>" in api.get("/memberships/access/professionals/").text
+    children = api.get("/memberships/access/children/").text
+    assert "<h3>LAVE Family</h3>" in children and "<h3>LAVEYoga</h3>" not in children
+    assert "<h3>LAVEYoga</h3>" in api.get("/memberships/access/families/").text
+    # The old tabs go to All, so no link breaks.
+    for old in ("lifestyle", "sport"):
+        r = api.get(f"/memberships/access/{old}/", follow_redirects=False)
+        assert r.status_code == 301 and r.headers["location"] == PAGE
 
 
 def test_dated_events_come_first_with_their_details(api, staff_headers):
     _event(api, staff_headers, event_starts_at="2026-11-26T17:30", event_ends_at="2026-11-26T18:30",
            event_location="The atelier, Streatham", event_theme="lifestyle", members_only=True,
+           event_audiences=["founders", "businesses"],
            event_note="Free for members; £15 for a guest.", event_link="https://example.com/book",
            event_link_label="Reserve a place")
     page = api.get(PAGE).text
@@ -40,6 +51,8 @@ def test_dated_events_come_first_with_their_details(api, staff_headers):
     assert "Lifestyle · Members only" in page and "Free for members; £15 for a guest." in page
     assert 'href="https://example.com/book">Reserve a place' in page
     assert "No dated experiences" not in page
+    assert "Winter Linen Evening" in api.get("/memberships/access/businesses/").text
+    assert "Winter Linen Evening" not in api.get("/memberships/access/families/").text
 
 
 def test_a_run_of_days_stays_until_it_ends(api, staff_headers):
@@ -60,6 +73,8 @@ def test_event_details_are_checked(api, staff_headers):
     assert r.status_code == 400 and "end before it starts" in r.json()["detail"]
     r = api.post("/api/staff/posts", headers=staff_headers, json={**base, "event_link": "javascript:alert(1)"})
     assert r.status_code == 400
+    r = api.post("/api/staff/posts", headers=staff_headers, json={**base, "event_audiences": ["men"]})
+    assert r.status_code == 400 and "Unknown group" in r.json()["detail"]
 
 
 def test_year_round_list_is_editable(api, staff_headers):
@@ -75,3 +90,25 @@ def test_dates_read_naturally():
     assert event_when(datetime(2026, 11, 16), datetime(2026, 12, 3)) == "Monday 16 November – Thursday 3 December 2026"
     assert event_when(datetime(2026, 12, 30), datetime(2027, 1, 2)) == "Wednesday 30 December 2026 – Saturday 2 January 2027"
     assert event_when(datetime(2026, 11, 28, 14, 0)) == "Saturday 28 November 2026, 2pm"
+
+
+def test_saved_menus_switch_to_the_groups_once(db_session):
+    from app.models import SiteContent
+    from app.services import content
+    from app.site.defaults import menus
+    old = menus()
+    for s in old["sections"]:
+        for n in s["subnav"]:
+            for c in n["columns"]:
+                if c["title"] == "LAVE Experiences":
+                    c["links"] = [{"label": "Lifestyle", "href": ""}, {"label": "Sport", "href": ""},
+                                  {"label": "Upcoming events", "href": ""}]
+    with db_session() as db:
+        db.merge(SiteContent(key="menus", value=old))
+        db.commit()
+        assert content.update_brand_wording(db) >= 1
+        assert content.update_brand_wording(db) == 0  # once only
+        saved = db.get(SiteContent, "menus").value
+    col = next(c for s in saved["sections"] for n in s["subnav"] for c in n["columns"] if c["title"] == "LAVE Experiences")
+    assert [link["label"] for link in col["links"]] == ["All experiences", "Families", "Founders", "Professionals",
+                                                        "Children", "Businesses"]

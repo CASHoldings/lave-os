@@ -88,14 +88,18 @@ def published(db: Session, kind: str | None = None, limit: int = 50) -> list[Pos
     return list(db.scalars(q.order_by(Post.published_at.desc()).limit(limit)))
 
 
-def upcoming_events(db: Session, theme: str | None = None) -> list[Post]:
-    """Published events still to come, or still running (a run of days that has started)."""
+# Who LAVE Experiences are for: the tabs on the Experiences page, in order. An event can be for several.
+AUDIENCES = {"families": "Families", "founders": "Founders", "professionals": "Professionals", "children": "Children",
+             "businesses": "Businesses"}
+
+
+def upcoming_events(db: Session, audience: str | None = None) -> list[Post]:
+    """Published events still to come, or still running (a run of days that has started); for one group if given."""
     now = local_now()
     q = select(Post).where(Post.kind == "event", Post.status == PostStatus.published,
                            or_(Post.event_starts_at >= now, Post.event_ends_at >= now))
-    if theme:
-        q = q.where(Post.event_theme == theme)
-    return list(db.scalars(q.order_by(Post.event_starts_at)))
+    events = list(db.scalars(q.order_by(Post.event_starts_at)))
+    return [p for p in events if audience in (p.event_audiences or [])] if audience else events
 
 
 def event_when(starts: datetime, ends: datetime | None = None) -> str:
@@ -214,6 +218,10 @@ OLD_BRAND_WORDING = [
      '{"label": "LAVE Living", "href": "/memberships/living/"}, {"label": "LAVEnclave", "href": "/memberships/#compare"}]'),
     ("Run Club, yoga, Founders Lab and LAVE Family visits", "LAVE Strides, LAVEYoga, Founders Lab and LAVE Family visits"),
     ("Run Club, yoga and gym members", "LAVE Strides, LAVEYoga and gym members"),
+    ('{"label": "Lifestyle", "href": ""}, {"label": "Sport", "href": ""}, {"label": "Upcoming events", "href": ""}',
+     '{"label": "All experiences", "href": "/memberships/access/upcoming-events/"}, {"label": "Families", "href": ""}, '
+     '{"label": "Founders", "href": ""}, {"label": "Professionals", "href": ""}, {"label": "Children", "href": ""}, '
+     '{"label": "Businesses", "href": ""}'),
     # The LAVE Living page laid out like LAVEWorld: an eyebrow over each heading, and a photo beside "Private, always".
     ("## What's on offer", "## Support · What's on offer"),
     ("## With your membership", "## Membership · With your membership"),
