@@ -656,6 +656,10 @@ class Post(Timestamped, Base):
     event_location: Mapped[str] = mapped_column(String(200), default="")
     event_theme: Mapped[str] = mapped_column(String(40), default="")  # "lifestyle" | "sport" | ...
     members_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    event_ends_at: Mapped[datetime | None] = mapped_column(DateTime)  # a run of days, or when an evening ends
+    event_note: Mapped[str] = mapped_column(String(400), default="")  # e.g. "6.30pm to 8pm. £15 for guests."
+    event_link: Mapped[str] = mapped_column(String(400), default="")  # where "Book now" goes; else the event's page
+    event_link_label: Mapped[str] = mapped_column(String(60), default="")
     # Press
     outlet: Mapped[str] = mapped_column(String(120), default="")
     external_url: Mapped[str] = mapped_column(String(400), default="")

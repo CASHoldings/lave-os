@@ -828,3 +828,24 @@ html { font-size: 100%; }
   .signup { left: 0; right: 0; bottom: 0; width: auto; border-width: 1px 0 0; padding: 22px 16px calc(18px + env(safe-area-inset-bottom)); gap: 6px; }
   .signup h2 { font-size: 1.0625rem; }
 }
+
+/* LAVE Experiences: a photo on the left and the details beside it, one experience per row (experiences.html) */
+.experiences { max-width: 1280px; margin: 0 auto; padding: 8px var(--gutter) 40px; }
+.exp-group { text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 48px 0 8px; }
+.exp-none { text-align: center; color: var(--ink-soft); margin: 36px auto 0; max-width: 60ch; }
+.exp { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(28px, 7vw, 120px); align-items: start;
+  padding: clamp(32px, 4.5vw, 56px) 0; }
+.exp-media { display: block; background: var(--panel); }
+.exp-media img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.exp-copy { display: grid; gap: 0; align-content: start; padding-top: 4px; max-width: 520px; }
+.exp-copy h3 { font-size: clamp(1.375rem, 2.3vw, 2rem); line-height: 1.2; letter-spacing: .01em; margin: 12px 0 22px; }
+.exp-when { font-weight: 700; margin-bottom: 18px; }
+.exp-fact { margin-bottom: 10px; }
+.exp-fact strong { font-weight: 700; }
+.exp-text { color: var(--ink-soft); margin-top: 14px; max-width: 58ch; }
+.exp-copy .post-more { justify-self: start; margin-top: 26px; }
+@media (max-width: 760px) {
+  .exp { grid-template-columns: 1fr; gap: 20px; padding: 28px 0; }
+  .exp-copy h3 { margin: 10px 0 16px; }
+}

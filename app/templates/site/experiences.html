@@ -1,0 +1,53 @@
+{% extends "site/base.html" %}
+{% block title %}{{ heading }} | LAVE Membership{% endblock %}
+{% block description %}{{ page.intro }}{% endblock %}
+{% block main %}
+{# LAVE Experiences: one row per experience, photo on the left and the details beside it. Dated events come from
+   /admin → Journal (type Event); the year-round ones and the wording from /admin → Website → Experiences page. #}
+<section class="welcome tight">
+  <p class="eyebrow">Membership</p>
+  <h1>{{ heading }}</h1>
+  {% if page.intro %}<p>{{ page.intro }}</p>{% endif %}
+</section>
+<nav class="tabs" aria-label="Experiences">
+  <a href="/memberships/access/upcoming-events/" {% if not theme %}aria-current="page"{% endif %}>All</a>
+  <a href="/memberships/access/lifestyle/" {% if theme == "lifestyle" %}aria-current="page"{% endif %}>Lifestyle</a>
+  <a href="/memberships/access/sport/" {% if theme == "sport" %}aria-current="page"{% endif %}>Sport</a>
+</nav>
+
+{% macro row(e, first=False) %}
+<article class="exp">
+  <a class="exp-media" href="{{ e.link_href }}" tabindex="-1" aria-hidden="true">
+    {% if e.image %}<img src="{{ cover(e.image) }}" alt="" {% if not first %}loading="lazy" {% endif %}decoding="async">{% endif %}
+  </a>
+  <div class="exp-copy">
+    <p class="eyebrow">{{ e.eyebrow }}{% if e.members %} · Members only{% endif %}</p>
+    <h3>{{ e.title }}</h3>
+    {% if e.when %}<p class="exp-when">{{ e.when }}</p>{% endif %}
+    {% if e.where %}<p class="exp-fact"><strong>Location:</strong> {{ e.where }}</p>{% endif %}
+    {% if e.who %}<p class="exp-fact"><strong>For:</strong> {{ e.who }}</p>{% endif %}
+    {% if e.text %}<p class="exp-text">{{ e.text }}</p>{% endif %}
+    {% if e.note %}<p class="exp-text">{{ e.note }}</p>{% endif %}
+    {% if e.link_href %}<a class="post-more" href="{{ e.link_href }}">{{ e.link_label }}<span class="sr"> for {{ e.title }}</span></a>{% endif %}
+  </div>
+</article>
+{% endmacro %}
+
+<section class="experiences">
+  {% if dated %}
+  <h2 class="exp-group">{{ page.coming_up }}</h2>
+  {% for e in dated %}{{ row(e, loop.first) }}{% endfor %}
+  {% elif page.no_dates_text %}
+  <p class="exp-none">{{ page.no_dates_text }}</p>
+  {% endif %}
+  {% if ongoing %}
+  <h2 class="exp-group">{{ page.throughout }}</h2>
+  {% for e in ongoing %}{{ row(e, loop.first and not dated) }}{% endfor %}
+  {% endif %}
+</section>
+
+<section class="welcome">
+  <p>LAVE Experiences are part of membership.</p>
+  <div class="ctas"><a class="btn dark" href="/memberships/#plans-overview">Become a member</a><a class="btn" href="/contact/?topic=membership">Ask about an experience</a></div>
+</section>
+{% endblock %}

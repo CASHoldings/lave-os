@@ -3,9 +3,10 @@ import html
 import json
 from pathlib import Path
 import re
+from datetime import datetime
 
 import markdown
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Pack, PageContent, Post, PostStatus, SiteContent
@@ -88,10 +89,32 @@ def published(db: Session, kind: str | None = None, limit: int = 50) -> list[Pos
 
 
 def upcoming_events(db: Session, theme: str | None = None) -> list[Post]:
-    q = select(Post).where(Post.kind == "event", Post.status == PostStatus.published, Post.event_starts_at >= local_now())
+    """Published events still to come, or still running (a run of days that has started)."""
+    now = local_now()
+    q = select(Post).where(Post.kind == "event", Post.status == PostStatus.published,
+                           or_(Post.event_starts_at >= now, Post.event_ends_at >= now))
     if theme:
         q = q.where(Post.event_theme == theme)
     return list(db.scalars(q.order_by(Post.event_starts_at)))
+
+
+def event_when(starts: datetime, ends: datetime | None = None) -> str:
+    """"Thursday 19 – Saturday 21 November 2026", or "Thursday 26 November 2026, 5.30pm to 6.30pm"."""
+    def day(d):
+        return f"{d:%A} {d.day} {d:%B %Y}"
+
+    def clock(d):
+        hour = d.strftime("%I").lstrip("0")
+        return f"{hour}{'.' + d.strftime('%M') if d.minute else ''}{d.strftime('%p').lower()}"
+    if ends and ends.date() != starts.date():
+        first = f"{starts:%A} {starts.day}"
+        if (starts.year, starts.month) != (ends.year, ends.month):
+            first += f" {starts:%B}" + (f" {starts.year}" if starts.year != ends.year else "")
+        return f"{first} – {day(ends)}"
+    text = day(starts)
+    if starts.hour or starts.minute:
+        text += f", {clock(starts)}" + (f" to {clock(ends)}" if ends and ends > starts else "")
+    return text
 
 
 def post_by_slug(db: Session, slug: str, include_drafts: bool = False) -> Post | None:

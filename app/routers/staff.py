@@ -1150,7 +1150,9 @@ def _post(p: Post, full: bool = False) -> dict:
            "cover_url": cms.image(p.cover_image), "event_starts_at": ser.iso(p.event_starts_at)}
     if full:
         out.update(body=p.body, author=p.author, event_location=p.event_location, event_theme=p.event_theme,
-                   members_only=p.members_only, outlet=p.outlet, external_url=p.external_url)
+                   members_only=p.members_only, outlet=p.outlet, external_url=p.external_url,
+                   event_ends_at=ser.iso(p.event_ends_at), event_note=p.event_note, event_link=p.event_link,
+                   event_link_label=p.event_link_label)
     return out
 
 
@@ -1163,6 +1165,15 @@ def _parse_dt(value: str | None):
         raise HTTPException(400, "Use a date and time like 2026-11-20T18:30.") from exc
 
 
+def _event_end(body: PostIn):
+    starts, ends = _parse_dt(body.event_starts_at), _parse_dt(body.event_ends_at)
+    if ends and starts and ends < starts:
+        raise HTTPException(400, "The event can't end before it starts.")
+    if body.event_link and not body.event_link.startswith(("https://", "http://", "/")):
+        raise HTTPException(400, "The booking link should start with https:// (or / for a page on lavelondon.com).")
+    return ends
+
+
 @router.get("/posts")
 def list_posts(kind: str | None = None, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
     q = select(Post)
@@ -1173,9 +1184,9 @@ def list_posts(kind: str | None = None, staff: StaffUser = Depends(ops), db: Ses
 
 @router.post("/posts", status_code=201)
 def create_post(body: PostIn, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
-    data = body.model_dump(exclude={"slug", "event_starts_at"})
+    data = body.model_dump(exclude={"slug", "event_starts_at", "event_ends_at"})
     p = Post(**data, slug=cms.unique_slug(db, body.slug or body.title), event_starts_at=_parse_dt(body.event_starts_at),
-             status=PostStatus.draft)
+             event_ends_at=_event_end(body), status=PostStatus.draft)
     db.add(p)
     db.commit()
     return _post(p, full=True)
@@ -1194,9 +1205,10 @@ def update_post(post_id: int, body: PostIn, staff: StaffUser = Depends(ops), db:
     p = db.get(Post, post_id)
     if not p:
         raise HTTPException(404, "Post not found.")
-    for k, v in body.model_dump(exclude={"slug", "event_starts_at"}).items():
+    for k, v in body.model_dump(exclude={"slug", "event_starts_at", "event_ends_at"}).items():
         setattr(p, k, v)
     p.event_starts_at = _parse_dt(body.event_starts_at)
+    p.event_ends_at = _event_end(body)
     if body.slug and body.slug != p.slug:
         p.slug = cms.unique_slug(db, body.slug, current_id=p.id)
     db.commit()

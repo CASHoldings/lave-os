@@ -1236,7 +1236,7 @@
     const isNew = id === "new";
     const c = shell("journal", isNew ? "New post" : "Edit post");
     const p = isNew ? { kind: "thread", title: "", excerpt: "", body: "", cover_image: "", author: "LAVE", status: "draft", event_location: "",
-      event_theme: "", members_only: false, outlet: "", external_url: "", event_starts_at: null } : await api("GET", "/api/staff/posts/" + id);
+      event_theme: "", members_only: false, outlet: "", external_url: "", event_starts_at: null, event_ends_at: null, event_note: "", event_link: "", event_link_label: "" } : await api("GET", "/api/staff/posts/" + id);
     const local = (iso) => (iso ? iso.slice(0, 16) : "");
     c.innerHTML = `
       <form id="post" class="cols-3">
@@ -1270,9 +1270,14 @@
           <section class="panel" id="event-fields" ${p.kind === "event" ? "" : "hidden"}>
             <h2>Event</h2>
             <label>Starts<input type="datetime-local" name="event_starts_at" value="${local(p.event_starts_at)}"></label>
-            <label>Location<input name="event_location" value="${esc(p.event_location)}"></label>
-            <label>Theme<select name="event_theme">${["", "lifestyle", "sport"].map((t) => `<option value="${t}" ${p.event_theme === t ? "selected" : ""}>${t ? t[0].toUpperCase() + t.slice(1) : "None"}</option>`).join("")}</select></label>
+            <label>Ends <span class="muted small">(optional: the last day of a run, or when the evening ends)</span><input type="datetime-local" name="event_ends_at" value="${local(p.event_ends_at)}"></label>
+            <label>Location<input name="event_location" value="${esc(p.event_location)}" placeholder="e.g. The atelier, Streatham"></label>
+            <label>Theme<select name="event_theme">${["", "lifestyle", "sport", "wellbeing", "family"].map((t) => `<option value="${t}" ${p.event_theme === t ? "selected" : ""}>${t ? t[0].toUpperCase() + t.slice(1) : "None"}</option>`).join("")}</select></label>
             <label class="check-label"><input type="checkbox" name="members_only" ${p.members_only ? "checked" : ""}> Members only</label>
+            <label>Extra line <span class="muted small">(time, price or what to bring)</span><input name="event_note" maxlength="400" value="${esc(p.event_note)}" placeholder="e.g. 6.30pm to 8pm. Free for members; £15 for a guest."></label>
+            <label>Booking link <span class="muted small">(optional; otherwise "Find out more" opens this event's page)</span><input name="event_link" maxlength="400" value="${esc(p.event_link)}" placeholder="https://"></label>
+            <label>Link wording<input name="event_link_label" maxlength="60" value="${esc(p.event_link_label)}" placeholder="Book now"></label>
+            <p class="small muted">Published events appear on <a href="/memberships/access/upcoming-events/" target="_blank">LAVE Experiences</a> until they end, with the cover image on the left and the summary beside it.</p>
           </section>
           <section class="panel" id="press-fields" ${p.kind === "press" ? "" : "hidden"}>
             <h2>Press</h2>
@@ -1287,6 +1292,8 @@
       title: f.title.value, kind: f.kind.value, excerpt: f.excerpt.value, body: f.body.value, cover_image: f.cover_image.value,
       author: f.author.value || "LAVE", slug: f.slug?.value || null, event_starts_at: f.event_starts_at.value || null,
       event_location: f.event_location.value, event_theme: f.event_theme.value, members_only: f.members_only.checked,
+      event_ends_at: f.event_ends_at.value || null, event_note: f.event_note.value, event_link: f.event_link.value,
+      event_link_label: f.event_link_label.value,
       outlet: f.outlet.value, external_url: f.external_url.value,
     });
     const save = async () => {

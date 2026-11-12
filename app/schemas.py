@@ -411,6 +411,10 @@ class PostIn(BaseModel):
     event_location: str = ""
     event_theme: str = ""
     members_only: bool = False
+    event_ends_at: str | None = None
+    event_note: str = Field("", max_length=400)
+    event_link: str = Field("", max_length=400)
+    event_link_label: str = Field("", max_length=60)
     outlet: str = ""
     external_url: str = ""
 

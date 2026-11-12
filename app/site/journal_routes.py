@@ -104,9 +104,17 @@ def experiences(request: Request, item_slug: str, db: Session = Depends(get_db))
     if item_slug not in themes:
         return item_page(request, "memberships", "access", item_slug, db)
     theme = themes[item_slug]
-    return render(request, "site/journal.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3],
-                  heading="LAVE Experiences" + (f": {theme.capitalize()}" if theme else ""), current="",
-                  posts=cms.upcoming_events(db, theme), events_mode=True, **_ctx())
+    page = request.state.site.page("experiences")
+    # One row per experience, photo on the left: dated events from the Journal first, then those that run all year.
+    dated = [{"title": p.title, "eyebrow": (p.event_theme or "LAVE Experiences").capitalize(), "members": p.members_only,
+              "when": cms.event_when(p.event_starts_at, p.event_ends_at), "where": p.event_location, "who": "",
+              "text": p.excerpt, "note": p.event_note, "image": p.cover_image,
+              "link_label": p.event_link_label or ("Book now" if p.event_link else "Find out more"),
+              "link_href": p.event_link or f"/journal/{p.slug}/"} for p in cms.upcoming_events(db, theme)]
+    ongoing = [{**o, "members": False, "where": "", "note": ""} for o in page["ongoing"] if not theme or o["theme"] == theme]
+    return render(request, "site/experiences.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3], page=page,
+                  heading=page["title"] + (f": {theme.capitalize()}" if theme else ""), theme=theme or "",
+                  dated=dated, ongoing=ongoing, **_ctx())
 
 
 @router.get("/laveworld/{sub_slug}/{item_slug}/", response_class=HTMLResponse)
