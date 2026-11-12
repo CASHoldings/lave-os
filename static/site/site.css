@@ -60,7 +60,7 @@ p { margin: 0; }
 
 .subnav { border-bottom: 1px solid var(--line); background: var(--white); position: relative; }
 .subnav > ul { display: flex; justify-content: center; gap: clamp(20px, 4vw, 50px); list-style: none; margin: 0; padding: 0; }
-.subnav > ul > li > a { display: block; padding: 22px 0; font-size: 0.9375rem; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; }
+.subnav > ul > li > a { display: block; padding: 22px 0; font-size: 0.8125rem; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; }
 
 
 .mega { position: absolute; left: 0; right: 0; top: 100%; background: var(--white); border-top: 1px solid var(--line);
@@ -175,7 +175,7 @@ p { margin: 0; }
 @media (max-width: 720px) { .book-band { grid-template-columns: 1fr; } }
 
 /* Sub pages */
-.crumbs { padding: 22px var(--gutter) 0; font-size: 0.75rem; color: var(--muted); max-width: 1500px; margin: 0 auto; }
+.crumbs { padding: 22px var(--gutter) 16px; font-size: 0.75rem; color: var(--muted); max-width: 1500px; margin: 0 auto; }
 .crumbs a { color: var(--ink); }
 .crumbs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 0; }
 .crumbs li + li::before { content: "/"; padding: 0 .4em; color: var(--muted); }
@@ -899,3 +899,8 @@ html { font-size: 100%; }
   .has-ev-bar main { padding-bottom: 72px; }
   .has-ev-bar .signup { display: none !important; }
 }
+
+/* Breathing room above the footer when a page ends on a grid or text, not a full-width band (those meet the footer) */
+#main > section:is(.catalogue, .pack-group):last-of-type { padding-bottom: 48px; }
+#main > section.access:last-of-type { padding-bottom: 24px; }
+.ev-body { margin-bottom: 56px; }
