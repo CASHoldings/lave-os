@@ -344,6 +344,11 @@ POLICY_CHANGES = [
      "the pieces we care for (description, brand, colour, condition, and photos of them when they arrive, which only you "
      "and our team can see),",
      "6 November 2026"),
+    ("/policies/privacy/",
+     "which only you and our team can see), your care preferences and notes,",
+     "which only you and our team can see); the LAVE Experiences you reserve, and any note you add to a reservation "
+     "(such as a dietary need); your care preferences and notes,",
+     "12 November 2026"),
 ]
 
 

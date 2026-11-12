@@ -46,7 +46,7 @@ TEMPLATES.env.globals["company"] = COMPANY
 TEMPLATES.env.globals["cf_analytics_token"] = lambda: get_settings().cf_analytics_token
 TEMPLATES.env.globals["turnstile_key"] = lambda: get_settings().turnstile_site_key if bot_guard.turnstile_on() else ""
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-ASSET_VERSION = "73"
+ASSET_VERSION = "77"
 
 PERSONALS = ["women", "men", "children", "pets"]
 HOMES = ["bedding", "drapery", "tableware", "furnishings"]
@@ -229,7 +229,9 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
     counts = repo.collection_counts(db)
     paths += [f"/atelier/clean/{c}/" for c in repo.COLLECTION_PAGES if counts.get(c)]
     paths += [f"/apothecary/products/{p.slug}/" for p in shop.products(db)]
-    paths += [f"/journal/{p.slug}/" for p in cms.published(db, limit=1000)]
+    # Events live on their own pages under LAVE Experiences; the rest of the Journal under /journal/.
+    paths += [f"/memberships/access/upcoming-events/{p.slug}/" if p.kind == "event" else f"/journal/{p.slug}/"
+              for p in cms.published(db, limit=1000)]
     from app.services import resell
     if pieces := resell.pieces(db):  # the Resell page counts once it has pieces
         paths += ["/atelier/rehome/resell/", *[f"/atelier/rehome/resell/{p.slug}/" for p in pieces]]

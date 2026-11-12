@@ -49,7 +49,7 @@ def test_dated_events_come_first_with_their_details(api, staff_headers):
     assert "Thursday 26 November 2026, 5.30pm to 6.30pm" in page
     assert "<strong>Location:</strong> The atelier, Streatham" in page
     assert "Lifestyle · Members only" in page and "Free for members; £15 for a guest." in page
-    assert 'href="https://example.com/book">Reserve a place' in page
+    assert 'href="/memberships/access/upcoming-events/winter-linen-evening/">Find out more' in page  # its own page
     assert "No dated experiences" not in page
     assert "Winter Linen Evening" in api.get("/memberships/access/businesses/").text
     assert "Winter Linen Evening" not in api.get("/memberships/access/families/").text
@@ -62,7 +62,7 @@ def test_a_run_of_days_stays_until_it_ends(api, staff_headers):
     _event(api, staff_headers, title="Summer Picnic", event_starts_at="2026-09-01T12:00", event_ends_at="2026-09-01T16:00")
     page = api.get(PAGE).text
     assert "Autumn Repairs Week" in page and "Thursday 1 – Friday 9 October 2026" in page
-    assert 'href="/journal/autumn-repairs-week/">Find out more' in page
+    assert 'href="/memberships/access/upcoming-events/autumn-repairs-week/">Find out more' in page
     assert "Summer Picnic" not in page
 
 

@@ -1,0 +1,107 @@
+{% extends "site/base.html" %}
+{% from "site/_exp_row.html" import row with context %}
+{% block title %}{{ e.title }} | LAVE Experiences{% endblock %}
+{% block description %}{{ e.excerpt or page.intro }}{% endblock %}
+{% block og_image %}{% if image %}{{ image if image.startswith("http") else site_url ~ image }}{% else %}{{ site_url }}{{ og_default }}{% endif %}{% endblock %}
+{% block head %}
+{% if is_draft or past %}<meta name="robots" content="noindex, follow">{% endif %}
+{% if not past %}{{ jsonld(event_ld) }}{% endif %}
+{% endblock %}
+{% block body_class %}has-ev-bar{% endblock %}
+{% block main %}
+{# One LAVE Experience: the photo and everything needed to decide at a glance, then the story, the details and the
+   host. Places are reserved here unless the event has its own booking link (services/experiences.py). #}
+{% if is_draft %}<p class="draft-bar">Draft preview: only staff can see this until it's published.</p>{% endif %}
+{% set kind = (e.event_theme or "LAVE Experiences")|capitalize %}
+{% set full = left is not none and left == 0 %}
+
+<section class="ev-hero">
+  <div class="ev-photo">{% if image %}<img src="{{ image }}" alt="" decoding="async" fetchpriority="high">{% endif %}</div>
+
+  <aside class="ev-glance" id="reserve" aria-label="At a glance">
+    <p class="eyebrow">{{ kind }}{% if e.members_only %} · Members only{% endif %}</p>
+    <h1>{{ e.title }}</h1>
+    <dl class="ev-facts">
+      <div><dt>When</dt><dd>{{ when }}</dd></div>
+      {% if e.event_location or e.event_address %}<div><dt>Where</dt><dd>{{ e.event_location }}
+        {% if show_address %}<br>{{ e.event_address }}<br><a class="ev-small-link" href="https://www.google.com/maps/search/?api=1&amp;query={{ (e.event_location ~ ', ' ~ e.event_address)|urlencode }}" rel="noopener" target="_blank">Directions</a>
+        {% elif e.event_address_private %}<br><span class="muted">The address is shared with confirmed guests.</span>{% endif %}</dd></div>{% endif %}
+      {% if for_whom %}<div><dt>For</dt><dd>{{ for_whom|join(", ") }}</dd></div>{% endif %}
+      {% if e.event_price %}<div><dt>Price</dt><dd>{{ e.event_price }}</dd></div>{% endif %}
+      {% if left is not none and not past %}<div><dt>Places</dt><dd>{% if full %}Full. The waiting list is open.{% else %}{{ left }} of {{ e.event_capacity }} left{% endif %}</dd></div>{% endif %}
+    </dl>
+
+    {% if notice == "confirmed" %}<p class="ev-status ok" role="status">Your place is confirmed. We've emailed you the details and a calendar invite.</p>
+    {% elif notice == "waitlist" %}<p class="ev-status" role="status">You're on the waiting list. If a place opens up, it's yours and we'll email you straight away.</p>
+    {% elif notice == "cancelled" %}<p class="ev-status" role="status">Your reservation is cancelled. Thank you for letting us know.</p>{% endif %}
+    {% if error %}<p class="ev-error" role="alert">{{ error }}</p>{% endif %}
+
+    {% if past %}
+      <p class="ev-status">This experience has taken place.</p>
+      <a class="btn ev-cta" href="/memberships/access/upcoming-events/">See upcoming experiences</a>
+    {% elif e.event_link %}
+      <a class="btn dark ev-cta" href="{{ e.event_link }}" rel="noopener" target="_blank">{{ e.event_link_label or "Book now" }}</a>
+    {% elif mine and mine.status == "confirmed" %}
+      <p class="ev-status ok">You're going: {{ mine.places }} place{{ "s" if mine.places > 1 }} reserved.</p>
+      <form method="post" action="{{ request.url.path }}cancel"><button class="ev-small-link as-button" type="submit">Give up my place</button></form>
+    {% elif mine %}
+      <p class="ev-status">You're on the waiting list for {{ mine.places }} place{{ "s" if mine.places > 1 }}.</p>
+      <form method="post" action="{{ request.url.path }}cancel"><button class="ev-small-link as-button" type="submit">Leave the waiting list</button></form>
+    {% elif not signed_in %}
+      <a class="btn dark ev-cta" href="/account/login/?next={{ request.url.path|urlencode }}">Sign in to reserve</a>
+      <p class="small muted">New to LAVE? <a href="/memberships/#plans-overview">See membership</a></p>
+    {% elif e.members_only and not member %}
+      <a class="btn dark ev-cta" href="/memberships/#plans-overview">Become a member to reserve</a>
+      <p class="small muted">This experience is for LAVE members.</p>
+    {% else %}
+      <form class="ev-form" method="post" action="{{ request.url.path }}reserve">
+        {% if e.event_places_each > 1 %}<label>Places<select name="places">{% for n in range(1, e.event_places_each + 1) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select></label>{% endif %}
+        <label>Anything we should know? <span class="muted">(optional)</span><input name="note" maxlength="300" placeholder="For example, a dietary need"></label>
+        <button class="btn dark ev-cta" type="submit">{{ "Join the waiting list" if full else (e.event_link_label or "Reserve a place") }}</button>
+      </form>
+    {% endif %}
+    {% if not past %}<a class="ev-small-link" href="{{ request.url.path }}calendar.ics">Add to calendar</a>{% endif %}
+  </aside>
+</section>
+
+<div class="ev-body">
+  {% if e.excerpt %}<p class="ev-lead">{{ e.excerpt }}</p>{% endif %}
+  {% if e.body %}<div class="prose">{{ md(e.body)|safe }}</div>{% endif %}
+  {% if e.event_quote %}<blockquote class="ev-quote">“{{ e.event_quote }}”</blockquote>{% endif %}
+  {% if e.event_second_image %}<img class="ev-second" src="{{ cover(e.event_second_image) }}" alt="" loading="lazy" decoding="async">{% endif %}
+
+  {% if timings or included or bring or good_to_know %}
+  <section class="ev-section"><h2 class="ev-h">The details</h2>
+    <div class="ev-detail-grid">
+      {% if timings %}<div><h3>Timings</h3><ul class="ev-times">{% for t, x in timings %}<li>{% if t %}<strong>{{ t }}</strong>{% endif %}<span>{{ x }}</span></li>{% endfor %}</ul></div>{% endif %}
+      {% if included %}<div><h3>What's included</h3><ul>{% for x in included %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+      {% if bring %}<div><h3>What to bring or wear</h3><ul>{% for x in bring %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+      {% if good_to_know %}<div><h3>Good to know</h3><ul>{% for x in good_to_know %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if e.event_host_name %}
+  <section class="ev-section ev-host{% if e.event_host_image %} with-photo{% endif %}">
+    {% if e.event_host_image %}<img src="{{ cover(e.event_host_image) }}" alt="{{ e.event_host_name }}" loading="lazy">{% endif %}
+    <div><p class="eyebrow">Your host</p><h3>{{ e.event_host_name }}</h3>{% if e.event_host_bio %}<p class="ev-muted">{{ e.event_host_bio }}</p>{% endif %}</div>
+  </section>
+  {% endif %}
+
+  {% if page.small_print_text %}<p class="ev-section ev-small">{{ page.small_print_text }}{% if e.members_only %} This experience is for LAVE members.{% endif %}</p>{% endif %}
+</div>
+
+{% if more %}
+<section class="experiences">
+  <h2 class="exp-group">More experiences</h2>
+  {% for m in more %}{{ row(m) }}{% endfor %}
+</section>
+{% endif %}
+
+{% if not past %}
+<div class="ev-bar" aria-hidden="true">
+  <span><strong>{{ e.event_starts_at.day }} {{ e.event_starts_at.strftime("%b") }}</strong>{% if e.event_price %} · {{ e.event_price }}{% endif %}</span>
+  <a class="btn dark" href="#reserve" tabindex="-1">{% if mine %}Your place{% elif e.event_link %}{{ e.event_link_label or "Book now" }}{% elif full %}Waiting list{% else %}Reserve{% endif %}</a>
+</div>
+{% endif %}
+{% endblock %}

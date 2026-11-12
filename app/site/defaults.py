@@ -220,6 +220,9 @@ def experiences() -> dict:
         "coming_up": "Coming up",
         "throughout": "Throughout the year",
         "no_dates_text": "No dated experiences are scheduled right now. Members hear first when new ones open.",
+        # Under each experience's own page.
+        "small_print_text": "If your plans change, please give up your place on this page as early as you can, so someone "
+                            "on the waiting list can come. Places are personal to the member who reserves them.",
         "ongoing": [
             {"title": "LAVE Strides", "eyebrow": "Sport", "groups": "", "when": "Monthly",
              "who": "All members: Essence, Elevate and Éclat",

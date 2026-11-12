@@ -661,9 +661,44 @@ class Post(Timestamped, Base):
     event_link: Mapped[str] = mapped_column(String(400), default="")  # where "Book now" goes; else the event's page
     event_link_label: Mapped[str] = mapped_column(String(60), default="")
     event_audiences: Mapped[list] = mapped_column(JSON, default=list)  # e.g. ["founders", "professionals"]; [] = everyone
+    # The event's own page (services/experiences.py). Optional: sections without text don't show.
+    event_price: Mapped[str] = mapped_column(String(160), default="")  # "Included with your membership", "£25 a guest"
+    event_capacity: Mapped[int] = mapped_column(Integer, default=0)  # places; 0 = no limit, and no count shown
+    event_places_each: Mapped[int] = mapped_column(Integer, default=1)  # how many places one member may reserve
+    event_address: Mapped[str] = mapped_column(String(300), default="")  # the full address, under the location's name
+    event_address_private: Mapped[bool] = mapped_column(Boolean, default=False)  # shown only to confirmed guests
+    event_included: Mapped[str] = mapped_column(Text, default="")  # one item a line
+    event_bring: Mapped[str] = mapped_column(Text, default="")  # what to bring or wear, one a line
+    event_timings: Mapped[str] = mapped_column(Text, default="")  # "6.30pm  Arrival", one a line
+    event_good_to_know: Mapped[str] = mapped_column(Text, default="")  # accessibility, children, guests: one a line
+    event_quote: Mapped[str] = mapped_column(String(300), default="")
+    event_second_image: Mapped[str] = mapped_column(String(400), default="")
+    event_host_name: Mapped[str] = mapped_column(String(120), default="")
+    event_host_bio: Mapped[str] = mapped_column(String(400), default="")
+    event_host_image: Mapped[str] = mapped_column(String(400), default="")
     # Press
     outlet: Mapped[str] = mapped_column(String(120), default="")
     external_url: Mapped[str] = mapped_column(String(400), default="")
+
+
+class EventReservation(Base):
+    """A client's place at a LAVE Experience. Confirmed while there's room, otherwise on the waiting list; a place
+    given up goes to the first on the list (services/experiences.py)."""
+    __tablename__ = "event_reservations"
+    __table_args__ = (UniqueConstraint("post_id", "client_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"), index=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"), index=True)
+    places: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(12), default="confirmed")  # confirmed | waitlist | cancelled
+    note: Mapped[str] = mapped_column(String(300), default="")  # e.g. a dietary need, from the client
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    post: Mapped["Post"] = relationship()
+    client: Mapped[Client] = relationship()
 
 
 class PageContent(Timestamped, Base):

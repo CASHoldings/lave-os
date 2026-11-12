@@ -849,3 +849,53 @@ html { font-size: 100%; }
   .exp { grid-template-columns: 1fr; gap: 20px; padding: 28px 0; }
   .exp-copy h3 { margin: 10px 0 16px; }
 }
+
+/* One LAVE Experience (event.html): the photo and "at a glance" side by side, then the story, details and host */
+.ev-hero { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: clamp(28px, 5vw, 80px);
+  max-width: 1280px; margin: 12px auto 0; padding: 0 var(--gutter); align-items: start; }
+.ev-photo { background: var(--panel); }
+.ev-photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.ev-glance { position: sticky; top: calc(var(--header-h) + 24px); display: grid; gap: 18px; padding-top: 4px; }
+.ev-glance h1 { font-size: clamp(1.5rem, 2.4vw, 2.125rem); font-weight: 400; line-height: 1.2; letter-spacing: .01em; }
+.ev-facts { margin: 0; display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 18px; }
+.ev-facts div { display: grid; grid-template-columns: 76px 1fr; gap: 12px; }
+.ev-facts dt { font-size: 0.6875rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.ev-facts dd { margin: 0; }
+.ev-cta { width: 100%; }
+.ev-form { display: grid; gap: 14px; }
+.ev-form label { display: grid; gap: 6px; font-size: 0.8125rem; }
+.ev-form input, .ev-form select { min-height: 46px; border: 1px solid var(--line); padding: 0 12px; font: inherit; color: var(--ink); background: #fff; }
+.ev-status { padding: 14px 16px; background: var(--panel); border-left: 3px solid var(--line); }
+.ev-status.ok { border-left-color: var(--ok); }
+.ev-error { color: var(--err); }
+.ev-small-link { justify-self: start; font-size: 0.75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  text-decoration: underline; text-underline-offset: 5px; }
+.as-button { background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); font-family: var(--font); }
+.ev-body { max-width: 720px; margin: clamp(48px, 7vw, 88px) auto 0; padding: 0 var(--gutter); }
+.ev-lead { font-size: 1.0625rem; line-height: 1.75; margin-bottom: 28px; }
+.ev-quote { margin: 52px 0; padding: 0; font-size: clamp(1.25rem, 2vw, 1.625rem); line-height: 1.45; text-align: center; text-wrap: balance; }
+.ev-second { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; margin: 44px 0 0; background: var(--panel); }
+.ev-section { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--line); }
+.ev-h { font-size: 0.75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.ev-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 48px; margin-top: 22px; }
+.ev-detail-grid h3 { font-size: 0.8125rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+.ev-detail-grid ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; color: var(--ink-soft); }
+.ev-times li { display: grid; grid-template-columns: 64px 1fr; gap: 10px; }
+.ev-times strong { color: var(--ink); font-weight: 700; }
+.ev-host.with-photo { display: grid; grid-template-columns: 96px 1fr; gap: 24px; align-items: center; }
+.ev-host img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; }
+.ev-host h3 { font-size: 1.125rem; font-weight: 400; margin: 6px 0 6px; }
+.ev-muted { color: var(--ink-soft); }
+.ev-small { font-size: 0.8125rem; color: var(--muted); }
+.ev-bar { display: none; }
+@media (max-width: 860px) {
+  .ev-hero { grid-template-columns: 1fr; }
+  .ev-glance { position: static; }
+  .ev-detail-grid { grid-template-columns: 1fr; }
+  .ev-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: #fff; border-top: 1px solid var(--line);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); align-items: center; justify-content: space-between; gap: 12px; }
+  .ev-bar .btn { min-height: 44px; padding: 0 22px; }
+  .ev-bar span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .has-ev-bar main { padding-bottom: 72px; }
+  .has-ev-bar .signup { display: none !important; }
+}

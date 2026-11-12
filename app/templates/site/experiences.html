@@ -15,23 +15,7 @@
   {% endfor %}
 </nav>
 
-{% macro row(e, first=False) %}
-<article class="exp">
-  <a class="exp-media" href="{{ e.link_href }}" tabindex="-1" aria-hidden="true">
-    {% if e.image %}<img src="{{ cover(e.image) }}" alt="" {% if not first %}loading="lazy" {% endif %}decoding="async">{% endif %}
-  </a>
-  <div class="exp-copy">
-    <p class="eyebrow">{{ e.eyebrow }}{% if e.members %} · Members only{% endif %}</p>
-    <h3>{{ e.title }}</h3>
-    {% if e.when %}<p class="exp-when">{{ e.when }}</p>{% endif %}
-    {% if e.where %}<p class="exp-fact"><strong>Location:</strong> {{ e.where }}</p>{% endif %}
-    {% if e.who %}<p class="exp-fact"><strong>For:</strong> {{ e.who }}</p>{% endif %}
-    {% if e.text %}<p class="exp-text">{{ e.text }}</p>{% endif %}
-    {% if e.note %}<p class="exp-text">{{ e.note }}</p>{% endif %}
-    {% if e.link_href %}<a class="post-more" href="{{ e.link_href }}">{{ e.link_label }}<span class="sr"> for {{ e.title }}</span></a>{% endif %}
-  </div>
-</article>
-{% endmacro %}
+{% from "site/_exp_row.html" import row with context %}
 
 <section class="experiences">
   {% if dated %}

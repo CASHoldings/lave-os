@@ -416,6 +416,21 @@ class PostIn(BaseModel):
     event_link: str = Field("", max_length=400)
     event_link_label: str = Field("", max_length=60)
     event_audiences: list[str] = []
+    # The event's own page
+    event_price: str = Field("", max_length=160)
+    event_capacity: int = Field(0, ge=0, le=10_000)
+    event_places_each: int = Field(1, ge=1, le=10)
+    event_address: str = Field("", max_length=300)
+    event_address_private: bool = False
+    event_included: str = Field("", max_length=4000)
+    event_bring: str = Field("", max_length=4000)
+    event_timings: str = Field("", max_length=4000)
+    event_good_to_know: str = Field("", max_length=4000)
+    event_quote: str = Field("", max_length=300)
+    event_second_image: str = Field("", max_length=400)
+    event_host_name: str = Field("", max_length=120)
+    event_host_bio: str = Field("", max_length=400)
+    event_host_image: str = Field("", max_length=400)
     outlet: str = ""
     external_url: str = ""
 

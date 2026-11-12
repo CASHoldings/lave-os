@@ -1236,7 +1236,10 @@
     const isNew = id === "new";
     const c = shell("journal", isNew ? "New post" : "Edit post");
     const p = isNew ? { kind: "thread", title: "", excerpt: "", body: "", cover_image: "", author: "LAVE", status: "draft", event_location: "",
-      event_theme: "", members_only: false, outlet: "", external_url: "", event_starts_at: null, event_ends_at: null, event_note: "", event_link: "", event_link_label: "", event_audiences: [] } : await api("GET", "/api/staff/posts/" + id);
+      event_theme: "", members_only: false, outlet: "", external_url: "", event_starts_at: null, event_ends_at: null, event_note: "", event_link: "", event_link_label: "", event_audiences: [], event_price: "", event_capacity: 0, event_places_each: 1,
+      event_address: "", event_address_private: false, event_included: "", event_bring: "", event_timings: "", event_good_to_know: "",
+      event_quote: "", event_second_image: "", event_host_name: "", event_host_bio: "", event_host_image: "" } : await api("GET", "/api/staff/posts/" + id);
+    const eventUrl = `/memberships/access/upcoming-events/${p.slug}/`;
     const local = (iso) => (iso ? iso.slice(0, 16) : "");
     c.innerHTML = `
       <form id="post" class="cols-3">
@@ -1259,7 +1262,7 @@
               <button class="btn" type="submit">Save draft</button>
               ${p.status === "published" ? `<button class="btn ghost" type="button" data-pub="0">Unpublish</button>` : `<button class="btn primary" type="button" data-pub="1">Publish</button>`}
             </div>
-            ${!isNew ? `<a class="small" href="/journal/${p.slug}/" target="_blank">${p.status === "published" ? "View on site" : "Preview on site"}</a>` : ""}
+            ${!isNew ? `<a class="small" href="${p.kind === "event" ? eventUrl : `/journal/${p.slug}/`}" target="_blank">${p.status === "published" ? "View on site" : "Preview on site"}</a>` : ""}
           </section>
           <section class="panel">
             <h2>Cover image</h2>
@@ -1278,10 +1281,31 @@
             </fieldset>
             <label class="check-label"><input type="checkbox" name="members_only" ${p.members_only ? "checked" : ""}> Members only</label>
             <label>Extra line <span class="muted small">(time, price or what to bring)</span><input name="event_note" maxlength="400" value="${esc(p.event_note)}" placeholder="e.g. 6.30pm to 8pm. Free for members; £15 for a guest."></label>
-            <label>Booking link <span class="muted small">(optional; otherwise "Find out more" opens this event's page)</span><input name="event_link" maxlength="400" value="${esc(p.event_link)}" placeholder="https://"></label>
-            <label>Link wording<input name="event_link_label" maxlength="60" value="${esc(p.event_link_label)}" placeholder="Book now"></label>
-            <p class="small muted">Published events appear on <a href="/memberships/access/upcoming-events/" target="_blank">LAVE Experiences</a> until they end, with the cover image on the left and the summary beside it.</p>
+            <label>Button wording<input name="event_link_label" maxlength="60" value="${esc(p.event_link_label)}" placeholder="Reserve a place"></label>
+            <label>Outside booking link <span class="muted small">(only if places are booked elsewhere, e.g. a ticketing site; leave empty and members reserve on LAVE)</span><input name="event_link" maxlength="400" value="${esc(p.event_link)}" placeholder="https://"></label>
+            <p class="small muted">Published events appear on <a href="/memberships/access/upcoming-events/" target="_blank">LAVE Experiences</a> until they end, and each has its own page.</p>
           </section>
+          <section class="panel stack" id="event-page" ${p.kind === "event" ? "" : "hidden"}>
+            <h2>Event page</h2>
+            <p class="small muted">All optional: anything left empty doesn't show.</p>
+            <label>Price <span class="muted small">(as it should read)</span><input name="event_price" maxlength="160" value="${esc(p.event_price)}" placeholder="Included with your membership"></label>
+            <div class="form-grid">
+              <label>Places <span class="muted small">(0: no limit)</span><input type="number" min="0" name="event_capacity" value="${p.event_capacity || 0}"></label>
+              <label>Places each member may reserve<input type="number" min="1" max="10" name="event_places_each" value="${p.event_places_each || 1}"></label>
+            </div>
+            <label>Full address<input name="event_address" maxlength="300" value="${esc(p.event_address)}" placeholder="438 Streatham High Road, London SW16 3PX"></label>
+            <label class="check-label"><input type="checkbox" name="event_address_private" ${p.event_address_private ? "checked" : ""}> Show the address only to confirmed guests</label>
+            <label>Timings <span class="muted small">(one a line)</span><textarea name="event_timings" rows="3" placeholder="6.30pm  Arrival and drinks">${esc(p.event_timings)}</textarea></label>
+            <label>What's included <span class="muted small">(one a line)</span><textarea name="event_included" rows="3">${esc(p.event_included)}</textarea></label>
+            <label>What to bring or wear <span class="muted small">(one a line)</span><textarea name="event_bring" rows="2">${esc(p.event_bring)}</textarea></label>
+            <label>Good to know <span class="muted small">(accessibility, children, guests: one a line)</span><textarea name="event_good_to_know" rows="3">${esc(p.event_good_to_know)}</textarea></label>
+            <label>A line to quote <span class="muted small">(shown large, mid-page)</span><input name="event_quote" maxlength="300" value="${esc(p.event_quote)}"></label>
+            <label>Second photo<input name="event_second_image" maxlength="400" value="${esc(p.event_second_image)}" placeholder="Paste a link from the image library"></label>
+            <label>Host's name<input name="event_host_name" maxlength="120" value="${esc(p.event_host_name)}"></label>
+            <label>About the host<textarea name="event_host_bio" rows="2" maxlength="400">${esc(p.event_host_bio)}</textarea></label>
+            <label>Host's photo<input name="event_host_image" maxlength="400" value="${esc(p.event_host_image)}" placeholder="Paste a link from the image library"></label>
+          </section>
+          ${!isNew && p.kind === "event" ? `<section class="panel" id="guests"><h2>Guest list</h2><p class="loading">Loading…</p></section>` : ""}
           <section class="panel" id="press-fields" ${p.kind === "press" ? "" : "hidden"}>
             <h2>Press</h2>
             <label>Publication<input name="outlet" value="${esc(p.outlet)}"></label>
@@ -1298,6 +1322,11 @@
       event_ends_at: f.event_ends_at.value || null, event_note: f.event_note.value, event_link: f.event_link.value,
       event_link_label: f.event_link_label.value,
       event_audiences: [...f.querySelectorAll('[name="event_audiences"]:checked')].map((x) => x.value),
+      event_price: f.event_price.value, event_capacity: Number(f.event_capacity.value || 0), event_places_each: Number(f.event_places_each.value || 1),
+      event_address: f.event_address.value, event_address_private: f.event_address_private.checked, event_timings: f.event_timings.value,
+      event_included: f.event_included.value, event_bring: f.event_bring.value, event_good_to_know: f.event_good_to_know.value,
+      event_quote: f.event_quote.value, event_second_image: f.event_second_image.value, event_host_name: f.event_host_name.value,
+      event_host_bio: f.event_host_bio.value, event_host_image: f.event_host_image.value,
       outlet: f.outlet.value, external_url: f.external_url.value,
     });
     const save = async () => {
@@ -1306,6 +1335,7 @@
     };
     f.kind.addEventListener("change", () => {
       c.querySelector("#event-fields").hidden = f.kind.value !== "event";
+      c.querySelector("#event-page").hidden = f.kind.value !== "event";
       c.querySelector("#press-fields").hidden = f.kind.value !== "press";
     });
     f.addEventListener("submit", async (e) => {
@@ -1337,6 +1367,38 @@
       preview.hidden = !show; c.querySelector("#body").hidden = show;
       e.target.textContent = show ? "Edit" : "Preview";
     });
+    // Guest list: who's coming, the waiting list in order, and cancelling a place (the guest is emailed).
+    const loadGuests = async () => {
+      const box = c.querySelector("#guests");
+      if (!box) return;
+      const g = await api("GET", `/api/staff/posts/${id}/reservations`);
+      const active = g.reservations.filter((r) => r.status !== "cancelled");
+      const label = { confirmed: "Going", waitlist: "Waiting list", cancelled: "Cancelled" };
+      box.innerHTML = `<div class="row between"><h2>Guest list</h2>${active.length ? `<button class="btn sm ghost" type="button" id="guests-csv">Download CSV</button>` : ""}</div>
+        <p class="small">${g.taken} place${g.taken === 1 ? "" : "s"} reserved${g.capacity ? ` of ${g.capacity}` : ""}${g.left === 0 ? " · full" : ""}${active.some((r) => r.status === "waitlist") ? ` · ${active.filter((r) => r.status === "waitlist").length} waiting` : ""}</p>
+        ${g.reservations.length ? `<div class="table-wrap"><table><thead><tr><th>Guest</th><th class="num">Places</th><th>Status</th><th></th></tr></thead><tbody>
+          ${g.reservations.map((r) => `<tr><td><a href="#/clients/${r.client_id}">${esc(r.name)}</a><br><span class="small muted">${esc(r.email)}${r.phone ? " · " + esc(r.phone) : ""}</span>${r.note ? `<br><span class="small">${esc(r.note)}</span>` : ""}</td>
+            <td class="num">${r.places}</td><td>${r.status === "confirmed" ? '<span class="pill ok">Going</span>' : r.status === "waitlist" ? '<span class="pill warn">Waiting list</span>' : '<span class="pill">Cancelled</span>'}<br><span class="small muted">${D.format(parse(r.reserved_at))}</span></td>
+            <td>${r.status !== "cancelled" ? `<button class="link small danger-text" type="button" data-cancel-res="${r.id}">Cancel</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+          : `<p class="muted small">No reservations yet.${p.event_link ? " Places for this event are booked through its outside link." : ""}</p>`}`;
+      box.querySelector("#guests-csv")?.addEventListener("click", () => {
+        const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        const csv = [["Name", "Email", "Phone", "Places", "Status", "Note", "Reserved"], ...active.map((r) => [r.name, r.email, r.phone, r.places, label[r.status], r.note, r.reserved_at])]
+          .map((row) => row.map(cell).join(",")).join("\n");
+        const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: `guest-list-${p.slug}.csv` });
+        a.click();
+      });
+      box.querySelectorAll("[data-cancel-res]").forEach((b) => b.addEventListener("click", () => {
+        const cellEl = b.closest("td");
+        cellEl.innerHTML = `<span class="small">Cancel this place? The guest is emailed.</span><br><button class="btn danger sm" type="button" data-yes>Cancel place</button> <button class="btn ghost sm" type="button" data-no>Keep</button>`;
+        cellEl.querySelector("[data-no]").addEventListener("click", () => loadGuests());
+        cellEl.querySelector("[data-yes]").addEventListener("click", async () => {
+          try { const r = await api("POST", `/api/staff/reservations/${b.dataset.cancelRes}/cancel`); toast(r.moved_up.length ? `Cancelled. ${r.moved_up.join(", ")} moved up from the waiting list.` : "Cancelled"); loadGuests(); }
+          catch (ex) { toast(ex.message, true); }
+        });
+      }));
+    };
+    loadGuests().catch((ex) => { const box = c.querySelector("#guests"); if (box) box.innerHTML = `<h2>Guest list</h2><p class="small err-text">${esc(ex.message)}</p>`; });
     c.querySelector("[data-delete]")?.addEventListener("click", () => {
       const box = c.querySelector("#del");
       box.innerHTML = `<span class="small">Delete this post permanently?</span> <button class="btn danger sm" type="button" data-yes>Delete</button> <button class="btn ghost sm" type="button" data-no>Keep</button>`;

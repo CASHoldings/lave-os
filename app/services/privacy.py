@@ -12,7 +12,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import (AreaWaitlistEntry, Booking, Client, ClientGesture, ClientOccasion, ContactMessage, DeletedOrder, Garment, Invoice,
+from app.models import (AreaWaitlistEntry, Booking, Client, ClientGesture, ClientOccasion, ContactMessage, DeletedOrder, EventReservation, Garment, Invoice,
                         LoginToken, Membership, MembershipStatus, NewsletterSignup, Order, OrderStatus, ShopOrder, VaultItem,
                         VaultStatus, WaitlistEntry, WardrobeItem)
 from app.services.clock import local_now
@@ -38,6 +38,7 @@ def export(db: Session, client: Client) -> dict:
     news = db.scalar(select(NewsletterSignup).where(NewsletterSignup.email == client.email))
     deleted = db.scalars(select(DeletedOrder).where(DeletedOrder.client_id == client.id)).all()
     invoices = db.scalars(select(Invoice).where(Invoice.client_id == client.id)).all()
+    reservations = db.scalars(select(EventReservation).where(EventReservation.client_id == client.id)).all()
     messages = db.scalars(select(ContactMessage).where(ContactMessage.email == client.email)).all()
     m = client.membership
     return {
@@ -55,6 +56,8 @@ def export(db: Session, client: Client) -> dict:
         "invoices": [{"number": i.number, "order": i.order_ref, "billed_to": i.company, "contact": i.contact_name,
                       "address": i.address, "email": i.email, "issued_on": _iso(i.issued_on), "total_pence": i.total_pence,
                       "void": bool(i.voided_at)} for i in invoices],
+        "experiences_reserved": [{"experience": r.post.title, "places": r.places, "status": r.status, "note": r.note,
+                                  "reserved_at": _iso(r.created_at)} for r in reservations],
         "orders_deleted_as_mistakes": [{"ref": d.ref, "summary": d.summary, "deleted_at": _iso(d.deleted_at)} for d in deleted],
         "vault": [ser.vault_item(v) for v in vault],
         "wardrobe": [{"name": w.name, "colour": w.colour, "brand": w.brand, "fibre": w.fibre, "hidden": w.hidden} for w in wardrobe],
@@ -132,7 +135,7 @@ def erase(db: Session, client: Client, by: str) -> None:
     if wardrobe_ids:
         for g in db.scalars(select(Garment).where(Garment.wardrobe_item_id.in_(wardrobe_ids))):
             g.wardrobe_item_id = None
-    for model in (WardrobeItem, ClientOccasion, ClientGesture, LoginToken, Membership):
+    for model in (WardrobeItem, ClientOccasion, ClientGesture, LoginToken, Membership, EventReservation):
         db.execute(delete(model).where(model.client_id == client.id))
     for s in db.scalars(select(ShopOrder).where((ShopOrder.client_id == client.id) | (ShopOrder.email == email))):
         s.email, s.shipping_address = "", {}

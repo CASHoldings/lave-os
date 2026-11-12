@@ -1152,8 +1152,14 @@ def _post(p: Post, full: bool = False) -> dict:
         out.update(body=p.body, author=p.author, event_location=p.event_location, event_theme=p.event_theme,
                    members_only=p.members_only, outlet=p.outlet, external_url=p.external_url,
                    event_ends_at=ser.iso(p.event_ends_at), event_note=p.event_note, event_link=p.event_link,
-                   event_link_label=p.event_link_label, event_audiences=p.event_audiences or [])
+                   event_link_label=p.event_link_label, event_audiences=p.event_audiences or [],
+                   **{k: getattr(p, k) for k in EVENT_PAGE_FIELDS})
     return out
+
+
+EVENT_PAGE_FIELDS = ("event_price", "event_capacity", "event_places_each", "event_address", "event_address_private",
+                     "event_included", "event_bring", "event_timings", "event_good_to_know", "event_quote",
+                     "event_second_image", "event_host_name", "event_host_bio", "event_host_image")
 
 
 def _parse_dt(value: str | None):
@@ -1215,6 +1221,40 @@ def update_post(post_id: int, body: PostIn, staff: StaffUser = Depends(ops), db:
         p.slug = cms.unique_slug(db, body.slug, current_id=p.id)
     db.commit()
     return _post(p, full=True)
+
+
+@router.get("/posts/{post_id}/reservations")
+def event_reservations(post_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """The guest list for a LAVE Experience: confirmed first, then the waiting list in order, then cancelled."""
+    from app.models import EventReservation
+    from app.services import experiences as exp
+    p = db.get(Post, post_id)
+    if not p or p.kind != "event":
+        raise HTTPException(404, "Event not found.")
+    order = {exp.CONFIRMED: 0, exp.WAITLIST: 1, exp.CANCELLED: 2}
+    rows = sorted(db.scalars(select(EventReservation).where(EventReservation.post_id == p.id)).all(),
+                  key=lambda r: (order.get(r.status, 3), r.created_at))
+    return {"capacity": p.event_capacity, "taken": exp.taken(db, p), "left": exp.places_left(db, p),
+            "page": exp.url(p), "reservations": [
+                {"id": r.id, "client_id": r.client_id, "name": r.client.full_name, "email": r.client.email,
+                 "phone": r.client.phone, "places": r.places, "status": r.status, "note": r.note,
+                 "reserved_at": ser.iso(r.created_at), "cancelled_at": ser.iso(r.cancelled_at)} for r in rows]}
+
+
+@router.post("/reservations/{reservation_id}/cancel")
+def cancel_reservation(reservation_id: int, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Cancel a guest's place (they're told by email); the waiting list moves up."""
+    from app.models import EventReservation
+    from app.services import experiences as exp
+    r = db.get(EventReservation, reservation_id)
+    if not r or r.status == exp.CANCELLED:
+        raise HTTPException(404, "Reservation not found.")
+    moved = exp.cancel(db, r)
+    db.commit()
+    exp.notify(r, "cancelled_by_lave")
+    for m in moved:
+        exp.notify(m, "promoted")
+    return {"cancelled": r.id, "moved_up": [m.client.full_name for m in moved]}
 
 
 @router.post("/posts/{post_id}/publish")

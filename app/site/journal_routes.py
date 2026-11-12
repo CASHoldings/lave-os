@@ -15,6 +15,7 @@ from app.services import content as cms
 from app.services import mailer
 from app.services.accounts import valid_email, allow
 from app.site import content
+from app.site.account_routes import current_site_client
 from app.site.routes import item_page, render
 from app.site.store import site_dependency
 
@@ -92,6 +93,9 @@ def post_page(request: Request, slug: str, lave_staff: str | None = Cookie(defau
     post = cms.post_by_slug(db, slug, include_drafts=preview)
     if not post:
         raise HTTPException(404)
+    if post.kind == "event":
+        from app.services import experiences as exp
+        return RedirectResponse(exp.url(post), status_code=301)
     more = [p for p in cms.published(db, post.kind, limit=4) if p.id != post.id][:3]
     return render(request, "site/post.html", section=LAVEWORLD, subnav=LAVEWORLD.subnav[1], post=post, more=more,
                   is_draft=post.status.value != "published", **_ctx())
@@ -104,20 +108,97 @@ def experiences(request: Request, item_slug: str, db: Session = Depends(get_db))
         return RedirectResponse("/memberships/access/upcoming-events/", status_code=301)
     if item_slug != "upcoming-events" and item_slug not in cms.AUDIENCES:
         return item_page(request, "memberships", "access", item_slug, db)
+    from app.services import experiences as exp
     group = None if item_slug == "upcoming-events" else item_slug
     page = request.state.site.page("experiences")
     # One row per experience, photo on the left: dated events from the Journal first, then those that run all year.
     dated = [{"title": p.title, "eyebrow": (p.event_theme or "LAVE Experiences").capitalize(), "members": p.members_only,
               "when": cms.event_when(p.event_starts_at, p.event_ends_at), "where": p.event_location, "who": "",
               "text": p.excerpt, "note": p.event_note, "image": p.cover_image,
-              "link_label": p.event_link_label or ("Book now" if p.event_link else "Find out more"),
-              "link_href": p.event_link or f"/journal/{p.slug}/"} for p in cms.upcoming_events(db, group)]
+              "link_label": "Find out more", "link_href": exp.url(p)} for p in cms.upcoming_events(db, group)]
     def groups(o):
         return {g.strip().lower() for g in str(o.get("groups", "")).split(",") if g.strip()}
     ongoing = [{**o, "members": False, "where": "", "note": ""} for o in page["ongoing"] if not group or group in groups(o)]
     return render(request, "site/experiences.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3], page=page,
                   heading=page["title"] + (f": {cms.AUDIENCES[group]}" if group else ""), group=group or "",
                   audiences=cms.AUDIENCES, dated=dated, ongoing=ongoing, **_ctx())
+
+
+# One experience: its page, reserving a place, giving it up, and its calendar file (services/experiences.py)
+
+def _event(db: Session, slug: str, include_drafts: bool = False):
+    p = cms.post_by_slug(db, slug, include_drafts=include_drafts)
+    if not p or p.kind != "event" or not p.event_starts_at:
+        raise HTTPException(404)
+    return p
+
+
+@router.get("/memberships/access/upcoming-events/{slug}/", response_class=HTMLResponse)
+def event_page(request: Request, slug: str, lave_staff: str | None = Cookie(default=None),
+               client=Depends(current_site_client), db: Session = Depends(get_db)):
+    from app.services import experiences as exp, members
+    preview = _is_staff(db, lave_staff)
+    p = _event(db, slug, include_drafts=preview)
+    MEMBERSHIP = request.state.site.by_key["membership"]
+    mine = exp.mine(db, p, client)
+    image = cms.image(p.cover_image)
+    more = [{"title": x.title, "eyebrow": (x.event_theme or "LAVE Experiences").capitalize(), "members": x.members_only,
+             "when": cms.event_when(x.event_starts_at, x.event_ends_at), "where": x.event_location, "who": "",
+             "text": x.excerpt, "note": "", "image": x.cover_image, "link_label": "Find out more", "link_href": exp.url(x)}
+            for x in exp.more(db, p)]
+    for_whom = [cms.AUDIENCES[a] for a in (p.event_audiences or []) if a in cms.AUDIENCES]
+    return render(request, "site/event.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3], crumb=p.title,
+                  crumbs=[("Home", "/"), (MEMBERSHIP.title, MEMBERSHIP.path), ("LAVE Experiences", "/memberships/access/upcoming-events/"),
+                          (p.title, exp.url(p))],
+                  e=p, when=cms.event_when(p.event_starts_at, p.event_ends_at), image=image, for_whom=for_whom,
+                  past=exp.is_past(p), left=exp.places_left(db, p), mine=mine,
+                  show_address=bool(p.event_address) and (not p.event_address_private or (mine and mine.status == exp.CONFIRMED)),
+                  signed_in=bool(client), member=bool(client and members.is_member(client)),
+                  included=exp.lines(p.event_included), bring=exp.lines(p.event_bring), timings=exp.timings(p.event_timings),
+                  good_to_know=exp.lines(p.event_good_to_know), page=request.state.site.page("experiences"),
+                  more=more, is_draft=p.status.value != "published", event_ld=exp.jsonld(p, image),
+                  notice=request.query_params.get("done", ""), error=request.query_params.get("error", "")[:200], **_ctx())
+
+
+@router.post("/memberships/access/upcoming-events/{slug}/reserve")
+def event_reserve(slug: str, places: int = Form(1), note: str = Form(""), client=Depends(current_site_client),
+                  db: Session = Depends(get_db)):
+    from app.services import experiences as exp
+    p = _event(db, slug)
+    if not client:
+        return RedirectResponse(f"/account/login/?next={exp.url(p)}", status_code=303)
+    try:
+        res = exp.reserve(db, p, client, places, note)
+    except HTTPException as e:  # full, members only, already reserved: say so on the page
+        from urllib.parse import quote
+        return RedirectResponse(f"{exp.url(p)}?error={quote(str(e.detail))}#reserve", status_code=303)
+    db.commit()
+    exp.notify(res, res.status)
+    return RedirectResponse(f"{exp.url(p)}?done={res.status}#reserve", status_code=303)
+
+
+@router.post("/memberships/access/upcoming-events/{slug}/cancel")
+def event_cancel(slug: str, client=Depends(current_site_client), db: Session = Depends(get_db)):
+    from app.services import experiences as exp
+    p = _event(db, slug)
+    res = exp.mine(db, p, client)
+    if not res:
+        return RedirectResponse(exp.url(p), status_code=303)
+    moved = exp.cancel(db, res)
+    db.commit()
+    exp.notify(res, "cancelled")
+    for m in moved:
+        exp.notify(m, "promoted")
+    return RedirectResponse(f"{exp.url(p)}?done=cancelled#reserve", status_code=303)
+
+
+@router.get("/memberships/access/upcoming-events/{slug}/calendar.ics")
+def event_calendar(slug: str, client=Depends(current_site_client), db: Session = Depends(get_db)):
+    from app.services import experiences as exp
+    p = _event(db, slug)
+    mine = exp.mine(db, p, client)
+    return Response(exp.ics(p, bool(mine and mine.status == exp.CONFIRMED)), media_type="text/calendar",
+                    headers={"Content-Disposition": f'attachment; filename="LAVE-{p.slug}.ics"'})
 
 
 @router.get("/laveworld/{sub_slug}/{item_slug}/", response_class=HTMLResponse)

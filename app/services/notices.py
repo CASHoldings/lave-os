@@ -413,6 +413,8 @@ def reminder_loop() -> None:
                 from app.services import billing
                 billing.sweep_unfinished(db)  # bookings whose card check was abandoned release their slots
                 send_receipts(db)  # orders settled by a card payment confirmed after the review
+                from app.services import experiences
+                experiences.send_reminders(db)  # LAVE Experiences tomorrow, to confirmed guests
                 if holidays_checked != local_now().date():
                     holidays_checked = local_now().date()
                     from app.services import members
