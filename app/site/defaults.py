@@ -212,7 +212,7 @@ def signup() -> dict:
 def experiences() -> dict:
     """The LAVE Experiences page (/memberships/access/upcoming-events/): dated events come from the Journal (kind
     "event"); these are the experiences that run all year, in the words of the membership plans (app/plans.py).
-    "groups" lists who each is for, from: families, founders, professionals, children, businesses (empty: everyone)."""
+    "groups" lists who each is for, from: households, individuals, corporates (empty: everyone)."""
     return {
         "title": "LAVE Experiences",
         "intro": "Experiences that go beyond the wardrobe, for LAVE members. New dates are added through the year, and "
@@ -229,17 +229,17 @@ def experiences() -> dict:
              "text": "Monthly group runs for LAVE members.",
              "image": WP + "2025/12/LAVE-Membership.webp", "link_label": "See membership",
              "link_href": "/memberships/#compare"},
-            {"title": "LAVEYoga", "eyebrow": "Wellbeing", "groups": "families", "when": "Monthly",
+            {"title": "LAVEYoga", "eyebrow": "Wellbeing", "groups": "individuals, households", "when": "Monthly",
              "who": "Elevate and Éclat members, with family sessions for Éclat",
              "text": "Monthly yoga sessions for members, and family sessions for Éclat members.",
              "image": WP + "2025/05/LAVE_WELLNESS_Fabric_Care.avif", "link_label": "See membership",
              "link_href": "/memberships/#compare"},
-            {"title": "Founders Lab", "eyebrow": "Community", "groups": "founders, professionals", "when": "Quarterly",
+            {"title": "Founders Lab", "eyebrow": "Community", "groups": "individuals", "when": "Quarterly",
              "who": "Elevate and Éclat members",
              "text": "Quarterly evenings for founders and professionals.",
              "image": WP + "2025/08/LAVE-Business-Dry-Cleaning-Office-Workers.avif", "link_label": "See membership",
              "link_href": "/memberships/#compare"},
-            {"title": "LAVE Family", "eyebrow": "Family", "groups": "families, children", "when": "Through the year",
+            {"title": "LAVE Family", "eyebrow": "Family", "groups": "households", "when": "Through the year",
              "who": "Éclat members",
              "text": "City visits for children, such as a tour of Parliament, museums and behind-the-scenes visits to "
                      "London landmarks.",
@@ -284,9 +284,8 @@ DOCUMENTS = {
                "default": signup},
     "page.experiences": {"title": "Experiences page", "help": "The LAVE Experiences page. Dated events are written in "
                          "Journal (type: Event) and appear under \"Coming up\" until they end; the list below is the "
-                         "experiences that run all year. \"Groups\" says who each is for, for its tab: any of families, "
-                         "founders, professionals, children, businesses, separated by commas (empty: everyone, shown "
-                         "under All).",
+                         "experiences that run all year. \"Groups\" says who each is for, for its tab: any of households, "
+                         "individuals, corporates, separated by commas (empty: everyone, shown under All).",
                          "default": experiences},
     "invoices": {"title": "Invoices", "help": "Default payment terms (0 for due on receipt, or 7, 14 or 30 days), how "
                  "clients can pay, and the closing line. Add your bank details to \"How to pay\" if you take bank "

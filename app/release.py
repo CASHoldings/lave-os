@@ -18,8 +18,8 @@ from app.db import SessionLocal, engine
 from app.migrate import upgrade
 from app.models import SlotTemplate, StaffRole, StaffUser
 from app.seed import seed_services, seed_slots
-from app.services.content import (load_pages, load_policies, load_starter_content, update_brand_wording, update_menu_photos,
-                                  update_policies, update_resell_photos)
+from app.services.content import (load_pages, load_policies, load_starter_content, update_brand_wording, update_event_audiences,
+                                  update_menu_photos, update_policies, update_resell_photos)
 from app.services.shop import load_sample_products
 from app.site.catalogue import load_starting_catalogue
 
@@ -87,6 +87,8 @@ def release() -> list[str]:
         db.commit()
         if changed := update_brand_wording(db):
             notes.append(f"Brand lines: updated the wording in {changed} saved page(s).")
+        if moved := update_event_audiences(db):
+            notes.append(f"LAVE Experiences: {moved} event(s) moved to the Households, Individuals and Corporates groups.")
         if not db.scalar(select(func.count()).select_from(StaffUser)):
             email, password = settings.first_admin_email.strip().lower(), settings.first_admin_password
             if email and len(password) >= 12:

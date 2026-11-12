@@ -106,6 +106,8 @@ def experiences(request: Request, item_slug: str, db: Session = Depends(get_db))
     MEMBERSHIP = request.state.site.by_key["membership"]
     if item_slug in ("lifestyle", "sport"):  # the tabs before experiences were grouped by who they're for
         return RedirectResponse("/memberships/access/upcoming-events/", status_code=301)
+    if item_slug in cms.OLD_AUDIENCES:  # Families, Founders… (12 November 2026): to the group they belong to now
+        return RedirectResponse(f"/memberships/access/{cms.OLD_AUDIENCES[item_slug]}/", status_code=301)
     if item_slug != "upcoming-events" and item_slug not in cms.AUDIENCES:
         return item_page(request, "memberships", "access", item_slug, db)
     from app.services import experiences as exp
@@ -116,9 +118,8 @@ def experiences(request: Request, item_slug: str, db: Session = Depends(get_db))
               "when": cms.event_when(p.event_starts_at, p.event_ends_at), "where": p.event_location, "who": "",
               "text": p.excerpt, "note": p.event_note, "image": p.cover_image,
               "link_label": "Find out more", "link_href": exp.url(p)} for p in cms.upcoming_events(db, group)]
-    def groups(o):
-        return {g.strip().lower() for g in str(o.get("groups", "")).split(",") if g.strip()}
-    ongoing = [{**o, "members": False, "where": "", "note": ""} for o in page["ongoing"] if not group or group in groups(o)]
+    ongoing = [{**o, "members": False, "where": "", "note": ""} for o in page["ongoing"]
+               if not group or group in cms.audiences(o.get("groups", ""))]
     return render(request, "site/experiences.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3], page=page,
                   heading=page["title"] + (f": {cms.AUDIENCES[group]}" if group else ""), group=group or "",
                   audiences=cms.AUDIENCES, dated=dated, ongoing=ongoing, **_ctx())
@@ -146,7 +147,7 @@ def event_page(request: Request, slug: str, lave_staff: str | None = Cookie(defa
              "when": cms.event_when(x.event_starts_at, x.event_ends_at), "where": x.event_location, "who": "",
              "text": x.excerpt, "note": "", "image": x.cover_image, "link_label": "Find out more", "link_href": exp.url(x)}
             for x in exp.more(db, p)]
-    for_whom = [cms.AUDIENCES[a] for a in (p.event_audiences or []) if a in cms.AUDIENCES]
+    for_whom = [cms.AUDIENCES[a] for a in cms.audiences(p.event_audiences)]
     return render(request, "site/event.html", section=MEMBERSHIP, subnav=MEMBERSHIP.subnav[3], crumb=p.title,
                   crumbs=[("Home", "/"), (MEMBERSHIP.title, MEMBERSHIP.path), ("LAVE Experiences", "/memberships/access/upcoming-events/"),
                           (p.title, exp.url(p))],

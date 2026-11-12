@@ -1175,7 +1175,7 @@ def _event_end(body: PostIn):
     starts, ends = _parse_dt(body.event_starts_at), _parse_dt(body.event_ends_at)
     if ends and starts and ends < starts:
         raise HTTPException(400, "The event can't end before it starts.")
-    if unknown := set(body.event_audiences) - set(cms.AUDIENCES):
+    if unknown := set(body.event_audiences) - set(cms.AUDIENCES) - set(cms.OLD_AUDIENCES):
         raise HTTPException(400, f"Unknown group: {', '.join(sorted(unknown))}.")
     if body.event_link and not body.event_link.startswith(("https://", "http://", "/")):
         raise HTTPException(400, "The booking link should start with https:// (or / for a page on lavelondon.com).")
@@ -1195,6 +1195,7 @@ def create_post(body: PostIn, staff: StaffUser = Depends(ops), db: Session = Dep
     data = body.model_dump(exclude={"slug", "event_starts_at", "event_ends_at"})
     p = Post(**data, slug=cms.unique_slug(db, body.slug or body.title), event_starts_at=_parse_dt(body.event_starts_at),
              event_ends_at=_event_end(body), status=PostStatus.draft)
+    p.event_audiences = cms.audiences(p.event_audiences)
     db.add(p)
     db.commit()
     return _post(p, full=True)
@@ -1217,6 +1218,7 @@ def update_post(post_id: int, body: PostIn, staff: StaffUser = Depends(ops), db:
         setattr(p, k, v)
     p.event_starts_at = _parse_dt(body.event_starts_at)
     p.event_ends_at = _event_end(body)
+    p.event_audiences = cms.audiences(p.event_audiences)
     if body.slug and body.slug != p.slug:
         p.slug = cms.unique_slug(db, body.slug, current_id=p.id)
     db.commit()

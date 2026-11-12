@@ -1,5 +1,6 @@
 """The LAVE Experiences page: a photo on the left and the details beside it, dated events first, then the
 experiences that run all year."""
+import re
 from datetime import datetime
 
 from app.services.content import event_when
@@ -23,15 +24,19 @@ def test_year_round_experiences_show_even_with_no_dates(api):
         assert name in page
     assert 'class="exp"' in page and 'href="/memberships/#eclat"' in page
     assert 'name="robots" content="noindex' not in page  # a real page now, worth finding
-    for tab in ("All", "Families", "Founders", "Professionals", "Children", "Businesses"):
-        assert f">{tab}</a>" in page
-    founders = api.get("/memberships/access/founders/").text
-    assert "<h3>Founders Lab</h3>" in founders and "<h3>LAVE Strides</h3>" not in founders
-    assert "LAVE Experiences: Founders" in founders
-    assert "<h3>Founders Lab</h3>" in api.get("/memberships/access/professionals/").text
-    children = api.get("/memberships/access/children/").text
-    assert "<h3>LAVE Family</h3>" in children and "<h3>LAVEYoga</h3>" not in children
-    assert "<h3>LAVEYoga</h3>" in api.get("/memberships/access/families/").text
+    tabs = re.search(r'<nav class="tabs" aria-label="Who it\'s for">(.*?)</nav>', page, re.S).group(1)
+    assert re.findall(r">([A-Za-z]+)</a>", tabs) == ["All", "Households", "Individuals", "Corporates"]
+    individuals = api.get("/memberships/access/individuals/").text
+    assert "<h3>Founders Lab</h3>" in individuals and "<h3>LAVEYoga</h3>" in individuals
+    assert "<h3>LAVE Strides</h3>" not in individuals and "LAVE Experiences: Individuals" in individuals
+    households = api.get("/memberships/access/households/").text
+    assert "<h3>LAVE Family</h3>" in households and "<h3>Founders Lab</h3>" not in households
+    assert "<h3>LAVE Family</h3>" not in api.get("/memberships/access/corporates/").text
+    # The tabs before go to the group they belong to now.
+    for old, new in (("families", "households"), ("children", "households"), ("founders", "individuals"),
+                     ("professionals", "individuals"), ("businesses", "corporates")):
+        r = api.get(f"/memberships/access/{old}/", follow_redirects=False)
+        assert r.status_code == 301 and r.headers["location"] == f"/memberships/access/{new}/"
     # The old tabs go to All, so no link breaks.
     for old in ("lifestyle", "sport"):
         r = api.get(f"/memberships/access/{old}/", follow_redirects=False)
@@ -41,7 +46,7 @@ def test_year_round_experiences_show_even_with_no_dates(api):
 def test_dated_events_come_first_with_their_details(api, staff_headers):
     _event(api, staff_headers, event_starts_at="2026-11-26T17:30", event_ends_at="2026-11-26T18:30",
            event_location="The atelier, Streatham", event_theme="lifestyle", members_only=True,
-           event_audiences=["founders", "businesses"],
+           event_audiences=["individuals", "corporates"],
            event_note="Free for members; £15 for a guest.", event_link="https://example.com/book",
            event_link_label="Reserve a place")
     page = api.get(PAGE).text
@@ -51,8 +56,8 @@ def test_dated_events_come_first_with_their_details(api, staff_headers):
     assert "Lifestyle · Members only" in page and "Free for members; £15 for a guest." in page
     assert 'href="/memberships/access/upcoming-events/winter-linen-evening/">Find out more' in page  # its own page
     assert "No dated experiences" not in page
-    assert "Winter Linen Evening" in api.get("/memberships/access/businesses/").text
-    assert "Winter Linen Evening" not in api.get("/memberships/access/families/").text
+    assert "Winter Linen Evening" in api.get("/memberships/access/corporates/").text
+    assert "Winter Linen Evening" not in api.get("/memberships/access/households/").text
 
 
 def test_a_run_of_days_stays_until_it_ends(api, staff_headers):
@@ -110,5 +115,38 @@ def test_saved_menus_switch_to_the_groups_once(db_session):
         assert content.update_brand_wording(db) == 0  # once only
         saved = db.get(SiteContent, "menus").value
     col = next(c for s in saved["sections"] for n in s["subnav"] for c in n["columns"] if c["title"] == "LAVE Experiences")
-    assert [link["label"] for link in col["links"]] == ["All experiences", "Families", "Founders", "Professionals",
-                                                        "Children", "Businesses"]
+    assert [link["label"] for link in col["links"]] == ["All experiences", "Households", "Individuals", "Corporates"]
+
+
+def test_menus_saved_with_the_first_groups_switch_too(db_session):
+    from app.models import SiteContent
+    from app.services import content
+    from app.site.defaults import menus
+    old = menus()
+    for s in old["sections"]:
+        for n in s["subnav"]:
+            for c in n["columns"]:
+                if c["title"] == "LAVE Experiences":
+                    c["links"] = [{"label": "All experiences", "href": "/memberships/access/upcoming-events/"}] + [
+                        {"label": x, "href": ""} for x in ("Families", "Founders", "Professionals", "Children", "Businesses")]
+    with db_session() as db:
+        db.merge(SiteContent(key="menus", value=old))
+        db.commit()
+        content.update_brand_wording(db)
+        saved = db.get(SiteContent, "menus").value
+    col = next(c for s in saved["sections"] for n in s["subnav"] for c in n["columns"] if c["title"] == "LAVE Experiences")
+    assert [link["label"] for link in col["links"]] == ["All experiences", "Households", "Individuals", "Corporates"]
+
+
+def test_events_saved_with_the_old_groups_move(api, staff_headers, db_session):
+    from app.models import Post
+    from app.services import content
+    r = api.post("/api/staff/posts", headers=staff_headers, json={"title": "Old groups", "kind": "event", "body": "x",
+                                                                  "event_audiences": ["founders", "children"]})
+    assert r.status_code == 201 and r.json()["event_audiences"] == ["households", "individuals"]  # stored as the new ones
+    with db_session() as db:
+        p = db.get(Post, r.json()["id"])
+        p.event_audiences = ["businesses", "families"]  # as saved before the change
+        db.commit()
+        assert content.update_event_audiences(db) == 1 and content.update_event_audiences(db) == 0
+        assert db.get(Post, r.json()["id"]).event_audiences == ["households", "corporates"]

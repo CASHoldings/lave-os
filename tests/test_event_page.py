@@ -27,7 +27,7 @@ def _event(api, sh, **fields):
             "event_timings": "6.30pm  Arrival\n7pm  The talk", "event_included": "Tea and cake",
             "event_bring": "A piece of linen you love", "event_good_to_know": "Step-free access",
             "event_quote": "Linen gets better with every wash.", "event_host_name": "Ada Lovelace",
-            "event_host_bio": "Head of the atelier.", "event_audiences": ["founders"], **fields}
+            "event_host_bio": "Head of the atelier.", "event_audiences": ["individuals"], **fields}
     r = api.post("/api/staff/posts", headers=sh, json=body)
     assert r.status_code == 201, r.text
     assert api.post(f"/api/staff/posts/{r.json()['id']}/publish", headers=sh, json={"publish": True}).status_code == 200
@@ -54,7 +54,7 @@ def test_the_page_shows_everything_at_a_glance(api, staff_headers):
     api.cookies.clear()
     page = api.get(url).text
     assert "<h1>Linen and Light</h1>" in page and "Thursday 26 November 2026, 6.30pm to 8pm" in page
-    assert "Included with your membership" in page and "3 of 3 left" in page and "Founders" in page
+    assert "Included with your membership" in page and "3 of 3 left" in page and "<dd>Individuals</dd>" in page
     assert "12 Linen Lane" not in page and "The address is shared with confirmed guests." in page
     assert "<strong>6.30pm</strong><span>Arrival</span>" in page
     for text in ("Tea and cake", "A piece of linen you love", "Step-free access",

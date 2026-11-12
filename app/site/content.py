@@ -150,8 +150,7 @@ SECTIONS: list[Section] = [
             Column("LAVE Privé", WP + "2025/06/LAVE_Monthly-Linen-Refresh_MAISON-PRIVE.webp", [
                 ("Large houses and mansions", "/contact/?topic=prive"), ("Enquire", "/contact/?topic=prive")]),
             Column("LAVE Experiences", WP + "2025/12/LAVE-Membership.webp", [
-                ("All experiences", "/memberships/access/upcoming-events/"), "Families", "Founders", "Professionals",
-                "Children", "Businesses"]),
+                ("All experiences", "/memberships/access/upcoming-events/"), "Households", "Individuals", "Corporates"]),
             Column("LAVE Family", WP + "2025/05/LAVE_GIRL_Fabric_Care.avif", [
                 ("City visits for children", "/memberships/#eclat"), ("Family LAVEYoga", "/memberships/#eclat")]),
         ]),

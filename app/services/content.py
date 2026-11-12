@@ -89,8 +89,31 @@ def published(db: Session, kind: str | None = None, limit: int = 50) -> list[Pos
 
 
 # Who LAVE Experiences are for: the tabs on the Experiences page, in order. An event can be for several.
-AUDIENCES = {"families": "Families", "founders": "Founders", "professionals": "Professionals", "children": "Children",
-             "businesses": "Businesses"}
+AUDIENCES = {"households": "Households", "individuals": "Individuals", "corporates": "Corporates"}
+# The groups used before 13 November 2026, and where they belong now (old events, saved wording and links).
+OLD_AUDIENCES = {"families": "households", "children": "households", "founders": "individuals",
+                 "professionals": "individuals", "businesses": "corporates"}
+
+
+def audiences(values) -> list[str]:
+    """Known groups in tab order, old names mapped to the new ones: from a list, or "a, b" text."""
+    if isinstance(values, str):
+        values = values.split(",")
+    found = {OLD_AUDIENCES.get(v.strip().lower(), v.strip().lower()) for v in values or [] if str(v).strip()}
+    return [a for a in AUDIENCES if a in found]
+
+
+def update_event_audiences(db: Session) -> int:
+    """Move events saved with the old groups to the new ones (run on deploy). Returns how many changed."""
+    changed = 0
+    for p in db.scalars(select(Post).where(Post.kind == "event")):
+        new = audiences(p.event_audiences or [])
+        if new != (p.event_audiences or []):
+            p.event_audiences = new
+            changed += 1
+    if changed:
+        db.commit()
+    return changed
 
 
 def upcoming_events(db: Session, audience: str | None = None) -> list[Post]:
@@ -99,7 +122,7 @@ def upcoming_events(db: Session, audience: str | None = None) -> list[Post]:
     q = select(Post).where(Post.kind == "event", Post.status == PostStatus.published,
                            or_(Post.event_starts_at >= now, Post.event_ends_at >= now))
     events = list(db.scalars(q.order_by(Post.event_starts_at)))
-    return [p for p in events if audience in (p.event_audiences or [])] if audience else events
+    return [p for p in events if audience in audiences(p.event_audiences)] if audience else events
 
 
 def event_when(starts: datetime, ends: datetime | None = None) -> str:
@@ -219,9 +242,11 @@ OLD_BRAND_WORDING = [
     ("Run Club, yoga, Founders Lab and LAVE Family visits", "LAVE Strides, LAVEYoga, Founders Lab and LAVE Family visits"),
     ("Run Club, yoga and gym members", "LAVE Strides, LAVEYoga and gym members"),
     ('{"label": "Lifestyle", "href": ""}, {"label": "Sport", "href": ""}, {"label": "Upcoming events", "href": ""}',
-     '{"label": "All experiences", "href": "/memberships/access/upcoming-events/"}, {"label": "Families", "href": ""}, '
-     '{"label": "Founders", "href": ""}, {"label": "Professionals", "href": ""}, {"label": "Children", "href": ""}, '
-     '{"label": "Businesses", "href": ""}'),
+     '{"label": "All experiences", "href": "/memberships/access/upcoming-events/"}, {"label": "Households", "href": ""}, '
+     '{"label": "Individuals", "href": ""}, {"label": "Corporates", "href": ""}'),
+    ('{"label": "Families", "href": ""}, {"label": "Founders", "href": ""}, {"label": "Professionals", "href": ""}, '
+     '{"label": "Children", "href": ""}, {"label": "Businesses", "href": ""}',
+     '{"label": "Households", "href": ""}, {"label": "Individuals", "href": ""}, {"label": "Corporates", "href": ""}'),
     # The LAVE Living page laid out like LAVEWorld: an eyebrow over each heading, and a photo beside "Private, always".
     ("## What's on offer", "## Support · What's on offer"),
     ("## With your membership", "## Membership · With your membership"),
