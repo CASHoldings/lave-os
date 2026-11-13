@@ -756,7 +756,22 @@ def get_client(client_id: int, staff: StaffUser = Depends(ops), db: Session = De
     return {**ser.client(c, staff_view=True),
             "orders": [ser.order(o, staff_view=True) for o in orders],
             "vault": [ser.vault_item(v, True) for v in vault],
-            "paid_orders": lifetime}
+            "paid_orders": lifetime,
+            **_client_events(db, c)}
+
+
+def _client_events(db: Session, c: Client) -> dict:
+    """Every LAVE Experience the client reserved, newest first, with whether they came."""
+    from app.models import EventReservation
+    from app.services import experiences as exp
+    rows = db.scalars(select(EventReservation).join(Post, Post.id == EventReservation.post_id)
+                      .where(EventReservation.client_id == c.id)
+                      .order_by(Post.event_starts_at.desc().nulls_last(), EventReservation.created_at.desc())).all()
+    return {"events_attended": sum(1 for r in rows if r.attended is True),
+            "events_missed": sum(1 for r in rows if r.attended is False),
+            "events": [{"reservation_id": r.id, "post_id": r.post_id, "title": r.post.title,
+                        "starts_at": ser.iso(r.post.event_starts_at), "places": r.places, "status": r.status,
+                        "attended": r.attended, "label": exp.attendance_label(r)} for r in rows]}
 
 
 @router.patch("/clients/{client_id}")
@@ -1137,7 +1152,7 @@ from pathlib import Path as _Path  # noqa: E402
 from fastapi import File, UploadFile  # noqa: E402
 
 from app.models import ContactMessage, PageContent, Post, PostStatus  # noqa: E402
-from app.schemas import MarkdownIn, PageIn, PostIn, PublishChange  # noqa: E402
+from app.schemas import AttendanceIn, MarkdownIn, PageIn, PostIn, PublishChange  # noqa: E402
 from app.services import content as cms  # noqa: E402
 
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif"}
@@ -1237,10 +1252,25 @@ def event_reservations(post_id: int, staff: StaffUser = Depends(ops), db: Sessio
     rows = sorted(db.scalars(select(EventReservation).where(EventReservation.post_id == p.id)).all(),
                   key=lambda r: (order.get(r.status, 3), r.created_at))
     return {"capacity": p.event_capacity, "taken": exp.taken(db, p), "left": exp.places_left(db, p),
-            "page": exp.url(p), "reservations": [
+            "page": exp.url(p), "started": exp.has_started(p),
+            "attended": sum(r.places for r in rows if r.attended), "reservations": [
                 {"id": r.id, "client_id": r.client_id, "name": r.client.full_name, "email": r.client.email,
                  "phone": r.client.phone, "places": r.places, "status": r.status, "note": r.note,
-                 "reserved_at": ser.iso(r.created_at), "cancelled_at": ser.iso(r.cancelled_at)} for r in rows]}
+                 "attended": r.attended, "reserved_at": ser.iso(r.created_at), "cancelled_at": ser.iso(r.cancelled_at)}
+                for r in rows]}
+
+
+@router.post("/reservations/{reservation_id}/attendance")
+def mark_attendance(reservation_id: int, body: AttendanceIn, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Tick a guest off as came or didn't come (or clear it). Shown on the guest list and the client's profile."""
+    from app.models import EventReservation
+    from app.services import experiences as exp
+    r = db.get(EventReservation, reservation_id)
+    if not r:
+        raise HTTPException(404, "Reservation not found.")
+    exp.mark_attendance(r, body.attended)
+    db.commit()
+    return {"id": r.id, "attended": r.attended}
 
 
 @router.post("/reservations/{reservation_id}/cancel")

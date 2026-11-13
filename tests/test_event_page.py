@@ -147,3 +147,42 @@ def test_calendar_file_is_well_formed(api, staff_headers):
     assert "DTSTART;VALUE=DATE:20261205" in text and "DTEND;VALUE=DATE:20261206" in text
     assert all(len(line.encode()) <= 75 for line in text.split("\r\n"))
     assert re.search(r"SUMMARY:A\\, very\\; long", text)
+
+
+def test_attendance_is_marked_and_shows_on_the_profile(api, staff_headers, db_session):
+    e = _event(api, staff_headers)
+    url = PAGE + e["slug"] + "/"
+    _sign_in(api, 1, "first@example.com", "Ada")
+    api.post(url + "reserve", data={"places": "2"})
+    _sign_in(api, 2, "second@example.com", "Ben")
+    api.post(url + "reserve", data={"places": "1"})
+    g = api.get(f"/api/staff/posts/{e['id']}/reservations", headers=staff_headers).json()
+    ada, ben = g["reservations"]
+    assert g["started"] is False and ada["attended"] is None
+
+    # Before the day, attendance can't be marked; the profile shows the place as Going.
+    r = api.post(f"/api/staff/reservations/{ada['id']}/attendance", headers=staff_headers, json={"attended": True})
+    assert r.status_code == 409 and "day of the event" in r.json()["detail"]
+    prof = api.get(f"/api/staff/clients/{ada['client_id']}", headers=staff_headers).json()
+    assert [(x["title"], x["label"], x["places"]) for x in prof["events"]] == [("Linen and Light", "Going", 2)]
+
+    # The event has happened: Ada came, Ben didn't.
+    with db_session() as db:
+        p = db.get(EventReservation, ada["id"]).post
+        p.event_starts_at, p.event_ends_at = datetime(2026, 10, 1, 18, 30), datetime(2026, 10, 1, 20, 0)
+        db.commit()
+    assert api.post(f"/api/staff/reservations/{ada['id']}/attendance", headers=staff_headers, json={"attended": True}).status_code == 200
+    assert api.post(f"/api/staff/reservations/{ben['id']}/attendance", headers=staff_headers, json={"attended": False}).status_code == 200
+    g = api.get(f"/api/staff/posts/{e['id']}/reservations", headers=staff_headers).json()
+    assert g["started"] is True and g["attended"] == 2 and [x["attended"] for x in g["reservations"]] == [True, False]
+
+    prof = api.get(f"/api/staff/clients/{ada['client_id']}", headers=staff_headers).json()
+    assert prof["events_attended"] == 1 and prof["events"][0]["label"] == "Attended"
+    prof = api.get(f"/api/staff/clients/{ben['client_id']}", headers=staff_headers).json()
+    assert prof["events_missed"] == 1 and prof["events"][0]["label"] == "Didn't come"
+
+    # Clearing a mark, and cancelled places can't be marked.
+    assert api.post(f"/api/staff/reservations/{ben['id']}/attendance", headers=staff_headers, json={"attended": None}).json()["attended"] is None
+    assert api.get(f"/api/staff/clients/{ben['client_id']}", headers=staff_headers).json()["events"][0]["label"] == "Not marked"
+    api.post(f"/api/staff/reservations/{ben['id']}/cancel", headers=staff_headers)
+    assert api.post(f"/api/staff/reservations/{ben['id']}/attendance", headers=staff_headers, json={"attended": True}).status_code == 409

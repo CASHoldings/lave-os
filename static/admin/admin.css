@@ -122,6 +122,11 @@ tfoot td { font-weight: 600; background: var(--panel); }
 
 .toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: #fff; padding: 12px 18px; z-index: 20; max-width: 420px; }
 .toast.err { background: var(--err); }
+/* Unsaved-changes bar: sticks to the bottom of the screen inside the content column. */
+.savebar { position: sticky; bottom: 0; z-index: 6; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  margin-top: 24px; padding: 14px 20px; background: #fff; border: 1px solid var(--line); border-top: 3px solid var(--ink); box-shadow: 0 -6px 18px rgba(0, 0, 0, .06); }
+.savebar[hidden] { display: none; }
+.savebar > span { font-weight: 600; }
 .error { padding: 10px 14px; background: var(--err-bg); color: var(--err); }
 .notice { padding: 12px 14px; background: var(--panel); }
 .empty { padding: 26px; text-align: center; color: var(--muted); }

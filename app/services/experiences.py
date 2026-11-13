@@ -46,6 +46,33 @@ def is_past(p: Post, now: datetime | None = None) -> bool:
     return bool(end and end < (now or local_now()))
 
 
+def has_started(p: Post, now: datetime | None = None) -> bool:
+    """Attendance can be marked from the day the event starts, so staff can tick guests off at the door."""
+    return bool(p.event_starts_at and p.event_starts_at.date() <= (now or local_now()).date())
+
+
+def mark_attendance(res: EventReservation, attended: bool | None) -> None:
+    if res.status == CANCELLED:
+        raise HTTPException(409, "This place was cancelled.")
+    if not has_started(res.post):
+        raise HTTPException(409, "Attendance can be marked from the day of the event.")
+    res.attended = attended
+    res.attendance_marked_at = local_now() if attended is not None else None
+
+
+def attendance_label(res: EventReservation, now: datetime | None = None) -> str:
+    """How a reservation reads on the client's profile."""
+    if res.status == CANCELLED:
+        return "Cancelled"
+    if res.attended is True:
+        return "Attended"
+    if res.attended is False:
+        return "Didn't come"
+    if not has_started(res.post, now):
+        return "Going" if res.status == CONFIRMED else "Waiting list"
+    return "Not marked" if res.status == CONFIRMED else "Waiting list"
+
+
 def taken(db: Session, p: Post) -> int:
     return db.scalar(select(func.coalesce(func.sum(EventReservation.places), 0)).where(
         EventReservation.post_id == p.id, EventReservation.status == CONFIRMED)) or 0

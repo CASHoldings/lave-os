@@ -44,6 +44,9 @@
     <p class="small muted">Route days must still support the 48-hour promise: with fewer days, some returns land later than 48 hours, never earlier.</p></section>`;
 
   let me = null;
+  // The open editor's unsaved-changes check and save action, or null when no editor is open.
+  let unsaved = null;
+  let saveShortcut = null;
   let services = [];
 
   async function api(method, path, body) {
@@ -851,6 +854,7 @@
       <div class="row between"><div class="row">${x.membership ? pill(x.membership.status === "active" ? x.membership.plan_name + " member" : "Membership " + x.membership.status) : ""}
         <span class="muted small">${x.paid_orders} paid orders</span>
         ${x.missed_12m ? `<span class="pill ${x.missed_12m > 1 ? "err" : "warn"}">Missed ${x.missed_12m}× in 12 months</span>` : ""}
+        ${x.events_attended ? `<span class="muted small">${x.events_attended} event${x.events_attended === 1 ? "" : "s"} attended</span>` : ""}
         ${me.role === "admin" && x.membership && x.membership.status !== "cancelled" ? `<span id="end-box"><button class="link small danger-text" id="end-membership">End membership</button></span>` : ""}</div>
         <div class="row"><button class="btn primary" id="book-for">Book a collection</button><button class="btn" id="walk-in">New walk-in order</button></div></div>
       <div id="book-for-box" hidden></div>
@@ -864,6 +868,13 @@
             ${x.orders.length ? `<div class="table-wrap"><table><thead><tr><th>Order</th><th>Status</th><th class="num">Items</th><th class="num">Total</th><th>Payment</th><th>Created</th></tr></thead>
               <tbody>${x.orders.map((o) => `<tr class="click" data-href="#/orders/${o.id}"><td class="tag"><strong>${esc(o.ref)}</strong></td><td>${pill(o.status)}</td><td class="num">${o.item_count}</td>
               <td class="num">${money(o.total_pence)}</td><td>${pill(o.payment_status)}</td><td class="small muted">${D.format(parse(o.created_at))}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No orders yet.</p>`}
+          </section>
+          <section class="panel"><div class="row between"><h2>Events</h2>${x.events.length ? `<span class="small muted">${x.events_attended} attended${x.events_missed ? ` · ${x.events_missed} didn't come` : ""}</span>` : ""}</div>
+            ${x.events.length ? `<div class="table-wrap"><table><thead><tr><th>Event</th><th>Date</th><th class="num">Places</th><th>Attendance</th></tr></thead>
+              <tbody>${x.events.map((ev) => `<tr class="click" data-href="#/journal/${ev.post_id}"><td><strong>${esc(ev.title)}</strong></td>
+              <td class="small muted">${ev.starts_at ? D.format(parse(ev.starts_at)) : "–"}</td><td class="num">${ev.places}</td>
+              <td><span class="pill ${{ Attended: "ok", "Didn't come": "err", Going: "ok", "Waiting list": "warn", "Not marked": "warn" }[ev.label] || ""}">${esc(ev.label)}</span></td></tr>`).join("")}</tbody></table></div>`
+              : `<p class="empty">No events yet. Reservations for LAVE Experiences show here, with whether they came.</p>`}
           </section>
           <section class="panel"><h2>Vault</h2>
             ${x.vault.length ? `<div class="table-wrap"><table><thead><tr><th>Tag</th><th>Item</th><th>Location</th><th>Status</th><th>Stored</th></tr></thead>
@@ -1259,7 +1270,7 @@
             ${!isNew ? `<label>Web address<input name="slug" value="${esc(p.slug)}"></label>` : ""}
             ${p.status !== "published" ? `<label>Publish on (leave blank for now)<input type="datetime-local" name="publish_at"></label>` : ""}
             <div class="row">
-              <button class="btn" type="submit">Save draft</button>
+              <button class="btn ${p.status === "published" ? "primary" : ""}" type="submit">${p.status === "published" ? "Save changes" : "Save draft"}</button>
               ${p.status === "published" ? `<button class="btn ghost" type="button" data-pub="0">Unpublish</button>` : `<button class="btn primary" type="button" data-pub="1">Publish</button>`}
             </div>
             ${!isNew ? `<a class="small" href="${p.kind === "event" ? eventUrl : `/journal/${p.slug}/`}" target="_blank">${p.status === "published" ? "View on site" : "Preview on site"}</a>` : ""}
@@ -1333,6 +1344,29 @@
       const saved = isNew ? await api("POST", "/api/staff/posts", payload()) : await api("PATCH", "/api/staff/posts/" + id, payload());
       return saved;
     };
+    // Unsaved changes: a bar stays at the bottom of the screen until they're saved, Cmd/Ctrl+S saves,
+    // and leaving the page asks first. A published post stays published when saved; the live page updates.
+    const live = p.status === "published";
+    const bar = document.createElement("div");
+    bar.className = "savebar";
+    bar.hidden = true;
+    bar.innerHTML = `<span>${live ? "Unsaved changes. Saving updates the live page." : "Unsaved changes."}</span>
+      <div class="row"><button type="button" class="btn ghost" data-discard>Discard</button>
+      <button type="button" class="btn primary" data-save>${live ? "Save changes" : "Save draft"}</button></div>`;
+    c.appendChild(bar);
+    let snapshot = JSON.stringify(payload());
+    const isDirty = () => JSON.stringify(payload()) !== snapshot;
+    const refresh = () => { bar.hidden = !isDirty(); };
+    f.addEventListener("input", refresh);
+    f.addEventListener("change", refresh);
+    bar.querySelector("[data-save]").addEventListener("click", () => f.requestSubmit());
+    bar.querySelector("[data-discard]").addEventListener("click", () => {
+      if (!confirm("Discard your unsaved changes?")) return;
+      snapshot = JSON.stringify(payload());
+      route();
+    });
+    unsaved = isDirty;
+    saveShortcut = () => f.requestSubmit();
     f.kind.addEventListener("change", () => {
       c.querySelector("#event-fields").hidden = f.kind.value !== "event";
       c.querySelector("#event-page").hidden = f.kind.value !== "event";
@@ -1340,12 +1374,18 @@
     });
     f.addEventListener("submit", async (e) => {
       e.preventDefault();
-      try { const s2 = await save(); toast("Saved"); if (isNew) location.hash = "#/journal/" + s2.id; else route(); }
+      try {
+        const s2 = await save();
+        snapshot = JSON.stringify(payload());
+        toast(live ? "Saved. The live page is updated." : "Saved");
+        if (isNew) location.hash = "#/journal/" + s2.id; else route();
+      }
       catch (ex) { toast(ex.message, true); }
     });
     c.querySelector("[data-pub]")?.addEventListener("click", async (e) => {
       try {
         const s2 = await save();
+        snapshot = JSON.stringify(payload());
         await api("POST", `/api/staff/posts/${s2.id}/publish`, { publish: e.target.dataset.pub === "1", published_at: f.publish_at?.value || null });
         toast(e.target.dataset.pub === "1" ? "Published" : "Moved back to drafts");
         location.hash = "#/journal/" + s2.id; route();
@@ -1358,7 +1398,7 @@
       const res = await fetch("/api/staff/uploads", { method: "POST", body: fd, credentials: "same-origin" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return toast(data.detail || "Upload failed.", true);
-      f.cover_image.value = data.url; toast("Image uploaded. Save to keep it.");
+      f.cover_image.value = data.url; refresh(); toast("Image uploaded. Save to keep it.");
     });
     const preview = c.querySelector("#preview");
     c.querySelector("#toggle-preview").addEventListener("click", async (e) => {
@@ -1375,19 +1415,30 @@
       const active = g.reservations.filter((r) => r.status !== "cancelled");
       const label = { confirmed: "Going", waitlist: "Waiting list", cancelled: "Cancelled" };
       box.innerHTML = `<div class="row between"><h2>Guest list</h2>${active.length ? `<button class="btn sm ghost" type="button" id="guests-csv">Download CSV</button>` : ""}</div>
-        <p class="small">${g.taken} place${g.taken === 1 ? "" : "s"} reserved${g.capacity ? ` of ${g.capacity}` : ""}${g.left === 0 ? " · full" : ""}${active.some((r) => r.status === "waitlist") ? ` · ${active.filter((r) => r.status === "waitlist").length} waiting` : ""}</p>
-        ${g.reservations.length ? `<div class="table-wrap"><table><thead><tr><th>Guest</th><th class="num">Places</th><th>Status</th><th></th></tr></thead><tbody>
+        <p class="small">${g.taken} place${g.taken === 1 ? "" : "s"} reserved${g.capacity ? ` of ${g.capacity}` : ""}${g.left === 0 ? " · full" : ""}${active.some((r) => r.status === "waitlist") ? ` · ${active.filter((r) => r.status === "waitlist").length} waiting` : ""}${g.started ? ` · ${g.attended} attended` : ""}</p>
+        ${g.started ? "" : `<p class="small muted">Mark who came from the day of the event. It shows on each guest's profile.</p>`}
+        ${g.reservations.length ? `<div class="table-wrap"><table><thead><tr><th>Guest</th><th class="num">Places</th><th>Status</th>${g.started ? "<th>Attended</th>" : ""}<th></th></tr></thead><tbody>
           ${g.reservations.map((r) => `<tr><td><a href="#/clients/${r.client_id}">${esc(r.name)}</a><br><span class="small muted">${esc(r.email)}${r.phone ? " · " + esc(r.phone) : ""}</span>${r.note ? `<br><span class="small">${esc(r.note)}</span>` : ""}</td>
             <td class="num">${r.places}</td><td>${r.status === "confirmed" ? '<span class="pill ok">Going</span>' : r.status === "waitlist" ? '<span class="pill warn">Waiting list</span>' : '<span class="pill">Cancelled</span>'}<br><span class="small muted">${D.format(parse(r.reserved_at))}</span></td>
+            ${g.started ? `<td>${r.status === "cancelled" ? "" : `<div class="row" style="gap:6px;flex-wrap:nowrap">
+              <button type="button" class="btn sm ${r.attended === true ? "primary" : "ghost"}" data-attend="${r.id}" data-val="${r.attended === true ? "" : "1"}" aria-pressed="${r.attended === true}">Came</button>
+              <button type="button" class="btn sm ${r.attended === false ? "danger" : "ghost"}" data-attend="${r.id}" data-val="${r.attended === false ? "" : "0"}" aria-pressed="${r.attended === false}">Didn't come</button></div>`}</td>` : ""}
             <td>${r.status !== "cancelled" ? `<button class="link small danger-text" type="button" data-cancel-res="${r.id}">Cancel</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
           : `<p class="muted small">No reservations yet.${p.event_link ? " Places for this event are booked through its outside link." : ""}</p>`}`;
       box.querySelector("#guests-csv")?.addEventListener("click", () => {
         const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-        const csv = [["Name", "Email", "Phone", "Places", "Status", "Note", "Reserved"], ...active.map((r) => [r.name, r.email, r.phone, r.places, label[r.status], r.note, r.reserved_at])]
+        const came = (r) => (r.attended === true ? "Yes" : r.attended === false ? "No" : "");
+        const csv = [["Name", "Email", "Phone", "Places", "Status", "Attended", "Note", "Reserved"], ...active.map((r) => [r.name, r.email, r.phone, r.places, label[r.status], came(r), r.note, r.reserved_at])]
           .map((row) => row.map(cell).join(",")).join("\n");
         const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: `guest-list-${p.slug}.csv` });
         a.click();
       });
+      // Came / Didn't come: clicking the selected one again clears it.
+      box.querySelectorAll("[data-attend]").forEach((b) => b.addEventListener("click", async () => {
+        const val = b.dataset.val === "" ? null : b.dataset.val === "1";
+        try { await api("POST", `/api/staff/reservations/${b.dataset.attend}/attendance`, { attended: val }); loadGuests(); }
+        catch (ex) { toast(ex.message, true); }
+      }));
       box.querySelectorAll("[data-cancel-res]").forEach((b) => b.addEventListener("click", () => {
         const cellEl = b.closest("td");
         cellEl.innerHTML = `<span class="small">Cancel this place? The guest is emailed.</span><br><button class="btn danger sm" type="button" data-yes>Cancel place</button> <button class="btn ghost sm" type="button" data-no>Keep</button>`;
@@ -2490,6 +2541,8 @@
   /* Router */
 
   async function route() {
+    unsaved = null;
+    saveShortcut = null;
     if (location.hash.startsWith("#/reset/")) { renderReset(location.hash.slice("#/reset/".length)); return; }
     if (!me) {
       try { me = await api("GET", "/api/staff/me"); } catch (_) { return; }
@@ -2529,6 +2582,21 @@
     }
   }
 
-  window.addEventListener("hashchange", route);
+  // Leaving an editor with unsaved changes asks first, whether by the menu, the back button or closing the tab.
+  let shownHash = location.hash;
+  window.addEventListener("hashchange", () => {
+    if (unsaved?.() && !confirm("You have unsaved changes. Leave without saving?")) {
+      history.replaceState(null, "", shownHash || "#/today");
+      return;
+    }
+    shownHash = location.hash;
+    route();
+  });
+  window.addEventListener("beforeunload", (e) => {
+    if (unsaved?.()) { e.preventDefault(); e.returnValue = ""; }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (saveShortcut && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); saveShortcut(); }
+  });
   route();
 })();

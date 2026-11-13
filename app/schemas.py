@@ -435,6 +435,10 @@ class PostIn(BaseModel):
     external_url: str = ""
 
 
+class AttendanceIn(BaseModel):
+    attended: bool | None  # None clears the mark
+
+
 class PublishChange(BaseModel):
     publish: bool
     published_at: str | None = None  # schedule for later, "YYYY-MM-DDTHH:MM"

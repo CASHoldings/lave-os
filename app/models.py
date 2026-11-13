@@ -696,6 +696,9 @@ class EventReservation(Base):
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime)
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Set by staff from the guest list once the event has started: True came, False didn't, None not marked yet.
+    attended: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    attendance_marked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     post: Mapped["Post"] = relationship()
     client: Mapped[Client] = relationship()
