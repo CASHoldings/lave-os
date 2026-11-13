@@ -439,6 +439,16 @@ class AttendanceIn(BaseModel):
     attended: bool | None  # None clears the mark
 
 
+class WalkInIn(BaseModel):
+    """A guest who came without reserving: an existing client, or a new one by email."""
+    client_id: int | None = None
+    email: EmailStr | None = None
+    first_name: str = Field("", max_length=120)
+    last_name: str = Field("", max_length=120)
+    phone: str = Field("", max_length=40)
+    places: int = Field(1, ge=1, le=20)
+
+
 class PublishChange(BaseModel):
     publish: bool
     published_at: str | None = None  # schedule for later, "YYYY-MM-DDTHH:MM"

@@ -264,3 +264,10 @@ pre.recovery { font: 600 15px/1.8 ui-monospace, Menlo, monospace; background: va
 .thumb-row img { width: 36px; height: 36px; object-fit: cover; display: block; }
 .camera input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .camera { position: relative; display: inline-flex; cursor: pointer; }
+
+/* Guest list: add a guest who came without reserving */
+.walkin { margin-top: 14px; }
+.walkin h3 { margin: 0 0 4px; }
+#wi { display: grid; gap: 10px; border-top: 1px solid var(--line, #e5e5e5); padding-top: 12px; }
+#wi[hidden] { display: none; }
+.wi-hit { border: 1px solid var(--line, #e5e5e5); border-radius: 6px; padding: 8px 10px; flex-wrap: nowrap; }

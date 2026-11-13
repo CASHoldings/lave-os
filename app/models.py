@@ -699,6 +699,8 @@ class EventReservation(Base):
     # Set by staff from the guest list once the event has started: True came, False didn't, None not marked yet.
     attended: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     attendance_marked_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Added by staff at the door for a guest who came without reserving (always confirmed and attended).
+    walk_in: Mapped[bool] = mapped_column(Boolean, default=False)
 
     post: Mapped["Post"] = relationship()
     client: Mapped[Client] = relationship()

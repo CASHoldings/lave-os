@@ -60,6 +60,25 @@ def mark_attendance(res: EventReservation, attended: bool | None) -> None:
     res.attendance_marked_at = local_now() if attended is not None else None
 
 
+def add_walk_in(db: Session, p: Post, client: Client, places: int = 1) -> EventReservation:
+    """Record a guest who came without reserving. They count as confirmed and attended; capacity and the
+    members-only rule don't apply (they're already in the room) and nobody is emailed. Caller commits."""
+    if not has_started(p):
+        raise HTTPException(409, "Walk-in guests can be added from the day of the event.")
+    res = db.scalar(select(EventReservation).where(EventReservation.post_id == p.id, EventReservation.client_id == client.id))
+    if res is not None and res.status != CANCELLED:
+        raise HTTPException(409, f"{client.full_name} is already on the guest list. Mark them as Came instead.")
+    if res is None:
+        res = EventReservation(post_id=p.id, client_id=client.id)
+        db.add(res)
+    now = local_now()
+    res.places, res.note, res.status, res.walk_in = places, "", CONFIRMED, True
+    res.created_at, res.confirmed_at, res.cancelled_at = now, now, None
+    res.attended, res.attendance_marked_at = True, now
+    db.flush()
+    return res
+
+
 def attendance_label(res: EventReservation, now: datetime | None = None) -> str:
     """How a reservation reads on the client's profile."""
     if res.status == CANCELLED:

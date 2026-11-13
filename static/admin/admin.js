@@ -873,7 +873,7 @@
             ${x.events.length ? `<div class="table-wrap"><table><thead><tr><th>Event</th><th>Date</th><th class="num">Places</th><th>Attendance</th></tr></thead>
               <tbody>${x.events.map((ev) => `<tr class="click" data-href="#/journal/${ev.post_id}"><td><strong>${esc(ev.title)}</strong></td>
               <td class="small muted">${ev.starts_at ? D.format(parse(ev.starts_at)) : "–"}</td><td class="num">${ev.places}</td>
-              <td><span class="pill ${{ Attended: "ok", "Didn't come": "err", Going: "ok", "Waiting list": "warn", "Not marked": "warn" }[ev.label] || ""}">${esc(ev.label)}</span></td></tr>`).join("")}</tbody></table></div>`
+              <td><span class="pill ${{ Attended: "ok", "Didn't come": "err", Going: "ok", "Waiting list": "warn", "Not marked": "warn" }[ev.label] || ""}">${esc(ev.label)}</span>${ev.walk_in ? ' <span class="small muted">walk-in</span>' : ""}</td></tr>`).join("")}</tbody></table></div>`
               : `<p class="empty">No events yet. Reservations for LAVE Experiences show here, with whether they came.</p>`}
           </section>
           <section class="panel"><h2>Vault</h2>
@@ -1416,23 +1416,77 @@
       const label = { confirmed: "Going", waitlist: "Waiting list", cancelled: "Cancelled" };
       box.innerHTML = `<div class="row between"><h2>Guest list</h2>${active.length ? `<button class="btn sm ghost" type="button" id="guests-csv">Download CSV</button>` : ""}</div>
         <p class="small">${g.taken} place${g.taken === 1 ? "" : "s"} reserved${g.capacity ? ` of ${g.capacity}` : ""}${g.left === 0 ? " · full" : ""}${active.some((r) => r.status === "waitlist") ? ` · ${active.filter((r) => r.status === "waitlist").length} waiting` : ""}${g.started ? ` · ${g.attended} attended` : ""}</p>
-        ${g.started ? "" : `<p class="small muted">Mark who came from the day of the event. It shows on each guest's profile.</p>`}
+        ${g.started ? "" : `<p class="small muted">Mark who came, and add guests who came without reserving, from the day of the event. It shows on each guest's profile.</p>`}
         ${g.reservations.length ? `<div class="table-wrap"><table><thead><tr><th>Guest</th><th class="num">Places</th><th>Status</th>${g.started ? "<th>Attended</th>" : ""}<th></th></tr></thead><tbody>
           ${g.reservations.map((r) => `<tr><td><a href="#/clients/${r.client_id}">${esc(r.name)}</a><br><span class="small muted">${esc(r.email)}${r.phone ? " · " + esc(r.phone) : ""}</span>${r.note ? `<br><span class="small">${esc(r.note)}</span>` : ""}</td>
-            <td class="num">${r.places}</td><td>${r.status === "confirmed" ? '<span class="pill ok">Going</span>' : r.status === "waitlist" ? '<span class="pill warn">Waiting list</span>' : '<span class="pill">Cancelled</span>'}<br><span class="small muted">${D.format(parse(r.reserved_at))}</span></td>
+            <td class="num">${r.places}</td><td>${r.walk_in && r.status === "confirmed" ? '<span class="pill ok">Walk-in</span>' : r.status === "confirmed" ? '<span class="pill ok">Going</span>' : r.status === "waitlist" ? '<span class="pill warn">Waiting list</span>' : '<span class="pill">Cancelled</span>'}<br><span class="small muted">${D.format(parse(r.reserved_at))}</span></td>
             ${g.started ? `<td>${r.status === "cancelled" ? "" : `<div class="row" style="gap:6px;flex-wrap:nowrap">
               <button type="button" class="btn sm ${r.attended === true ? "primary" : "ghost"}" data-attend="${r.id}" data-val="${r.attended === true ? "" : "1"}" aria-pressed="${r.attended === true}">Came</button>
               <button type="button" class="btn sm ${r.attended === false ? "danger" : "ghost"}" data-attend="${r.id}" data-val="${r.attended === false ? "" : "0"}" aria-pressed="${r.attended === false}">Didn't come</button></div>`}</td>` : ""}
             <td>${r.status !== "cancelled" ? `<button class="link small danger-text" type="button" data-cancel-res="${r.id}">Cancel</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
-          : `<p class="muted small">No reservations yet.${p.event_link ? " Places for this event are booked through its outside link." : ""}</p>`}`;
+          : `<p class="muted small">No reservations yet.${p.event_link ? " Places for this event are booked through its outside link." : ""}</p>`}
+        ${g.started ? `<div class="walkin">
+          <button class="btn sm ghost" type="button" id="wi-open">Add a guest who came</button>
+          <div id="wi" hidden>
+            <h3>Add a guest who came</h3>
+            <p class="small muted">For someone who came without reserving. They're added as attended and nobody is emailed.</p>
+            <label>Find a client<input type="search" data-wi="q" placeholder="Name, email or phone" autocomplete="off"></label>
+            <div id="wi-results" class="stack"></div>
+            <p class="small muted">Not a client yet? Enter their details.</p>
+            <div class="form-grid">
+              <label>First name<input data-wi="first_name" maxlength="120" autocomplete="off"></label>
+              <label>Last name<input data-wi="last_name" maxlength="120" autocomplete="off"></label>
+              <label>Email<input type="email" data-wi="email" maxlength="255" autocomplete="off"></label>
+              <label>Phone <span class="muted small">(optional)</span><input data-wi="phone" maxlength="40" autocomplete="off"></label>
+              <label>Places<input type="number" data-wi="places" min="1" max="20" value="1"></label>
+            </div>
+            <div class="row"><button class="btn sm primary" type="button" id="wi-add">Add new guest</button><button class="btn sm ghost" type="button" id="wi-close">Close</button></div>
+          </div></div>` : ""}`;
       box.querySelector("#guests-csv")?.addEventListener("click", () => {
         const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
         const came = (r) => (r.attended === true ? "Yes" : r.attended === false ? "No" : "");
-        const csv = [["Name", "Email", "Phone", "Places", "Status", "Attended", "Note", "Reserved"], ...active.map((r) => [r.name, r.email, r.phone, r.places, label[r.status], came(r), r.note, r.reserved_at])]
+        const csv = [["Name", "Email", "Phone", "Places", "Status", "Attended", "Note", "Reserved"], ...active.map((r) => [r.name, r.email, r.phone, r.places, r.walk_in ? "Walk-in" : label[r.status], came(r), r.note, r.reserved_at])]
           .map((row) => row.map(cell).join(",")).join("\n");
         const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: `guest-list-${p.slug}.csv` });
         a.click();
       });
+      // Walk-ins: pick an existing client from a search, or enter a new guest (email needed to create their profile).
+      const wi = box.querySelector("#wi");
+      if (wi) {
+        const field = (k) => wi.querySelector(`[data-wi="${k}"]`);
+        const places = () => Math.min(20, Math.max(1, Number(field("places").value) || 1));
+        const add = async (body) => {
+          try { const r = await api("POST", `/api/staff/posts/${id}/walk-ins`, { ...body, places: places() }); toast(`${r.name} added as a walk-in`); loadGuests(); }
+          catch (ex) { toast(ex.message, true); }
+        };
+        box.querySelector("#wi-open").addEventListener("click", (e) => { wi.hidden = false; e.target.hidden = true; field("q").focus(); });
+        box.querySelector("#wi-close").addEventListener("click", () => { wi.hidden = true; box.querySelector("#wi-open").hidden = false; });
+        // These fields sit inside the post form: Enter must not submit it.
+        wi.querySelectorAll("input").forEach((i) => i.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); }));
+        const onList = new Set(active.map((r) => r.client_id));
+        let timer, seq = 0;
+        field("q").addEventListener("input", () => {
+          clearTimeout(timer);
+          const q = field("q").value.trim(), out = box.querySelector("#wi-results");
+          if (q.length < 2) { out.innerHTML = ""; return; }
+          timer = setTimeout(async () => {
+            const mine = ++seq;
+            try {
+              const rows = (await api("GET", `/api/staff/clients?q=${encodeURIComponent(q)}`)).slice(0, 6);
+              if (mine !== seq) return;
+              out.innerHTML = rows.length ? rows.map((cl) => `<div class="row between wi-hit"><span>${esc(cl.full_name)}<br><span class="small muted">${esc(cl.email)}${cl.phone ? " · " + esc(cl.phone) : ""}</span></span>
+                ${onList.has(cl.id) ? '<span class="small muted">On the guest list</span>' : `<button class="btn sm" type="button" data-wi-client="${cl.id}">Add</button>`}</div>`).join("")
+                : `<p class="small muted">No client matches "${esc(q)}".</p>`;
+              out.querySelectorAll("[data-wi-client]").forEach((b) => b.addEventListener("click", () => add({ client_id: Number(b.dataset.wiClient) })));
+            } catch (ex) { out.innerHTML = `<p class="small err-text">${esc(ex.message)}</p>`; }
+          }, 250);
+        });
+        box.querySelector("#wi-add").addEventListener("click", () => {
+          const email = field("email").value.trim();
+          if (!email || !field("email").checkValidity()) { toast("Enter the guest's email to add them.", true); field("email").focus(); return; }
+          add({ email, first_name: field("first_name").value.trim(), last_name: field("last_name").value.trim(), phone: field("phone").value.trim() });
+        });
+      }
       // Came / Didn't come: clicking the selected one again clears it.
       box.querySelectorAll("[data-attend]").forEach((b) => b.addEventListener("click", async () => {
         const val = b.dataset.val === "" ? null : b.dataset.val === "1";

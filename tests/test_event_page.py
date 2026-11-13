@@ -186,3 +186,47 @@ def test_attendance_is_marked_and_shows_on_the_profile(api, staff_headers, db_se
     assert api.get(f"/api/staff/clients/{ben['client_id']}", headers=staff_headers).json()["events"][0]["label"] == "Not marked"
     api.post(f"/api/staff/reservations/{ben['id']}/cancel", headers=staff_headers)
     assert api.post(f"/api/staff/reservations/{ben['id']}/attendance", headers=staff_headers, json={"attended": True}).status_code == 409
+
+
+def test_walk_in_guests_are_added_as_attended(api, staff_headers, db_session):
+    e = _event(api, staff_headers, event_capacity=1)
+    url = PAGE + e["slug"] + "/"
+    _sign_in(api, 1, "first@example.com", "Ada")
+    api.post(url + "reserve", data={"places": "1"})  # the only place
+    walk_ins = f"/api/staff/posts/{e['id']}/walk-ins"
+
+    # Not before the day.
+    r = api.post(walk_ins, headers=staff_headers, json={"email": "new@example.com"})
+    assert r.status_code == 409 and "day of the event" in r.json()["detail"]
+    with db_session() as db:
+        p = db.scalar(select(EventReservation)).post
+        p.event_starts_at, p.event_ends_at = datetime(2026, 10, 1, 18, 30), datetime(2026, 10, 1, 20, 0)
+        db.commit()
+    mailer.OUTBOX.clear()
+
+    # A new guest by email gets a client profile; an existing client by id. Capacity doesn't stop them.
+    r = api.post(walk_ins, headers=staff_headers, json={"email": "New@Example.com", "first_name": "Nia", "last_name": "Obi", "places": 2})
+    assert r.status_code == 201 and r.json()["name"] == "Nia Obi"
+    _sign_in(api, 2, "second@example.com", "Ben")  # an existing client who didn't reserve
+    with db_session() as db:
+        ben = db.scalar(select(Client).where(Client.email == "second@example.com")).id
+    assert api.post(walk_ins, headers=staff_headers, json={"client_id": ben}).status_code == 201
+
+    g = api.get(f"/api/staff/posts/{e['id']}/reservations", headers=staff_headers).json()
+    rows = {x["email"]: x for x in g["reservations"]}
+    assert rows["new@example.com"]["walk_in"] and rows["new@example.com"]["attended"] is True and rows["new@example.com"]["places"] == 2
+    assert rows["second@example.com"]["walk_in"] and not rows["first@example.com"]["walk_in"]
+    assert g["attended"] == 3 and not mailer.OUTBOX
+    prof = api.get(f"/api/staff/clients/{ben}", headers=staff_headers).json()
+    assert prof["events_attended"] == 1 and prof["events"][0]["label"] == "Attended" and prof["events"][0]["walk_in"]
+
+    # Someone already on the list is marked as Came instead; a walk-in needs a client or an email.
+    r = api.post(walk_ins, headers=staff_headers, json={"client_id": rows["first@example.com"]["client_id"]})
+    assert r.status_code == 409 and "already on the guest list" in r.json()["detail"]
+    assert api.post(walk_ins, headers=staff_headers, json={"first_name": "No email"}).status_code == 400
+
+    # A guest who cancelled but came anyway.
+    api.post(f"/api/staff/reservations/{rows['first@example.com']['id']}/cancel", headers=staff_headers)
+    assert api.post(walk_ins, headers=staff_headers, json={"client_id": rows["first@example.com"]["client_id"]}).status_code == 201
+    g = api.get(f"/api/staff/posts/{e['id']}/reservations", headers=staff_headers).json()
+    assert {x["email"]: (x["status"], x["attended"]) for x in g["reservations"]}["first@example.com"] == ("confirmed", True)

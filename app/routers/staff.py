@@ -771,7 +771,8 @@ def _client_events(db: Session, c: Client) -> dict:
             "events_missed": sum(1 for r in rows if r.attended is False),
             "events": [{"reservation_id": r.id, "post_id": r.post_id, "title": r.post.title,
                         "starts_at": ser.iso(r.post.event_starts_at), "places": r.places, "status": r.status,
-                        "attended": r.attended, "label": exp.attendance_label(r)} for r in rows]}
+                        "attended": r.attended, "walk_in": bool(r.walk_in), "label": exp.attendance_label(r)}
+                       for r in rows]}
 
 
 @router.patch("/clients/{client_id}")
@@ -1152,7 +1153,7 @@ from pathlib import Path as _Path  # noqa: E402
 from fastapi import File, UploadFile  # noqa: E402
 
 from app.models import ContactMessage, PageContent, Post, PostStatus  # noqa: E402
-from app.schemas import AttendanceIn, MarkdownIn, PageIn, PostIn, PublishChange  # noqa: E402
+from app.schemas import AttendanceIn, MarkdownIn, PageIn, PostIn, PublishChange, WalkInIn  # noqa: E402
 from app.services import content as cms  # noqa: E402
 
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif"}
@@ -1256,7 +1257,7 @@ def event_reservations(post_id: int, staff: StaffUser = Depends(ops), db: Sessio
             "attended": sum(r.places for r in rows if r.attended), "reservations": [
                 {"id": r.id, "client_id": r.client_id, "name": r.client.full_name, "email": r.client.email,
                  "phone": r.client.phone, "places": r.places, "status": r.status, "note": r.note,
-                 "attended": r.attended, "reserved_at": ser.iso(r.created_at), "cancelled_at": ser.iso(r.cancelled_at)}
+                 "attended": r.attended, "walk_in": bool(r.walk_in), "reserved_at": ser.iso(r.created_at), "cancelled_at": ser.iso(r.cancelled_at)}
                 for r in rows]}
 
 
@@ -1271,6 +1272,32 @@ def mark_attendance(reservation_id: int, body: AttendanceIn, staff: StaffUser = 
     exp.mark_attendance(r, body.attended)
     db.commit()
     return {"id": r.id, "attended": r.attended}
+
+
+@router.post("/posts/{post_id}/walk-ins", status_code=201)
+def add_walk_in(post_id: int, body: WalkInIn, staff: StaffUser = Depends(ops), db: Session = Depends(get_db)):
+    """Add a guest who came without reserving: pick an existing client, or give an email to find or create one."""
+    from app.services import experiences as exp
+    p = db.get(Post, post_id)
+    if not p or p.kind != "event":
+        raise HTTPException(404, "Event not found.")
+    if body.client_id:
+        c = db.get(Client, body.client_id)
+        if not c:
+            raise HTTPException(404, "Client not found.")
+    elif body.email:
+        email = body.email.lower()
+        c = db.scalar(select(Client).where(Client.email == email))
+        if c is None:
+            c = Client(email=email, first_name=body.first_name.strip(), last_name=body.last_name.strip(),
+                       phone=body.phone.strip())
+            db.add(c)
+            db.flush()
+    else:
+        raise HTTPException(400, "Choose a client or enter the guest's email.")
+    r = exp.add_walk_in(db, p, c, body.places)
+    db.commit()
+    return {"id": r.id, "client_id": c.id, "name": c.full_name}
 
 
 @router.post("/reservations/{reservation_id}/cancel")
